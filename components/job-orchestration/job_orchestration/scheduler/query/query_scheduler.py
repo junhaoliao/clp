@@ -905,7 +905,7 @@ def kill_hanging_jobs(sql_adapter: SQL_Adapter):
         db_cursor.execute(
             f"""
             UPDATE {QUERY_TASKS_TABLE_NAME}
-            SET status={QueryTaskStatus.FAILED}
+            SET status={QueryTaskStatus.KILLED}
             WHERE status={QueryTaskStatus.RUNNING}
             AND job_id IN ({job_id_placeholders_str})
             """,
@@ -915,7 +915,7 @@ def kill_hanging_jobs(sql_adapter: SQL_Adapter):
         db_cursor.execute(
             f"""
             UPDATE {QUERY_JOBS_TABLE_NAME}
-            SET status={QueryJobStatus.FAILED}
+            SET status={QueryJobStatus.KILLED}
             WHERE id in ({job_id_placeholders_str})
             """,
             hanging_job_ids,

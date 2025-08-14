@@ -406,7 +406,7 @@ def kill_hanging_jobs(sql_adapter: SQL_Adapter):
         db_cursor.execute(
             f"""
             UPDATE {COMPRESSION_TASKS_TABLE_NAME}
-            SET status={CompressionTaskStatus.FAILED}
+            SET status={CompressionTaskStatus.KILLED}
             WHERE status={CompressionTaskStatus.RUNNING}
             AND job_id IN ({job_id_placeholders_str})
             """,
@@ -415,7 +415,7 @@ def kill_hanging_jobs(sql_adapter: SQL_Adapter):
         db_cursor.execute(
             f"""
             UPDATE {COMPRESSION_JOBS_TABLE_NAME}
-            SET status={CompressionJobStatus.FAILED},
+            SET status={CompressionJobStatus.KILLED},
                 update_time = CURRENT_TIMESTAMP()
             WHERE id in ({job_id_placeholders_str})
             """,
