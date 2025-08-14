@@ -481,7 +481,7 @@ def main(argv):
                     clp_config.archive_output,
                     existing_datasets,
                 )
-                poll_running_jobs(db_conn, db_cursor)
+                #poll_running_jobs(db_conn, db_cursor)
                 time.sleep(clp_config.compression_scheduler.jobs_poll_delay)
             except KeyboardInterrupt:
                 logger.info("Gracefully shutting down")

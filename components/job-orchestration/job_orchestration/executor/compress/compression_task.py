@@ -577,17 +577,17 @@ def compress(
     with closing(sql_adapter.create_connection(True)) as db_conn, closing(
         db_conn.cursor(dictionary=True)
     ) as db_cursor:
-        update_compression_task_metadata(
-            db_cursor,
-            task_id,
-            dict(
-                start_time=start_time,
-                status=compression_task_status,
-                partition_uncompressed_size=worker_output["total_uncompressed_size"],
-                partition_compressed_size=worker_output["total_compressed_size"],
-                duration=duration,
-            ),
-        )
+        # update_compression_task_metadata(
+        #     db_cursor,
+        #     task_id,
+        #     dict(
+        #         start_time=start_time,
+        #         status=compression_task_status,
+        #         partition_uncompressed_size=worker_output["total_uncompressed_size"],
+        #         partition_compressed_size=worker_output["total_compressed_size"],
+        #         duration=duration,
+        #     ),
+        # )
         if CompressionTaskStatus.SUCCEEDED == compression_task_status:
             increment_compression_job_metadata(db_cursor, job_id, dict(num_tasks_completed=1))
         db_conn.commit()
