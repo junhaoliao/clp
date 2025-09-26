@@ -144,30 +144,14 @@ tasks:
           components/clp-py-utils/dist/*.whl \
           components/job-orchestration/dist/*.whl \
           -t "{{.OUTPUT_DIR}}/lib/python3/site-packages"
-      - "mkdir -p '{{.OUTPUT_DIR}}/bin'"
       - >-
-        rsync -a
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/clg"
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/clo"
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/clp"
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/clp-s"
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/indexer"
-        "{{.G_CORE_COMPONENT_BUILD_DIR}}/reducer-server"
-        "{{.G_SPIDER_BUILD_DIR}}/spider-build/src/spider/spider_scheduler"
-        "{{.G_SPIDER_BUILD_DIR}}/spider-build/src/spider/spider_worker"
-        "{{.OUTPUT_DIR}}/bin/"
+        rsync -a --mkpath
+        "{{.G_WEBUI_BUILD_DIR}}/client/settings.json"
+        "{{.OUTPUT_DIR}}/var/www/webui/client/settings.json"
       - >-
-        rsync -a
-        "{{.G_NODEJS_22_BIN_DIR}}/node"
-        "{{.OUTPUT_DIR}}/bin/node-22"
-      - "mkdir -p '{{.OUTPUT_DIR}}/var/www/'"
-      - >-
-        rsync -a
-        "{{.G_WEBUI_BUILD_DIR}}/"
-        "{{.OUTPUT_DIR}}/var/www/webui"
-      - |-
-        cd "{{.OUTPUT_DIR}}/var/www/webui"
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm ci --omit=dev
+        rsync -a --mkpath
+        "{{.G_WEBUI_BUILD_DIR}}/server/dist/settings.json"
+        "{{.OUTPUT_DIR}}/var/www/webui/server/dist/settings.json"
       - >-
         rsync -a
         "tools/deployment/package/"
@@ -235,6 +219,8 @@ tasks:
         COMPONENT: "{{.TASK}}"
 
   webui:
+    env:
+      PATH: '"{{.G_NODEJS_22_BIN_DIR}}":{{.PATH}}'
     vars:
       CHECKSUM_FILE: "{{.G_BUILD_DIR}}/{{.TASK}}.md5"
       OUTPUT_DIR: "{{.G_WEBUI_BUILD_DIR}}"
@@ -262,19 +248,22 @@ tasks:
       - "mkdir -p '{{.OUTPUT_DIR}}'"
       - |-
         cd common
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
+        npm run build
         rsync -a package.json dist "{{.OUTPUT_DIR}}/common/"
       - for: ["client", "yscope-log-viewer"]
         cmd: |-
           cd "{{.G_WEBUI_SRC_DIR}}/{{.ITEM}}"
-          PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build -- \
+          npm run build -- \
           --emptyOutDir --outDir '{{.OUTPUT_DIR}}/{{.ITEM}}'
       - |-
         cd server
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npx tsc --outDir '{{.OUTPUT_DIR}}/server/dist'
+        npx tsc --outDir '{{.OUTPUT_DIR}}/server/dist'
         rsync -a package.json "{{.OUTPUT_DIR}}/server/"
       - |-
         rsync -a package.json package-lock.json "{{.OUTPUT_DIR}}/"
+      - |-
+        cd "{{.OUTPUT_DIR}}"
+        npm ci --omit=dev
       - task: "utils:checksum:compute"
         vars:
           CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
