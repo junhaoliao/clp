@@ -470,8 +470,8 @@ class DockerComposeController(BaseController):
         2. Provisioning environment variables and configuration.
         3. Running `docker compose up -d`.
         """
-        check_docker_dependencies(should_compose_run=False, project_name=self._project_name)
         self._provision()
+        check_docker_dependencies(should_compose_run=False, project_name=self._project_name)
 
         deployment_type = self.clp_config.get_deployment_type()
         logger.info(f"Starting CLP using Docker Compose ({deployment_type})...")

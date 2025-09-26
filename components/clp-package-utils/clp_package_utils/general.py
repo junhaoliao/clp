@@ -439,9 +439,6 @@ def load_config_file(
     clp_config.make_config_paths_absolute(clp_home)
     clp_config.load_execution_container_name()
 
-    validate_path_for_container_mount(clp_config.data_directory)
-    validate_path_for_container_mount(clp_config.logs_directory)
-
     return clp_config
 
 
@@ -561,9 +558,6 @@ def validate_logs_input_config(clp_config: CLPConfig) -> None:
 def validate_output_storage_config(clp_config: CLPConfig) -> None:
     clp_config.validate_archive_output_config()
     clp_config.validate_stream_output_config()
-
-    validate_path_for_container_mount(clp_config.archive_output.get_directory())
-    validate_path_for_container_mount(clp_config.stream_output.get_directory())
 
 
 def validate_webui_config(

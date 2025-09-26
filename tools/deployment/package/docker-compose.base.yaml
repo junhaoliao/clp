@@ -18,6 +18,27 @@ secrets:
     environment: "CLP_DB_PASS"
 
 services:
+  init:
+    <<: *service_defaults
+    container_name: "init"
+    profiles: ["_init"]
+    image: "${CLP_PACKAGE_CONTAINER}"
+    environment:
+      CLP_HOME: "/home/junhao/workspace/2-clp/build/clp-package"
+    volumes:
+      - "./.env:/opt/clp/.env"
+      - "./etc:/opt/clp/etc"
+      - "./image.id:/opt/clp/image.id:ro"
+      - "./var/data:/opt/clp/var/data"
+      - "./var/log:/opt/clp/var/log"
+      - "./var/www:/opt/clp/var/www"
+      - "./VERSION:/opt/clp/VERSION:ro"
+    command: [
+      "python3",
+       "-m",
+       "clp_package_utils.scripts.start_clp"
+    ]
+
   database:
     <<: *service_defaults
     container_name: "database"

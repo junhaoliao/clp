@@ -8,4 +8,5 @@ DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
   ca-certificates \
   libcurl4 \
   libmariadb3 \
-  python3
+  python3 \
+  nano
