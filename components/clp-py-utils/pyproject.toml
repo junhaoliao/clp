@@ -12,6 +12,7 @@ dependencies = [
     "mariadb>=1.0.11,<1.1.dev0",
     "mysql-connector-python>=9.4.0",
     "pydantic>=2.12.3",
+    "pydantic-extra-types>=2.10.6",
     "python-dotenv>=1.1.1",
     "python-Levenshtein>=0.27.1",
     "PyYAML>=6.0.3",

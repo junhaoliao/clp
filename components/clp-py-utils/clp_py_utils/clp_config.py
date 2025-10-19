@@ -13,6 +13,7 @@ from pydantic import (
     PlainSerializer,
     PrivateAttr,
 )
+from pydantic_extra_types.domain import DomainStr
 from strenum import KebabCaseStrEnum, LowercaseStrEnum
 
 from .clp_logging import LoggingLevel
@@ -107,8 +108,6 @@ NonEmptyStr = Annotated[str, Field(min_length=1)]
 PositiveFloat = Annotated[float, Field(gt=0)]
 PositiveInt = Annotated[int, Field(gt=0)]
 # Specific types
-# TODO: Replace this with pydantic_extra_types.domain.DomainStr.
-DomainStr = NonEmptyStr
 Port = Annotated[int, Field(gt=0, lt=2**16)]
 SerializablePath = Annotated[pathlib.Path, PlainSerializer(serialize_path)]
 ZstdCompressionLevel = Annotated[int, Field(ge=1, le=19)]
