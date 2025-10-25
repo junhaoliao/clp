@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
     PlainSerializer,
     PrivateAttr,
+    TypeAdapter,
 )
 from strenum import KebabCaseStrEnum, LowercaseStrEnum
 
@@ -86,6 +87,10 @@ SerializablePath = Annotated[pathlib.Path, PlainSerializer(serialize_path)]
 ZstdCompressionLevel = Annotated[int, Field(ge=1, le=19)]
 
 
+_optional_non_empty_str_validator = TypeAdapter(Optional[NonEmptyStr])
+_optional_str_validator = TypeAdapter(Optional[str])
+
+
 class DeploymentType(KebabCaseStrEnum):
     BASE = auto()
     FULL = auto()
@@ -159,6 +164,8 @@ class Package(BaseModel):
 
 
 class Database(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     DEFAULT_PORT: ClassVar[int] = 3306
 
     type: DatabaseEngineStr = DatabaseEngine.MARIADB
@@ -169,8 +176,43 @@ class Database(BaseModel):
     auto_commit: bool = False
     compress: bool = True
 
-    username: Optional[NonEmptyStr] = None
-    password: Optional[NonEmptyStr] = None
+    _username: Optional[NonEmptyStr] = PrivateAttr(default=None)
+    _password: Optional[NonEmptyStr] = PrivateAttr(default=None)
+
+    @property
+    def username(self) -> Optional[NonEmptyStr]:
+        return self._username
+
+    @username.setter
+    def username(self, value: Optional[NonEmptyStr]) -> None:
+        self._username = _optional_non_empty_str_validator.validate_python(value)
+
+    @property
+    def password(self) -> Optional[NonEmptyStr]:
+        return self._password
+
+    @password.setter
+    def password(self, value: Optional[NonEmptyStr]) -> None:
+        self._password = _optional_non_empty_str_validator.validate_python(value)
+
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        extra = getattr(self, "__pydantic_extra__", None)
+        if not extra:
+            return
+
+        if "username" in extra:
+            self.username = extra.pop("username")
+        if "password" in extra:
+            self.password = extra.pop("password")
+
+        # Maintain previous "extra='ignore'" semantics for any other unexpected keys.
+        for key in list(extra.keys()):
+            if key not in {"username", "password"}:
+                extra.pop(key)
+
+        if not extra:
+            self.__pydantic_extra__ = None
 
     def ensure_credentials_loaded(self):
         if self.username is None or self.password is None:
@@ -219,10 +261,6 @@ class Database(BaseModel):
         if self.ssl_cert:
             connection_params_and_type["ssl_cert"] = self.ssl_cert
         return connection_params_and_type
-
-    def dump_to_primitive_dict(self):
-        d = self.model_dump(exclude={"username", "password"})
-        return d
 
     def load_credentials_from_file(self, credentials_file_path: pathlib.Path):
         config = read_yaml_config_file(credentials_file_path)
@@ -276,6 +314,8 @@ class QueryWorker(BaseModel):
 
 
 class Redis(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     DEFAULT_PORT: ClassVar[int] = 6379
 
     host: DomainStr = "localhost"
@@ -283,10 +323,31 @@ class Redis(BaseModel):
     query_backend_database: int = 0
     compression_backend_database: int = 1
     # redis can perform authentication without a username
-    password: Optional[str] = None
+    _password: Optional[str] = PrivateAttr(default=None)
 
-    def dump_to_primitive_dict(self):
-        return self.model_dump(exclude={"password"})
+    @property
+    def password(self) -> Optional[str]:
+        return self._password
+
+    @password.setter
+    def password(self, value: Optional[str]) -> None:
+        self._password = _optional_str_validator.validate_python(value)
+
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        extra = getattr(self, "__pydantic_extra__", None)
+        if not extra:
+            return
+
+        if "password" in extra:
+            self.password = extra.pop("password")
+
+        for key in list(extra.keys()):
+            if key != "password":
+                extra.pop(key)
+
+        if not extra:
+            self.__pydantic_extra__ = None
 
     def load_credentials_from_file(self, credentials_file_path: pathlib.Path):
         config = read_yaml_config_file(credentials_file_path)
@@ -341,16 +402,49 @@ class ResultsCache(BaseModel):
 
 
 class Queue(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     DEFAULT_PORT: ClassVar[int] = 5672
 
     host: DomainStr = "localhost"
     port: Port = DEFAULT_PORT
 
-    username: Optional[NonEmptyStr] = None
-    password: Optional[str] = None
+    _username: Optional[NonEmptyStr] = PrivateAttr(default=None)
+    _password: Optional[str] = PrivateAttr(default=None)
 
-    def dump_to_primitive_dict(self):
-        return self.model_dump(exclude={"username", "password"})
+    @property
+    def username(self) -> Optional[NonEmptyStr]:
+        return self._username
+
+    @username.setter
+    def username(self, value: Optional[NonEmptyStr]) -> None:
+        self._username = _optional_non_empty_str_validator.validate_python(value)
+
+    @property
+    def password(self) -> Optional[str]:
+        return self._password
+
+    @password.setter
+    def password(self, value: Optional[str]) -> None:
+        self._password = _optional_str_validator.validate_python(value)
+
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        extra = getattr(self, "__pydantic_extra__", None)
+        if not extra:
+            return
+
+        if "username" in extra:
+            self.username = extra.pop("username")
+        if "password" in extra:
+            self.password = extra.pop("password")
+
+        for key in list(extra.keys()):
+            if key not in {"username", "password"}:
+                extra.pop(key)
+
+        if not extra:
+            self.__pydantic_extra__ = None
 
     def load_credentials_from_file(self, credentials_file_path: pathlib.Path):
         config = read_yaml_config_file(credentials_file_path)
@@ -425,9 +519,6 @@ class S3Config(BaseModel):
 class S3IngestionConfig(BaseModel):
     type: Literal[StorageType.S3.value] = StorageType.S3.value
     aws_authentication: AwsAuthentication
-
-    def dump_to_primitive_dict(self):
-        return self.model_dump()
 
     def transform_for_container(self):
         pass
@@ -772,18 +863,6 @@ class CLPConfig(BaseModel):
             return DeploymentType.BASE
         else:
             return DeploymentType.FULL
-
-    def dump_to_primitive_dict(self):
-        custom_serialized_fields = {
-            "database",
-            "queue",
-            "redis",
-        }
-        d = self.model_dump(exclude=custom_serialized_fields)
-        for key in custom_serialized_fields:
-            d[key] = getattr(self, key).dump_to_primitive_dict()
-
-        return d
 
     @model_validator(mode="after")
     def validate_presto_config(self):
