@@ -353,7 +353,7 @@ def dump_container_config(
     config_file_path_on_host = clp_config.logs_directory / config_filename
     config_file_path_on_container = container_clp_config.logs_directory / config_filename
     with open(config_file_path_on_host, "w") as f:
-        yaml.safe_dump(container_clp_config.dump_to_primitive_dict(), f)
+        yaml.safe_dump(container_clp_config.model_dump(), f)
 
     return config_file_path_on_container, config_file_path_on_host
 
