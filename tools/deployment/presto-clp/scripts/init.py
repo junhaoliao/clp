@@ -251,12 +251,7 @@ def _add_worker_env_vars(coordinator_common_env_file_path: Path, env_vars: Dict[
 def _configure_worker_memory_env_vars(env_vars: Dict[str, str]) -> bool:
     """Adds memory-related environment variables for the worker."""
 
-    try:
-        total_memory_bytes = int(psutil.virtual_memory().total)
-    except (AttributeError, ValueError) as exc:
-        logger.error("Unable to determine total system memory: %s", exc)
-        return False
-
+    total_memory_bytes = psutil.virtual_memory().total
     total_memory_gb = total_memory_bytes / (1024**3)
     total_memory_gb_floor = max(1, math.floor(total_memory_gb))
 
@@ -273,18 +268,18 @@ def _configure_worker_memory_env_vars(env_vars: Dict[str, str]) -> bool:
         max(system_memory_gb, max(1, math.floor(total_memory_gb * 0.94))),
     )
 
-    env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"] = str(system_memory_gb)
     env_vars["PRESTO_WORKER_CONFIGPROPERTIES_QUERY_MEMORY_GB"] = str(query_memory_gb)
+    env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"] = str(system_memory_gb)
     env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEM_LIMIT_GB"] = str(system_mem_limit_gb)
 
     logger.info(
         (
             "Detected %.2f GB of system memory; configured Presto worker memory limits "
-            "(system-memory-gb=%s, query-memory-gb=%s, system-mem-limit-gb=%s)."
+            "(query-memory-gb=%s, system-memory-gb=%s, system-mem-limit-gb=%s)."
         ),
         total_memory_gb,
-        env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"],
         env_vars["PRESTO_WORKER_CONFIGPROPERTIES_QUERY_MEMORY_GB"],
+        env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"],
         env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEM_LIMIT_GB"],
     )
 
