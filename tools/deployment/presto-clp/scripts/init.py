@@ -288,22 +288,18 @@ def _configure_worker_memory_env_vars(env_vars: Dict[str, str]) -> bool:
 
 def _get_required_env_var(config: Dict[str, Optional[str]], key: str, env_file_path: Path) -> str:
     """
-    Fetches a required entry from a dotenv-style config.
+    Fetches a required entry from an environment variables dictionary.
 
-    :param config: Mapping of config keys to their string values.
+    :param config:
     :param key: The key that must exist in `config` with a non-empty value.
-    :param env_file_path: Path to the file that produced `config`, for logging context.
+    :param env_file_path:
     :return: The string value associated with `key`.
-    :raises KeyError: If `key` is missing or empty.
+    :raises KeyError: If `key` is missing.
     """
 
     value = config.get(key)
     if value is None:
         logger.error("Missing required key %s in '%s'", key, env_file_path)
-        raise KeyError(key)
-
-    if value == "":
-        logger.error("Empty value for required key %s in '%s'", key, env_file_path)
         raise KeyError(key)
 
     return value
