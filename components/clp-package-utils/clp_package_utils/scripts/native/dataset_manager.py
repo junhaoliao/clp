@@ -113,7 +113,7 @@ def _try_deleting_archives(
     archive_storage_config = archive_output_config.storage
     storage_type = archive_storage_config.type
     if StorageType.FS == storage_type:
-        _try_deleting_archives_from_fs(archive_output_config, dataset_archive_storage_dir)
+        _try_deleting_archives_from_fs(dataset_archive_storage_dir)
     elif StorageType.S3 == storage_type:
         _try_deleting_archives_from_s3(
             archive_storage_config.s3_config, dataset_archive_storage_dir
@@ -123,15 +123,9 @@ def _try_deleting_archives(
 
 
 def _try_deleting_archives_from_fs(
-    archive_output_config: ArchiveOutput, dataset_archive_storage_dir: str
+    dataset_archive_storage_dir: str
 ) -> None:
-    archives_dir = archive_output_config.get_directory()
     dataset_archive_storage_path = Path(dataset_archive_storage_dir).resolve()
-    if not dataset_archive_storage_path.is_relative_to(archives_dir):
-        raise ValueError(
-            f"'{dataset_archive_storage_path}' is not within top-level archive storage directory"
-            f" '{archives_dir}'"
-        )
 
     if not dataset_archive_storage_path.exists():
         logger.debug(f"'{dataset_archive_storage_path}' doesn't exist.")

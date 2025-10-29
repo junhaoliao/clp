@@ -266,16 +266,19 @@ def generate_container_config(
             DockerMountType.BIND, clp_config.logs_directory, container_clp_config.logs_directory
         )
 
+    transformed_container_archive_output_directory = (
+        container_clp_config.model_copy(deep=True).archive_output.get_directory()
+    )
     if not is_path_already_mounted(
         clp_home,
         CONTAINER_CLP_HOME,
         clp_config.archive_output.get_directory(),
-        container_clp_config.archive_output.get_directory(),
+        transformed_container_archive_output_directory,
     ):
         docker_mounts.archives_output_dir = DockerMount(
             DockerMountType.BIND,
             clp_config.archive_output.get_directory(),
-            container_clp_config.archive_output.get_directory(),
+            transformed_container_archive_output_directory,
         )
 
     if not is_path_already_mounted(
