@@ -122,9 +122,7 @@ def _try_deleting_archives(
         raise ValueError(f"Unsupported storage type: {storage_type}")
 
 
-def _try_deleting_archives_from_fs(
-    dataset_archive_storage_dir: str
-) -> None:
+def _try_deleting_archives_from_fs(dataset_archive_storage_dir: str) -> None:
     dataset_archive_storage_path = Path(dataset_archive_storage_dir).resolve()
 
     if not dataset_archive_storage_path.exists():
