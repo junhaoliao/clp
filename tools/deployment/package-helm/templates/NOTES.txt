@@ -1,0 +1,114 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your CLP (Compressed Log Processor) deployment is being created.
+
+Release name: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+===============================================================================
+GETTING STARTED
+===============================================================================
+
+1. Check the status of your deployment:
+
+   kubectl get pods -n {{ .Release.Namespace }}
+
+2. Wait for all pods to be ready (this may take a few minutes):
+
+   kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }} --timeout=300s
+
+===============================================================================
+ACCESSING SERVICES
+===============================================================================
+
+{{- if .Values.webui.enabled }}
+Web UI:
+{{- if eq .Values.webui.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+  Get the LoadBalancer IP:
+  export SERVICE_IP=$(kubectl get svc {{ include "clp-package.fullname" . }}-webui -n {{ .Release.Namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Web UI: http://$SERVICE_IP:{{ .Values.webui.service.port }}"
+{{- else if eq .Values.webui.service.type "NodePort" }}
+  export NODE_PORT=$(kubectl get svc {{ include "clp-package.fullname" . }}-webui -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}')
+  export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+  echo "Web UI: http://$NODE_IP:$NODE_PORT"
+{{- else }}
+  Run the following command to port-forward:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "clp-package.fullname" . }}-webui {{ .Values.webui.service.port }}:{{ .Values.webui.service.port }}
+
+  Then access at: http://localhost:{{ .Values.webui.service.port }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.apiServer.enabled }}
+
+API Server:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "clp-package.fullname" . }}-api-server {{ .Values.apiServer.service.port }}:{{ .Values.apiServer.service.port }}
+  Then access at: http://localhost:{{ .Values.apiServer.service.port }}
+{{- end }}
+
+{{- if .Values.mcpServer.enabled }}
+
+MCP Server:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "clp-package.fullname" . }}-mcp-server {{ .Values.mcpServer.service.port }}:{{ .Values.mcpServer.service.port }}
+  Then access at: http://localhost:{{ .Values.mcpServer.service.port }}
+{{- end }}
+
+===============================================================================
+MONITORING
+===============================================================================
+
+View logs for specific services:
+
+  # Compression Scheduler
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=compression-scheduler
+
+  # Query Scheduler
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=query-scheduler
+
+  # Web UI
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=webui
+
+===============================================================================
+PERSISTENCE
+===============================================================================
+
+{{- if or .Values.database.persistence.enabled .Values.compressionWorker.persistence.archives.enabled .Values.queryWorker.persistence.stagedStreams.enabled }}
+The following persistent volumes have been created:
+
+{{- if .Values.database.persistence.enabled }}
+  - Database ({{ .Values.database.persistence.size }})
+{{- end }}
+{{- if .Values.compressionWorker.persistence.archives.enabled }}
+  - Archives ({{ .Values.compressionWorker.persistence.archives.size }})
+{{- end }}
+{{- if .Values.compressionWorker.persistence.stagedArchives.enabled }}
+  - Staged Archives ({{ .Values.compressionWorker.persistence.stagedArchives.size }})
+{{- end }}
+{{- if .Values.queryWorker.persistence.stagedStreams.enabled }}
+  - Staged Streams ({{ .Values.queryWorker.persistence.stagedStreams.size }})
+{{- end }}
+{{- if .Values.webui.persistence.streams.enabled }}
+  - Streams ({{ .Values.webui.persistence.streams.size }})
+{{- end }}
+
+Check PVC status:
+  kubectl get pvc -n {{ .Release.Namespace }}
+{{- else }}
+WARNING: Persistence is disabled. All data will be lost when pods are terminated.
+{{- end }}
+
+===============================================================================
+NEXT STEPS
+===============================================================================
+
+1. Access the Web UI and configure your log sources
+2. Start compressing logs
+3. Run queries against compressed logs
+
+For more information:
+  - Documentation: https://docs.yscope.com
+  - GitHub: https://github.com/y-scope/clp
+
+===============================================================================

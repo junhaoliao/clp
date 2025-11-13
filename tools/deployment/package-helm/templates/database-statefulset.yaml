@@ -1,0 +1,132 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "clp-package.fullname" . }}-database
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "clp-package.fullname" . }}-database
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.thirdPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: mariadb
+        image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        ports:
+        - name: mysql
+          containerPort: 3306
+          protocol: TCP
+        env:
+        - name: MYSQL_DATABASE
+          value: {{ .Values.database.auth.database | quote }}
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-root-password
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "mysqladmin ping -h 127.0.0.1 -u$MYSQL_USER -p$MYSQL_PASSWORD"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "mysqladmin ping -h 127.0.0.1 -u$MYSQL_USER -p$MYSQL_PASSWORD"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+        - name: logs
+          mountPath: /var/log/mysql
+        resources:
+          {{- toYaml .Values.database.resources | nindent 10 }}
+  {{- if .Values.database.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.database.persistence.storageClass }}
+      storageClassName: {{ .Values.database.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.database.persistence.size }}
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.database.persistence.storageClass }}
+      storageClassName: {{ .Values.database.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: 1Gi
+  {{- else }}
+  volumes:
+  - name: data
+    emptyDir: {}
+  - name: logs
+    emptyDir: {}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-database
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: {{ .Values.database.service.type }}
+  ports:
+  - port: {{ .Values.database.service.port }}
+    targetPort: mysql
+    protocol: TCP
+    name: mysql
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  clusterIP: None
+{{- end }}

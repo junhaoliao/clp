@@ -1,0 +1,128 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "clp-package.fullname" . }}-redis
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "clp-package.fullname" . }}-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.thirdPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: redis
+        image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - redis-server
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        - --dir
+        - /data
+        - --logfile
+        - /var/log/redis/redis.log
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: redis-password
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_PASSWORD" PING
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_PASSWORD" PING
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: logs
+          mountPath: /var/log/redis
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+  {{- if .Values.redis.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.redis.persistence.storageClass }}
+      storageClassName: {{ .Values.redis.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.redis.persistence.size }}
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.redis.persistence.storageClass }}
+      storageClassName: {{ .Values.redis.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: 1Gi
+  {{- else }}
+  volumes:
+  - name: data
+    emptyDir: {}
+  - name: logs
+    emptyDir: {}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-redis
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+  - port: {{ .Values.redis.service.port }}
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  clusterIP: None
+{{- end }}

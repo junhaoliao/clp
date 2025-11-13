@@ -1,0 +1,343 @@
+# Default values for clp-package Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  # Image settings
+  image:
+    repository: clp-package
+    pullPolicy: IfNotPresent
+    tag: ""  # Overrides the image tag whose default is the chart appVersion
+
+  # Storage class for persistent volumes
+  storageClass: ""
+
+  # User/Group IDs for services
+  firstPartyServiceUid: 1000
+  firstPartyServiceGid: 1000
+  thirdPartyServiceUid: 1000
+  thirdPartyServiceGid: 1000
+
+# Database (MariaDB) configuration
+database:
+  enabled: true
+  image:
+    repository: mariadb
+    tag: "10-jammy"
+  service:
+    type: ClusterIP
+    port: 3306
+  auth:
+    database: clp-db
+    username: clp-user
+    password: ""  # Set this via --set or secrets
+    rootPassword: ""  # Set this via --set or secrets
+  persistence:
+    enabled: true
+    size: 10Gi
+    # storageClass: ""
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 100m
+
+# Message Queue (RabbitMQ) configuration
+queue:
+  enabled: true
+  image:
+    repository: rabbitmq
+    tag: "3.9.8"
+  service:
+    type: ClusterIP
+    port: 5672
+  auth:
+    username: clp-user
+    password: ""  # Set this via --set or secrets
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2.4"
+  service:
+    type: ClusterIP
+    port: 6379
+  auth:
+    password: ""  # Set this via --set or secrets
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  config:
+    # Redis backend DB IDs
+    backendDbCompression: 1
+    backendDbQuery: 0
+
+# Results Cache (MongoDB) configuration
+resultsCache:
+  enabled: true
+  image:
+    repository: mongo
+    tag: "7.0.1"
+  service:
+    type: ClusterIP
+    port: 27017
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 100m
+  database:
+    name: clp-query-results
+    streamCollection: stream-files
+
+# Compression Scheduler configuration
+compressionScheduler:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  logLevel: INFO
+  terminationGracePeriodSeconds: 300
+
+# Compression Worker configuration
+compressionWorker:
+  enabled: true
+  replicaCount: 1
+  concurrency: 1
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+    requests:
+      memory: 512Mi
+      cpu: 500m
+  logLevel: INFO
+  persistence:
+    archives:
+      enabled: true
+      size: 50Gi
+    stagedArchives:
+      enabled: true
+      size: 20Gi
+    tmp:
+      enabled: true
+      size: 10Gi
+
+# Web UI configuration
+webui:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 4000
+    # For LoadBalancer or NodePort:
+    # type: LoadBalancer
+    # nodePort: 30400
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  rateLimit: 1000
+  persistence:
+    streams:
+      enabled: true
+      size: 20Gi
+
+# Garbage Collector configuration
+garbageCollector:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  logLevel: INFO
+  terminationGracePeriodSeconds: 10
+
+# Query Scheduler configuration
+queryScheduler:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 7000
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  logLevel: INFO
+  terminationGracePeriodSeconds: 10
+
+# Query Worker configuration
+queryWorker:
+  enabled: true
+  replicaCount: 1
+  concurrency: 1
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+    requests:
+      memory: 512Mi
+      cpu: 500m
+  logLevel: INFO
+  persistence:
+    stagedStreams:
+      enabled: true
+      size: 20Gi
+
+# Reducer configuration
+reducer:
+  enabled: true
+  replicaCount: 1
+  concurrency: 1
+  upsertInterval: 100
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  logLevel: INFO
+  terminationGracePeriodSeconds: 10
+
+# MCP Server configuration
+mcpServer:
+  enabled: false  # Disabled by default (uses profile in docker-compose)
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+  logLevel: INFO
+
+# API Server configuration
+apiServer:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  logLevel: DEBUG
+
+# CLP Configuration
+clpConfig:
+  # Storage engine: clp or clp-s
+  storageEngine: clp
+  # Query engine: clp or clp-s
+  queryEngine: clp
+  # Additional CLP configuration can be added here
+  # This will be mounted as /etc/clp-config.yml in containers
+
+# AWS Configuration (optional)
+aws:
+  enabled: false
+  # If using AWS services, configure credentials here
+  accessKeyId: ""
+  secretAccessKey: ""
+  # Mount AWS config directory
+  configDir:
+    enabled: false
+    # existingConfigMap: aws-config
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: clp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: webui
+          port: 4000
+  tls: []
+  #  - secretName: clp-tls
+  #    hosts:
+  #      - clp.example.com
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Security Context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Security Context
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

@@ -1,0 +1,79 @@
+{{- if and .Values.compressionWorker.enabled .Values.compressionWorker.persistence.archives.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clp-package.fullname" . }}-archives
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- include "clp-package.storageClass" . | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .Values.compressionWorker.persistence.archives.size }}
+{{- end }}
+---
+{{- if and .Values.compressionWorker.enabled .Values.compressionWorker.persistence.stagedArchives.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clp-package.fullname" . }}-staged-archives
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- include "clp-package.storageClass" . | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .Values.compressionWorker.persistence.stagedArchives.size }}
+{{- end }}
+---
+{{- if and .Values.compressionWorker.enabled .Values.compressionWorker.persistence.tmp.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clp-package.fullname" . }}-tmp
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- include "clp-package.storageClass" . | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .Values.compressionWorker.persistence.tmp.size }}
+{{- end }}
+---
+{{- if and .Values.queryWorker.enabled .Values.queryWorker.persistence.stagedStreams.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clp-package.fullname" . }}-staged-streams
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- include "clp-package.storageClass" . | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .Values.queryWorker.persistence.stagedStreams.size }}
+{{- end }}
+---
+{{- if and .Values.webui.enabled .Values.webui.persistence.streams.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clp-package.fullname" . }}-streams
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- include "clp-package.storageClass" . | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .Values.webui.persistence.streams.size }}
+{{- end }}

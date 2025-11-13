@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clp-package.fullname" . }}-config
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+data:
+  clp-config.yml: |
+    # CLP Configuration
+    storage_engine: {{ .Values.clpConfig.storageEngine | quote }}
+    query_engine: {{ .Values.clpConfig.queryEngine | quote }}
+
+    # Database configuration
+    database:
+      host: {{ include "clp-package.databaseHost" . }}
+      port: {{ .Values.database.service.port }}
+      name: {{ .Values.database.auth.database }}
+      type: mariadb
+
+    # Queue configuration
+    queue:
+      host: {{ include "clp-package.queueHost" . }}
+      port: {{ .Values.queue.service.port }}
+
+    # Redis configuration
+    redis:
+      host: {{ include "clp-package.redisHost" . }}
+      port: {{ .Values.redis.service.port }}
+
+    # Results cache configuration
+    results_cache:
+      host: {{ include "clp-package.resultsCacheHost" . }}
+      port: {{ .Values.resultsCache.service.port }}
+      db_name: {{ .Values.resultsCache.database.name }}
+      stream_collection: {{ .Values.resultsCache.database.streamCollection }}
+
+    # Archive configuration
+    archive:
+      output:
+        directory: /var/data/archives
+      staging:
+        directory: /var/data/staged-archives
+
+    # Stream configuration
+    stream:
+      output:
+        directory: /var/data/streams
+      staging:
+        directory: /var/data/staged-streams
+
+    # Logs configuration
+    logs:
+      directory: /var/log

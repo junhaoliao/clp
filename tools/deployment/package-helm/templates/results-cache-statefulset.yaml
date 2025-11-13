@@ -1,0 +1,120 @@
+{{- if .Values.resultsCache.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "clp-package.fullname" . }}-results-cache
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: results-cache
+spec:
+  serviceName: {{ include "clp-package.fullname" . }}-results-cache
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: results-cache
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: results-cache
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.thirdPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: mongodb
+        image: "{{ .Values.resultsCache.image.repository }}:{{ .Values.resultsCache.image.tag }}"
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - mongod
+        - --bind_ip
+        - "0.0.0.0"
+        - --logpath
+        - /var/log/mongodb/mongod.log
+        ports:
+        - name: mongodb
+          containerPort: 27017
+          protocol: TCP
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /data/db
+        - name: logs
+          mountPath: /var/log/mongodb
+        resources:
+          {{- toYaml .Values.resultsCache.resources | nindent 10 }}
+  {{- if .Values.resultsCache.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.resultsCache.persistence.storageClass }}
+      storageClassName: {{ .Values.resultsCache.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.resultsCache.persistence.size }}
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.resultsCache.persistence.storageClass }}
+      storageClassName: {{ .Values.resultsCache.persistence.storageClass | quote }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: 1Gi
+  {{- else }}
+  volumes:
+  - name: data
+    emptyDir: {}
+  - name: logs
+    emptyDir: {}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-results-cache
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: results-cache
+spec:
+  type: {{ .Values.resultsCache.service.type }}
+  ports:
+  - port: {{ .Values.resultsCache.service.port }}
+    targetPort: mongodb
+    protocol: TCP
+    name: mongodb
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: results-cache
+  clusterIP: None
+{{- end }}

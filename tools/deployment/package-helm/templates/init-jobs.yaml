@@ -1,0 +1,102 @@
+{{- if .Values.database.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "clp-package.fullname" . }}-db-table-creator
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-table-creator
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: db-table-creator
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      restartPolicy: OnFailure
+      containers:
+      - name: db-table-creator
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - -m
+        - clp_py_utils.create-db-tables
+        - --config
+        - /etc/clp-config.yml
+        - --storage-engine
+        - {{ .Values.clpConfig.storageEngine }}
+        env:
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+{{- end }}
+---
+{{- if .Values.resultsCache.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "clp-package.fullname" . }}-results-cache-indices-creator
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: results-cache-indices-creator
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: results-cache-indices-creator
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      restartPolicy: OnFailure
+      containers:
+      - name: results-cache-indices-creator
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - -m
+        - clp_py_utils.initialize-results-cache
+        - --uri
+        - "mongodb://{{ include "clp-package.resultsCacheHost" . }}:{{ .Values.resultsCache.service.port }}/{{ .Values.resultsCache.database.name }}"
+        - --stream-collection
+        - {{ .Values.resultsCache.database.streamCollection }}
+        env:
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+{{- end }}

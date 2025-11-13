@@ -1,0 +1,113 @@
+{{- if .Values.webui.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-webui
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+spec:
+  replicas: {{ .Values.webui.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webui
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webui
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: webui
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - /opt/clp/bin/node-22
+        - /opt/clp/var/www/webui/server/dist/src/main.js
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        env:
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        {{- if .Values.aws.enabled }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: aws-secret-access-key
+        {{- end }}
+        - name: HOST
+          value: "0.0.0.0"
+        - name: NODE_ENV
+          value: production
+        - name: NODE_PATH
+          value: /opt/clp/var/www/webui/server/node_modules
+        - name: PORT
+          value: "4000"
+        - name: RATE_LIMIT
+          value: "{{ .Values.webui.rateLimit }}"
+        livenessProbe:
+          tcpSocket:
+            port: 4000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 4000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        volumeMounts:
+        - name: streams
+          mountPath: /var/data/streams
+        resources:
+          {{- toYaml .Values.webui.resources | nindent 10 }}
+      volumes:
+      {{- if .Values.webui.persistence.streams.enabled }}
+      - name: streams
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-streams
+      {{- else }}
+      - name: streams
+        emptyDir: {}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-webui
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+spec:
+  type: {{ .Values.webui.service.type }}
+  ports:
+  - port: {{ .Values.webui.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+    {{- if and (eq .Values.webui.service.type "NodePort") .Values.webui.service.nodePort }}
+    nodePort: {{ .Values.webui.service.nodePort }}
+    {{- end }}
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+{{- end }}

@@ -1,0 +1,285 @@
+{{- if .Values.garbageCollector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-garbage-collector
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: garbage-collector
+spec:
+  replicas: {{ .Values.garbageCollector.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: garbage-collector
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: garbage-collector
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.garbageCollector.terminationGracePeriodSeconds }}
+      containers:
+      - name: garbage-collector
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - -m
+        - job_orchestration.garbage_collector.garbage_collector
+        - --config
+        - /etc/clp-config.yml
+        env:
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: CLP_HOME
+          value: /opt/clp
+        - name: CLP_LOGGING_LEVEL
+          value: {{ .Values.garbageCollector.logLevel }}
+        - name: CLP_LOGS_DIR
+          value: /var/log/garbage_collector
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+        - name: logs
+          mountPath: /var/log
+        - name: archives
+          mountPath: /var/data/archives
+        - name: streams
+          mountPath: /var/data/streams
+        resources:
+          {{- toYaml .Values.garbageCollector.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+      - name: logs
+        emptyDir: {}
+      {{- if and .Values.compressionWorker.enabled .Values.compressionWorker.persistence.archives.enabled }}
+      - name: archives
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-archives
+      {{- else }}
+      - name: archives
+        emptyDir: {}
+      {{- end }}
+      {{- if and .Values.webui.enabled .Values.webui.persistence.streams.enabled }}
+      - name: streams
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-streams
+      {{- else }}
+      - name: streams
+        emptyDir: {}
+      {{- end }}
+{{- end }}
+---
+{{- if .Values.apiServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-api-server
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-server
+spec:
+  replicas: {{ .Values.apiServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api-server
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api-server
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: api-server
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - /opt/clp/bin/api_server
+        - --host
+        - "0.0.0.0"
+        - --port
+        - "3001"
+        - --config
+        - /etc/clp-config.yml
+        ports:
+        - name: http
+          containerPort: 3001
+          protocol: TCP
+        env:
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: CLP_LOGS_DIR
+          value: /var/log/api_server
+        - name: RUST_LOG
+          value: {{ .Values.apiServer.logLevel }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+        - name: logs
+          mountPath: /var/log
+        resources:
+          {{- toYaml .Values.apiServer.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+      - name: logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-api-server
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-server
+spec:
+  type: {{ .Values.apiServer.service.type }}
+  ports:
+  - port: {{ .Values.apiServer.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api-server
+{{- end }}
+---
+{{- if .Values.mcpServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-mcp-server
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: {{ .Values.mcpServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mcp-server
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mcp-server
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: mcp-server
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - -m
+        - clp_mcp_server.clp_mcp_server
+        - --host
+        - "0.0.0.0"
+        - --port
+        - "8000"
+        - --config-path
+        - /etc/clp-config.yml
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        env:
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: CLP_LOGGING_LEVEL
+          value: {{ .Values.mcpServer.logLevel }}
+        - name: CLP_LOGS_DIR
+          value: /var/log/mcp_server
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+        - name: logs
+          mountPath: /var/log
+        resources:
+          {{- toYaml .Values.mcpServer.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+      - name: logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clp-package.fullname" . }}-mcp-server
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-server
+spec:
+  type: {{ .Values.mcpServer.service.type }}
+  ports:
+  - port: {{ .Values.mcpServer.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "clp-package.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-server
+{{- end }}

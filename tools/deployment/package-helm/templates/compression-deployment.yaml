@@ -1,0 +1,210 @@
+{{- if .Values.compressionScheduler.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-compression-scheduler
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compression-scheduler
+spec:
+  replicas: {{ .Values.compressionScheduler.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: compression-scheduler
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: compression-scheduler
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.compressionScheduler.terminationGracePeriodSeconds }}
+      containers:
+      - name: compression-scheduler
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - -m
+        - job_orchestration.scheduler.compress.compression_scheduler
+        - --config
+        - /etc/clp-config.yml
+        env:
+        - name: BROKER_URL
+          value: "amqp://$(CLP_QUEUE_USER):$(CLP_QUEUE_PASS)@{{ include "clp-package.queueHost" . }}:{{ .Values.queue.service.port }}"
+        - name: CLP_QUEUE_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: queue-username
+        - name: CLP_QUEUE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: queue-password
+        - name: CLP_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-username
+        - name: CLP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: db-password
+        - name: RESULT_BACKEND
+          value: "redis://default:$(CLP_REDIS_PASS)@{{ include "clp-package.redisHost" . }}:{{ .Values.redis.service.port }}/{{ .Values.redis.config.backendDbCompression }}"
+        - name: CLP_REDIS_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: redis-password
+        - name: CLP_LOGGING_LEVEL
+          value: {{ .Values.compressionScheduler.logLevel }}
+        - name: CLP_LOGS_DIR
+          value: /var/log/compression_scheduler
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+        - name: logs
+          mountPath: /var/log
+        resources:
+          {{- toYaml .Values.compressionScheduler.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+      - name: logs
+        emptyDir: {}
+{{- end }}
+---
+{{- if .Values.compressionWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clp-package.fullname" . }}-compression-worker
+  labels:
+    {{- include "clp-package.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compression-worker
+spec:
+  replicas: {{ .Values.compressionWorker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "clp-package.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: compression-worker
+  template:
+    metadata:
+      labels:
+        {{- include "clp-package.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: compression-worker
+    spec:
+      serviceAccountName: {{ include "clp-package.serviceAccountName" . }}
+      securityContext:
+        {{- include "clp-package.firstPartySecurityContext" . | nindent 8 }}
+      containers:
+      - name: compression-worker
+        image: {{ include "clp-package.image" . }}
+        imagePullPolicy: {{ include "clp-package.imagePullPolicy" . }}
+        command:
+        - python3
+        - -u
+        - /opt/clp/lib/python3/site-packages/bin/celery
+        - -A
+        - job_orchestration.executor.compress
+        - worker
+        - --concurrency
+        - "{{ .Values.compressionWorker.concurrency }}"
+        - --loglevel
+        - WARNING
+        - -f
+        - /var/log/compression_worker/worker.log
+        - -Q
+        - compression
+        - -n
+        - compression-worker
+        env:
+        - name: BROKER_URL
+          value: "amqp://$(CLP_QUEUE_USER):$(CLP_QUEUE_PASS)@{{ include "clp-package.queueHost" . }}:{{ .Values.queue.service.port }}"
+        - name: CLP_QUEUE_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: queue-username
+        - name: CLP_QUEUE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: queue-password
+        - name: RESULT_BACKEND
+          value: "redis://default:$(CLP_REDIS_PASS)@{{ include "clp-package.redisHost" . }}:{{ .Values.redis.service.port }}/{{ .Values.redis.config.backendDbCompression }}"
+        - name: CLP_REDIS_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "clp-package.fullname" . }}-secrets
+              key: redis-password
+        - name: CLP_CONFIG_PATH
+          value: /etc/clp-config.yml
+        - name: CLP_HOME
+          value: /opt/clp
+        - name: CLP_LOGGING_LEVEL
+          value: {{ .Values.compressionWorker.logLevel }}
+        - name: CLP_LOGS_DIR
+          value: /var/log/compression_worker
+        - name: CLP_WORKER_LOG_PATH
+          value: /var/log/compression_worker/worker.log
+        - name: PYTHONPATH
+          value: "/opt/clp/lib/python3/site-packages"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/clp-config.yml
+          subPath: clp-config.yml
+          readOnly: true
+        - name: logs
+          mountPath: /var/log
+        - name: archives
+          mountPath: /var/data/archives
+        - name: staged-archives
+          mountPath: /var/data/staged-archives
+        - name: tmp
+          mountPath: /var/tmp
+        resources:
+          {{- toYaml .Values.compressionWorker.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "clp-package.fullname" . }}-config
+      - name: logs
+        emptyDir: {}
+      {{- if .Values.compressionWorker.persistence.archives.enabled }}
+      - name: archives
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-archives
+      {{- else }}
+      - name: archives
+        emptyDir: {}
+      {{- end }}
+      {{- if .Values.compressionWorker.persistence.stagedArchives.enabled }}
+      - name: staged-archives
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-staged-archives
+      {{- else }}
+      - name: staged-archives
+        emptyDir: {}
+      {{- end }}
+      {{- if .Values.compressionWorker.persistence.tmp.enabled }}
+      - name: tmp
+        persistentVolumeClaim:
+          claimName: {{ include "clp-package.fullname" . }}-tmp
+      {{- else }}
+      - name: tmp
+        emptyDir: {}
+      {{- end }}
+{{- end }}
