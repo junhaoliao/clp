@@ -1,5 +1,7 @@
 import argparse
 import logging
+import math
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -269,19 +271,80 @@ def _add_worker_env_vars(coordinator_common_env_file_path: Path, env_vars: Dict[
     config = dotenv_values(coordinator_common_env_file_path)
 
     try:
-        env_vars["PRESTO_COORDINATOR_CONFIGPROPERTIES_DISCOVERY_URI"] = (
-            f'http://{config["PRESTO_COORDINATOR_SERVICENAME"]}'
-            f':{config["PRESTO_COORDINATOR_HTTPPORT"]}'
+        coordinator_service_name = _get_required_env_var(
+            config, "PRESTO_COORDINATOR_SERVICENAME", coordinator_common_env_file_path
         )
-    except KeyError as e:
-        logger.error(
-            "Missing required key %s in '%s'",
-            e,
-            coordinator_common_env_file_path,
+        coordinator_http_port = _get_required_env_var(
+            config, "PRESTO_COORDINATOR_HTTPPORT", coordinator_common_env_file_path
         )
+    except KeyError:
+        return False
+
+    env_vars["PRESTO_COORDINATOR_CONFIGPROPERTIES_DISCOVERY_URI"] = (
+        f"http://{coordinator_service_name}:{coordinator_http_port}"
+    )
+
+    if not _configure_worker_memory_env_vars(env_vars):
         return False
 
     return True
+
+
+def _configure_worker_memory_env_vars(env_vars: Dict[str, str]) -> bool:
+    """Adds memory-related environment variables for the worker."""
+
+    total_memory_bytes = psutil.virtual_memory().total
+    total_memory_gb = total_memory_bytes / (1024**3)
+    total_memory_gb_floor = max(1, math.floor(total_memory_gb))
+
+    system_memory_gb = min(
+        total_memory_gb_floor,
+        max(1, math.floor(total_memory_gb * 0.90)),
+    )
+    query_memory_gb = min(
+        system_memory_gb,
+        max(1, math.floor(system_memory_gb * (2 / 3))),
+    )
+    system_mem_limit_gb = min(
+        total_memory_gb_floor,
+        max(system_memory_gb, max(1, math.floor(total_memory_gb * 0.94))),
+    )
+
+    env_vars["PRESTO_WORKER_CONFIGPROPERTIES_QUERY_MEMORY_GB"] = str(query_memory_gb)
+    env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"] = str(system_memory_gb)
+    env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEM_LIMIT_GB"] = str(system_mem_limit_gb)
+
+    logger.info(
+        (
+            "Detected %.2f GB of system memory; configured Presto worker memory limits "
+            "(query-memory-gb=%s, system-memory-gb=%s, system-mem-limit-gb=%s)."
+        ),
+        total_memory_gb,
+        env_vars["PRESTO_WORKER_CONFIGPROPERTIES_QUERY_MEMORY_GB"],
+        env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEMORY_GB"],
+        env_vars["PRESTO_WORKER_CONFIGPROPERTIES_SYSTEM_MEM_LIMIT_GB"],
+    )
+
+    return True
+
+
+def _get_required_env_var(config: Dict[str, Optional[str]], key: str, env_file_path: Path) -> str:
+    """
+    Fetches a required entry from an environment variables dictionary.
+
+    :param config:
+    :param key: The key that must exist in `config` with a non-empty value.
+    :param env_file_path:
+    :return: The string value associated with `key`.
+    :raises KeyError: If `key` is missing.
+    """
+
+    value = config.get(key)
+    if value is None:
+        logger.error("Missing required key %s in '%s'", key, env_file_path)
+        raise KeyError(key)
+
+    return value
 
 
 def _generate_worker_clp_properties(
