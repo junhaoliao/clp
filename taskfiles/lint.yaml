@@ -106,6 +106,7 @@ tasks:
           components/core/config \
           components/core/tools/ \
           components/package-template/src/etc \
+          ct.yaml \
           docs \
           taskfile.yaml \
           taskfiles \
@@ -859,6 +860,7 @@ tasks:
 
   check-helm:
     sources: &helm_source_files
+      - "{{.ROOT_DIR}}/ct.yaml"
       - "{{.ROOT_DIR}}/taskfile.yaml"
       - "{{.TASKFILE}}"
       - "{{.ROOT_DIR}}/tools/deployment/package-helm/**/*"
@@ -897,9 +899,9 @@ tasks:
       - |-
         echo "Running chart-testing lint on package-helm chart..."
         ct lint \
-          --charts tools/deployment/package-helm \
-          --chart-repos bitnami=https://charts.bitnami.com/bitnami \
-          --validate-maintainers=false
+          --config ct.yaml \
+          --all \
+          --charts tools/deployment/package-helm
 
   venv:
     internal: true

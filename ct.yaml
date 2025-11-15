@@ -1,0 +1,22 @@
+# Configuration for chart-testing (ct)
+# https://github.com/helm/chart-testing
+
+# Directories containing Helm charts
+chart-dirs:
+  - tools/deployment
+
+# Helm chart repositories to add for dependency resolution
+chart-repos:
+  - bitnami=https://charts.bitnami.com/bitnami
+
+# Whether to skip checking if maintainers are valid GitHub users
+validate-maintainers: false
+
+# Whether to check for version increments
+check-version-increment: false
+
+# Target branch for pull request comparisons
+target-branch: main
+
+# Whether to lint all charts (not just changed ones)
+all: true
