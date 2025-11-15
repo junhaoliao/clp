@@ -1,0 +1,50 @@
+name: "clp-helm-lint"
+
+on:
+  pull_request:
+    paths:
+      - "tools/deployment/package-helm/**"
+      - "taskfiles/lint.yaml"
+      - "taskfiles/toolchains.yaml"
+      - ".github/workflows/clp-helm-lint.yaml"
+  push:
+    paths:
+      - "tools/deployment/package-helm/**"
+      - "taskfiles/lint.yaml"
+      - "taskfiles/toolchains.yaml"
+      - ".github/workflows/clp-helm-lint.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: "${{github.workflow}}-${{github.ref}}"
+  # Cancel in-progress jobs for efficiency
+  cancel-in-progress: true
+
+jobs:
+  helm-lint:
+    name: "helm-lint"
+    strategy:
+      matrix:
+        os:
+          - "ubuntu-24.04"
+    runs-on: "${{matrix.os}}"
+    steps:
+      - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
+        with:
+          submodules: "recursive"
+
+      - name: "Install task"
+        shell: "bash"
+        run: "npm install -g @go-task/cli@3.44.0"
+
+      - name: "Install Helm toolchain"
+        shell: "bash"
+        run: "task toolchains:helm"
+
+      - name: "Install chart-testing toolchain"
+        shell: "bash"
+        run: "task toolchains:chart-testing"
+
+      - name: "Lint Helm charts"
+        shell: "bash"
+        run: "task lint:check-helm"

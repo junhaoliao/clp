@@ -14,6 +14,7 @@ tasks:
   check:
     cmds:
       - task: "check-cpp-full"
+      - task: "check-helm"
       - task: "check-js"
       - task: "check-py"
       - task: "check-rust"
@@ -32,6 +33,7 @@ tasks:
   fix:
     cmds:
       - task: "fix-cpp-full"
+      - task: "fix-helm"
       - task: "fix-js"
       - task: "fix-py"
       - task: "fix-rust"
@@ -854,6 +856,50 @@ tasks:
     cmd: |-
       . "$HOME/.cargo/env"
       cargo +nightly clippy --all-targets --all-features {{.CARGO_CLIPPY_FLAGS}}
+
+  check-helm:
+    sources: &helm_source_files
+      - "{{.ROOT_DIR}}/taskfile.yaml"
+      - "{{.TASKFILE}}"
+      - "{{.ROOT_DIR}}/tools/deployment/package-helm/**/*"
+    deps: ["toolchains:helm", "toolchains:chart-testing"]
+    cmds:
+      - task: "helm-lint"
+      - task: "helm-ct-lint"
+
+  fix-helm:
+    # Helm charts don't have auto-fixable issues, so this is an alias to check
+    aliases: ["check-helm"]
+    sources: *helm_source_files
+    deps: ["toolchains:helm", "toolchains:chart-testing"]
+    cmds:
+      - task: "helm-lint"
+      - task: "helm-ct-lint"
+
+  helm-lint:
+    internal: true
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - |-
+        echo "Running helm lint on package-helm chart..."
+        helm lint tools/deployment/package-helm \
+          --strict \
+          --with-subcharts \
+          --set database.auth.password=test \
+          --set database.auth.rootPassword=test \
+          --set queue.auth.password=test \
+          --set redis.auth.password=test
+
+  helm-ct-lint:
+    internal: true
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - |-
+        echo "Running chart-testing lint on package-helm chart..."
+        ct lint \
+          --charts tools/deployment/package-helm \
+          --chart-repos bitnami=https://charts.bitnami.com/bitnami \
+          --validate-maintainers=false
 
   venv:
     internal: true

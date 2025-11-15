@@ -67,6 +67,10 @@ jobs:
           esac
           echo "MARIADB_CONFIG=$MARIADB_CONFIG_PATH" >> "$GITHUB_ENV"
 
+      - name: "Lint Helm charts"
+        shell: "bash"
+        run: "task lint:check-helm"
+
       - name: "Lint .js files"
         shell: "bash"
         run: "task lint:check-js"

@@ -1,5 +1,9 @@
 version: "3"
 
+vars:
+  HELM_VERSION: "v3.16.3"
+  CHART_TESTING_VERSION: "v3.11.0"
+
 tasks:
   rust:
     run: "once"
@@ -11,3 +15,69 @@ tasks:
           | sh -s -- --default-toolchain none -y
         . "$HOME/.cargo/env"
         rustup toolchain install nightly --allow-downgrade --component clippy,rustfmt
+
+  helm:
+    run: "once"
+    cmds:
+      # Installs Helm CLI tool for managing Kubernetes packages
+      - |-
+        if ! command -v helm &> /dev/null || [[ "$(helm version --short 2>/dev/null | grep -o 'v[0-9.]*')" != "{{.HELM_VERSION}}" ]]; then
+          echo "Installing Helm {{.HELM_VERSION}}..."
+          case "{{OS}}" in
+            linux)
+              curl --location --silent --show-error --fail \
+                "https://get.helm.sh/helm-{{.HELM_VERSION}}-linux-{{ARCH}}.tar.gz" \
+                | tar xz
+              sudo mv linux-{{ARCH}}/helm /usr/local/bin/helm
+              rm -rf linux-{{ARCH}}
+              ;;
+            darwin)
+              curl --location --silent --show-error --fail \
+                "https://get.helm.sh/helm-{{.HELM_VERSION}}-darwin-{{ARCH}}.tar.gz" \
+                | tar xz
+              sudo mv darwin-{{ARCH}}/helm /usr/local/bin/helm
+              rm -rf darwin-{{ARCH}}
+              ;;
+            *)
+              echo "Unsupported OS: {{OS}}"
+              exit 1
+              ;;
+          esac
+          echo "Helm {{.HELM_VERSION}} installed successfully"
+        else
+          echo "Helm {{.HELM_VERSION}} already installed"
+        fi
+
+  chart-testing:
+    run: "once"
+    deps: ["helm"]
+    cmds:
+      # Installs chart-testing (ct) tool for linting and testing Helm charts
+      - |-
+        if ! command -v ct &> /dev/null || [[ "$(ct version 2>/dev/null | grep -o 'v[0-9.]*' | head -1)" != "{{.CHART_TESTING_VERSION}}" ]]; then
+          echo "Installing chart-testing {{.CHART_TESTING_VERSION}}..."
+          case "{{OS}}" in
+            linux)
+              curl --location --silent --show-error --fail \
+                "https://github.com/helm/chart-testing/releases/download/{{.CHART_TESTING_VERSION}}/chart-testing_{{trimPrefix "v" .CHART_TESTING_VERSION}}_linux_{{ARCH}}.tar.gz" \
+                | tar xz
+              sudo mv ct /usr/local/bin/ct
+              ;;
+            darwin)
+              curl --location --silent --show-error --fail \
+                "https://github.com/helm/chart-testing/releases/download/{{.CHART_TESTING_VERSION}}/chart-testing_{{trimPrefix "v" .CHART_TESTING_VERSION}}_darwin_{{ARCH}}.tar.gz" \
+                | tar xz
+              sudo mv ct /usr/local/bin/ct
+              ;;
+            *)
+              echo "Unsupported OS: {{OS}}"
+              exit 1
+              ;;
+          esac
+          # Clean up any remaining files from extraction
+          rm -f LICENSE README.md ct.yaml etc/chart_schema.yaml etc/lintconf.yaml
+          rm -rf etc
+          echo "chart-testing {{.CHART_TESTING_VERSION}} installed successfully"
+        else
+          echo "chart-testing {{.CHART_TESTING_VERSION}} already installed"
+        fi
