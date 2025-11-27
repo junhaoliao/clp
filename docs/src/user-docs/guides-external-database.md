@@ -200,12 +200,11 @@ After setting up your external databases, configure CLP to use them:
    ```
 
    :::{important}
-   If your external service is running on the host machine (not in a container), **do not use
-   `127.0.0.1`** as the host. CLP runs in containers, so `127.0.0.1` would refer to the container
-   itself. Instead, use:
+   If your external service is running on the host machine, **do not use `127.0.0.1`** as the host.
+   The CLP components run in containers, so `127.0.0.1` would refer to the container itself.
+   Instead, use:
+   - `host.docker.internal` to refer to the host machine.
    - The host's actual network IP address (e.g., `192.168.1.10`)
-   - `host.docker.internal` on Docker Desktop for Mac/Windows
-   - Configure your service to bind to `0.0.0.0` and use the host's IP
    :::
 
 3. Set the credentials in `etc/credentials.yaml`:
