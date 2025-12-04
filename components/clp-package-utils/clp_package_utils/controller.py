@@ -156,6 +156,7 @@ class BaseController(ABC):
         # Binding config
         env_vars |= {
             "CLP_DB_BIND_HOST": _get_ip_from_hostname(self._clp_config.database.host),
+            "CLP_DB_BIND_PORT": str(self._clp_config.database.port),
         }
 
         # Runtime config
@@ -169,10 +170,11 @@ class BaseController(ABC):
 
         return env_vars
 
-    def _set_up_env_for_database(self) -> EnvVarsDict:
+    def _set_up_env_for_database(self, container_clp_config: ClpConfig) -> EnvVarsDict:
         """
         Sets up environment variables for the database component.
 
+        :param container_clp_config: CLP configuration inside the containers.
         :return: Dictionary of environment variables necessary to launch the component.
         """
         component_name = DB_COMPONENT_NAME
@@ -182,13 +184,15 @@ class BaseController(ABC):
 
         # Connection config
         if BundledService.DATABASE in self._clp_config.bundled:
-            db_host = DB_COMPONENT_NAME
+            db_host = container_clp_config.database.host
+            db_port = str(container_clp_config.database.port)
         else:
             db_host = _get_container_accessible_host(self._clp_config.database.host)
+            db_port = str(self._clp_config.database.port)
         env_vars |= {
             "CLP_DB_HOST": db_host,
             "CLP_DB_NAME": self._clp_config.database.name,
-            "CLP_DB_PORT": str(self._clp_config.database.port),
+            "CLP_DB_PORT": db_port,
         }
 
         # Credentials
@@ -237,13 +241,16 @@ class BaseController(ABC):
         # Binding config
         env_vars |= {
             "CLP_QUEUE_BIND_HOST": _get_ip_from_hostname(self._clp_config.queue.host),
+            "CLP_QUEUE_BIND_PORT": str(self._clp_config.queue.port),
         }
 
         return env_vars
 
-    def _set_up_env_for_queue(self) -> EnvVarsDict:
+    def _set_up_env_for_queue(self, container_clp_config: ClpConfig) -> EnvVarsDict:
         """
         Sets up environment variables for the message queue component.
+
+        :param container_clp_config: CLP configuration inside the containers.
         :return: Dictionary of environment variables necessary to launch the component.
         """
         component_name = QUEUE_COMPONENT_NAME
@@ -253,12 +260,14 @@ class BaseController(ABC):
 
         # Connection config
         if BundledService.QUEUE in self._clp_config.bundled:
-            queue_host = QUEUE_COMPONENT_NAME
+            queue_host = container_clp_config.queue.host
+            queue_port = str(container_clp_config.queue.port)
         else:
             queue_host = _get_container_accessible_host(self._clp_config.queue.host)
+            queue_port = str(self._clp_config.queue.port)
         env_vars |= {
             "CLP_QUEUE_HOST": queue_host,
-            "CLP_QUEUE_PORT": str(self._clp_config.queue.port),
+            "CLP_QUEUE_PORT": queue_port,
         }
 
         # Credentials
@@ -311,14 +320,16 @@ class BaseController(ABC):
         # Binding config
         env_vars |= {
             "CLP_REDIS_BIND_HOST": _get_ip_from_hostname(self._clp_config.redis.host),
+            "CLP_REDIS_BIND_PORT": str(self._clp_config.redis.port),
         }
 
         return env_vars
 
-    def _set_up_env_for_redis(self) -> EnvVarsDict:
+    def _set_up_env_for_redis(self, container_clp_config: ClpConfig) -> EnvVarsDict:
         """
         Sets up environment variables for the Redis component.
 
+        :param container_clp_config: CLP configuration inside the containers.
         :return: Dictionary of environment variables necessary to launch the component.
         """
         component_name = REDIS_COMPONENT_NAME
@@ -328,12 +339,14 @@ class BaseController(ABC):
 
         # Connection config
         if BundledService.REDIS in self._clp_config.bundled:
-            redis_host = REDIS_COMPONENT_NAME
+            redis_host = container_clp_config.redis.host
+            redis_port = str(container_clp_config.redis.port)
         else:
             redis_host = _get_container_accessible_host(self._clp_config.redis.host)
+            redis_port = str(self._clp_config.redis.port)
         env_vars |= {
             "CLP_REDIS_HOST": redis_host,
-            "CLP_REDIS_PORT": str(self._clp_config.redis.port),
+            "CLP_REDIS_PORT": redis_port,
         }
 
         # Credentials
@@ -395,14 +408,16 @@ class BaseController(ABC):
             "CLP_RESULTS_CACHE_BIND_HOST": _get_ip_from_hostname(
                 self._clp_config.results_cache.host
             ),
+            "CLP_RESULTS_CACHE_BIND_PORT": str(self._clp_config.results_cache.port),
         }
 
         return env_vars
 
-    def _set_up_env_for_results_cache(self) -> EnvVarsDict:
+    def _set_up_env_for_results_cache(self, container_clp_config: ClpConfig) -> EnvVarsDict:
         """
         Sets up environment variables for the results cache (MongoDB) component.
 
+        :param container_clp_config: CLP configuration inside the containers.
         :return: Dictionary of environment variables necessary to launch the component.
         """
         component_name = RESULTS_CACHE_COMPONENT_NAME
@@ -412,15 +427,15 @@ class BaseController(ABC):
 
         # Connection config
         if BundledService.RESULTS_CACHE in self._clp_config.bundled:
-            results_cache_host = RESULTS_CACHE_COMPONENT_NAME
+            results_cache_host = container_clp_config.results_cache.host
+            results_cache_port = str(container_clp_config.results_cache.port)
         else:
-            results_cache_host = _get_container_accessible_host(
-                self._clp_config.results_cache.host
-            )
+            results_cache_host = _get_container_accessible_host(self._clp_config.results_cache.host)
+            results_cache_port = str(self._clp_config.results_cache.port)
         env_vars |= {
             "CLP_RESULTS_CACHE_DB_NAME": self._clp_config.results_cache.db_name,
             "CLP_RESULTS_CACHE_HOST": results_cache_host,
-            "CLP_RESULTS_CACHE_PORT": str(self._clp_config.results_cache.port),
+            "CLP_RESULTS_CACHE_PORT": results_cache_port,
         }
 
         # Collections
@@ -911,10 +926,10 @@ class DockerComposeController(BaseController):
         env_vars |= self._set_up_env_for_queue_bundling()
         env_vars |= self._set_up_env_for_redis_bundling()
         env_vars |= self._set_up_env_for_results_cache_bundling()
-        env_vars |= self._set_up_env_for_database()
-        env_vars |= self._set_up_env_for_queue()
-        env_vars |= self._set_up_env_for_redis()
-        env_vars |= self._set_up_env_for_results_cache()
+        env_vars |= self._set_up_env_for_database(container_clp_config)
+        env_vars |= self._set_up_env_for_queue(container_clp_config)
+        env_vars |= self._set_up_env_for_redis(container_clp_config)
+        env_vars |= self._set_up_env_for_results_cache(container_clp_config)
         env_vars |= self._set_up_env_for_compression_scheduler()
         env_vars |= self._set_up_env_for_query_scheduler()
         env_vars |= self._set_up_env_for_compression_worker(num_workers)
