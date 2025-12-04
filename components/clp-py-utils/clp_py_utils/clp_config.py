@@ -2,6 +2,7 @@ import os
 import pathlib
 from enum import auto
 from typing import Annotated, Any, ClassVar, Literal
+import socket
 
 from pydantic import (
     BaseModel,
@@ -325,9 +326,12 @@ class Database(BaseModel):
             password=_get_env_var(pass_env_var),
         )
 
-    def transform_for_container(self):
-        self.host = DB_COMPONENT_NAME
-        self.port = self.DEFAULT_PORT
+    def transform_for_container(self, is_bundled: bool) -> None:
+        if is_bundled:
+            self.host = DB_COMPONENT_NAME
+            self.port = self.DEFAULT_PORT
+        else:
+            self.host = _get_container_accessible_host(self.host)
 
 
 class CompressionScheduler(BaseModel):
@@ -390,9 +394,12 @@ class Redis(BaseModel):
         """
         self.password = _get_env_var(CLP_REDIS_PASS_ENV_VAR_NAME)
 
-    def transform_for_container(self):
-        self.host = REDIS_COMPONENT_NAME
-        self.port = self.DEFAULT_PORT
+    def transform_for_container(self, is_bundled: bool) -> None:
+        if is_bundled:
+            self.host = REDIS_COMPONENT_NAME
+            self.port = self.DEFAULT_PORT
+        else:
+            self.host = _get_container_accessible_host(self.host)
 
 
 class Reducer(BaseModel):
@@ -420,9 +427,12 @@ class ResultsCache(BaseModel):
     def get_uri(self):
         return f"mongodb://{self.host}:{self.port}/{self.db_name}"
 
-    def transform_for_container(self):
-        self.host = RESULTS_CACHE_COMPONENT_NAME
-        self.port = self.DEFAULT_PORT
+    def transform_for_container(self, is_bundled: bool) -> None:
+        if is_bundled:
+            self.host = RESULTS_CACHE_COMPONENT_NAME
+            self.port = self.DEFAULT_PORT
+        else:
+            self.host = _get_container_accessible_host(self.host)
 
 
 class Queue(BaseModel):
@@ -456,9 +466,12 @@ class Queue(BaseModel):
         self.username = _get_env_var(CLP_QUEUE_USER_ENV_VAR_NAME)
         self.password = _get_env_var(CLP_QUEUE_PASS_ENV_VAR_NAME)
 
-    def transform_for_container(self):
-        self.host = QUEUE_COMPONENT_NAME
-        self.port = self.DEFAULT_PORT
+    def transform_for_container(self, is_bundled: bool) -> None:
+        if is_bundled:
+            self.host = QUEUE_COMPONENT_NAME
+            self.port = self.DEFAULT_PORT
+        else:
+            self.host = _get_container_accessible_host(self.host)
 
 
 class S3Credentials(BaseModel):
@@ -945,14 +958,10 @@ class ClpConfig(BaseModel):
         self.archive_output.storage.transform_for_container()
         self.stream_output.storage.transform_for_container()
 
-        if BundledService.DATABASE in self.bundled:
-            self.database.transform_for_container()
-        if BundledService.QUEUE in self.bundled:
-            self.queue.transform_for_container()
-        if BundledService.REDIS in self.bundled:
-            self.redis.transform_for_container()
-        if BundledService.RESULTS_CACHE in self.bundled:
-            self.results_cache.transform_for_container()
+        self.database.transform_for_container(BundledService.DATABASE in self.bundled)
+        self.queue.transform_for_container(BundledService.QUEUE in self.bundled)
+        self.redis.transform_for_container(BundledService.REDIS in self.bundled)
+        self.results_cache.transform_for_container(BundledService.RESULTS_CACHE in self.bundled)
         self.query_scheduler.transform_for_container()
         self.reducer.transform_for_container()
         if self.package.query_engine == QueryEngine.PRESTO and self.presto is not None:
@@ -967,6 +976,26 @@ class WorkerConfig(BaseModel):
     # Only needed by query workers.
     stream_output: StreamOutput = StreamOutput()
     stream_collection_name: str = ResultsCache().stream_collection_name
+
+
+def _get_container_accessible_host(hostname: str) -> str:
+    """
+    Resolves a hostname to a host that is accessible from within a container.
+
+    If the hostname resolves to 127.0.0.1, it is replaced with "host.docker.internal" so that the
+    container can access the host machine.
+
+    :param hostname:
+    :return: The resolved hostname or IP address.
+    """
+    try:
+        ip = socket.gethostbyname(hostname)
+    except socket.error:
+        return hostname
+
+    if "127.0.0.1" == ip:
+        return "host.docker.internal"
+    return hostname
 
 
 def _validate_directory(value: Any):

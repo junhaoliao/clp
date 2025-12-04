@@ -183,16 +183,10 @@ class BaseController(ABC):
         env_vars = EnvVarsDict()
 
         # Connection config
-        if BundledService.DATABASE in self._clp_config.bundled:
-            db_host = container_clp_config.database.host
-            db_port = str(container_clp_config.database.port)
-        else:
-            db_host = _get_container_accessible_host(self._clp_config.database.host)
-            db_port = str(self._clp_config.database.port)
         env_vars |= {
-            "CLP_DB_HOST": db_host,
+            "CLP_DB_HOST": container_clp_config.database.host,
             "CLP_DB_NAME": self._clp_config.database.name,
-            "CLP_DB_PORT": db_port,
+            "CLP_DB_PORT": container_clp_config.database.port,
         }
 
         # Credentials
@@ -259,15 +253,9 @@ class BaseController(ABC):
         env_vars = EnvVarsDict()
 
         # Connection config
-        if BundledService.QUEUE in self._clp_config.bundled:
-            queue_host = container_clp_config.queue.host
-            queue_port = str(container_clp_config.queue.port)
-        else:
-            queue_host = _get_container_accessible_host(self._clp_config.queue.host)
-            queue_port = str(self._clp_config.queue.port)
         env_vars |= {
-            "CLP_QUEUE_HOST": queue_host,
-            "CLP_QUEUE_PORT": queue_port,
+            "CLP_QUEUE_HOST": container_clp_config.queue.host,
+            "CLP_QUEUE_PORT": str(container_clp_config.queue.port),
         }
 
         # Credentials
@@ -338,15 +326,9 @@ class BaseController(ABC):
         env_vars = EnvVarsDict()
 
         # Connection config
-        if BundledService.REDIS in self._clp_config.bundled:
-            redis_host = container_clp_config.redis.host
-            redis_port = str(container_clp_config.redis.port)
-        else:
-            redis_host = _get_container_accessible_host(self._clp_config.redis.host)
-            redis_port = str(self._clp_config.redis.port)
         env_vars |= {
-            "CLP_REDIS_HOST": redis_host,
-            "CLP_REDIS_PORT": redis_port,
+            "CLP_REDIS_HOST": container_clp_config.redis.host,
+            "CLP_REDIS_PORT": container_clp_config.redis.port,
         }
 
         # Credentials
@@ -426,16 +408,10 @@ class BaseController(ABC):
         env_vars = EnvVarsDict()
 
         # Connection config
-        if BundledService.RESULTS_CACHE in self._clp_config.bundled:
-            results_cache_host = container_clp_config.results_cache.host
-            results_cache_port = str(container_clp_config.results_cache.port)
-        else:
-            results_cache_host = _get_container_accessible_host(self._clp_config.results_cache.host)
-            results_cache_port = str(self._clp_config.results_cache.port)
         env_vars |= {
             "CLP_RESULTS_CACHE_DB_NAME": self._clp_config.results_cache.db_name,
-            "CLP_RESULTS_CACHE_HOST": results_cache_host,
-            "CLP_RESULTS_CACHE_PORT": results_cache_port,
+            "CLP_RESULTS_CACHE_HOST": container_clp_config.results_cache.host,
+            "CLP_RESULTS_CACHE_PORT": container_clp_config.results_cache.port,
         }
 
         # Collections
@@ -1069,26 +1045,6 @@ def _chown_recursively(
     """
     chown_cmd = ["chown", "--recursive", f"{user_id}:{group_id}", str(path)]
     subprocess.run(chown_cmd, stdout=subprocess.DEVNULL, check=True)
-
-
-def _get_container_accessible_host(hostname: str) -> str:
-    """
-    Resolves a hostname to a host that is accessible from within a container.
-
-    If the hostname resolves to 127.0.0.1, it is replaced with "host.docker.internal" so that the
-    container can access the host machine.
-
-    :param hostname:
-    :return: The resolved hostname or IP address.
-    """
-    try:
-        ip = socket.gethostbyname(hostname)
-    except socket.error:
-        return hostname
-
-    if "127.0.0.1" == ip:
-        return "host.docker.internal"
-    return hostname
 
 
 def _get_ip_from_hostname(hostname: str) -> str:
