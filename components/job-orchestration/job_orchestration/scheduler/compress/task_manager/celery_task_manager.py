@@ -21,6 +21,9 @@ class CeleryTaskManager(TaskManager):
             except celery.exceptions.TimeoutError:
                 return None
 
+        def cancel(self) -> None:
+            self._celery_result.revoke(terminate=True)
+
     def submit(self, task_params: list[dict[str, Any]]) -> TaskManager.ResultHandle:
         task_instances = [compress.s(**params) for params in task_params]
         task_group = celery.group(task_instances)

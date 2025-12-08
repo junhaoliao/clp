@@ -30,6 +30,8 @@ class CompressionJobStatus(StatusIntEnum):
     SUCCEEDED = auto()
     FAILED = auto()
     KILLED = auto()
+    CANCELLING = auto()
+    CANCELLED = auto()
 
 
 class CompressionJobCompletionStatus(StatusIntEnum):
@@ -43,6 +45,7 @@ class CompressionTaskStatus(StatusIntEnum):
     SUCCEEDED = auto()
     FAILED = auto()
     KILLED = auto()
+    CANCELLED = auto()
 
 
 # When adding new states always add them to the end of this enum

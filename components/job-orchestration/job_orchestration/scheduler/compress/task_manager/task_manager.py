@@ -19,6 +19,12 @@ class TaskManager(ABC):
             :return: A list of task results.
             """
 
+        @abstractmethod
+        def cancel(self) -> None:
+            """
+            Cancels the job associated with this result handle.
+            """
+
     @abstractmethod
     def submit(self, task_params: list[dict[str, Any]]) -> ResultHandle:
         """

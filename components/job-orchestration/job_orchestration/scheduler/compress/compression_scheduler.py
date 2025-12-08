@@ -88,6 +88,17 @@ def fetch_new_jobs(db_cursor):
     return db_cursor.fetchall()
 
 
+def fetch_cancelling_jobs(db_cursor):
+    db_cursor.execute(
+        f"""
+        SELECT id
+        FROM {COMPRESSION_JOBS_TABLE_NAME}
+        WHERE status='{CompressionJobStatus.CANCELLING}'
+        """
+    )
+    return db_cursor.fetchall()
+
+
 def update_compression_job_metadata(db_context: DbContext, job_id: int, kv: dict[str, str]) -> None:
     """
     Updates compression job metadata in the database.
@@ -348,6 +359,63 @@ def search_and_schedule_new_tasks(
         )
 
 
+def handle_cancelling_jobs(db_context: DbContext) -> None:
+    """
+    Cancels jobs that are in the CANCELLING state.
+
+    :param db_context:
+    """
+    cancelling_jobs = fetch_cancelling_jobs(db_context.cursor)
+    db_context.connection.commit()
+
+    for job_row in cancelling_jobs:
+        job_id = job_row["id"]
+        if job_id in scheduled_jobs:
+            job = scheduled_jobs[job_id]
+            try:
+                job.result_handle.cancel()
+            except Exception:
+                logger.exception(f"Failed to cancel job {job_id} tasks.")
+
+            # Update tasks status
+            db_context.cursor.execute(
+                f"""
+                UPDATE {COMPRESSION_TASKS_TABLE_NAME}
+                SET status = '{CompressionTaskStatus.CANCELLED}'
+                WHERE job_id = %s AND status IN (
+                    '{CompressionTaskStatus.RUNNING}',
+                    '{CompressionTaskStatus.PENDING}'
+                )
+                """,
+                (job_id,),
+            )
+            db_context.connection.commit()
+
+            duration = (
+                datetime.datetime.now(datetime.timezone.utc) - job.start_time
+            ).total_seconds()
+
+            update_compression_job_metadata(
+                db_context,
+                job_id,
+                {
+                    "status": CompressionJobStatus.CANCELLED,
+                    "duration": duration,
+                },
+            )
+            del scheduled_jobs[job_id]
+            logger.info(f"Cancelled running job {job_id}.")
+        else:
+            update_compression_job_metadata(
+                db_context,
+                job_id,
+                {
+                    "status": CompressionJobStatus.CANCELLED,
+                },
+            )
+            logger.info(f"Cancelled pending/unscheduled job {job_id}.")
+
+
 def poll_running_jobs(
     clp_config: ClpConfig, task_manager: TaskManager, db_context: DbContext
 ) -> None:
@@ -495,6 +563,7 @@ def main(argv) -> int | None:
                         task_manager,
                         db_context,
                     )
+                handle_cancelling_jobs(db_context)
                 poll_running_jobs(
                     clp_config,
                     task_manager,
