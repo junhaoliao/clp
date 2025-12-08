@@ -27,6 +27,9 @@ class SpiderTaskManager(TaskManager):
                 for task_result in job_results
             ]
 
+        def cancel(self) -> None:
+            self._spider_job.cancel()
+
     def __init__(self, storage_url: str) -> None:
         self._driver = spider_py.Driver(storage_url)
 
