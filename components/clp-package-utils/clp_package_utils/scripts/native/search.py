@@ -47,6 +47,7 @@ def create_and_monitor_job_in_db(
     network_address: tuple[str, int] | None,
     do_count_aggregation: bool | None,
     count_by_time_bucket_size: int | None,
+    start_timeout: float = 0.0,
 ):
     search_config = SearchJobConfig(
         dataset=dataset,
@@ -73,7 +74,7 @@ def create_and_monitor_job_in_db(
 
     sql_adapter = SqlAdapter(db_config)
     job_id = submit_query_job(sql_adapter, search_config, QueryJobType.SEARCH_OR_AGGREGATION)
-    job_status = wait_for_query_job(sql_adapter, job_id)
+    job_status = wait_for_query_job(sql_adapter, job_id, start_timeout)
 
     if do_count_aggregation is None and count_by_time_bucket_size is None:
         return
@@ -128,6 +129,7 @@ async def do_search_without_aggregation(
     ignore_case: bool,
     path_filter: str | None,
     raw_output: bool,
+    start_timeout: float,
 ):
     host = _get_ipv4_address()
     if host is None:
@@ -160,6 +162,7 @@ async def do_search_without_aggregation(
             (host, port),
             None,
             None,
+            start_timeout,
         )
     )
 
@@ -198,6 +201,7 @@ async def do_search(
     do_count_aggregation: bool | None,
     count_by_time_bucket_size: int | None,
     raw_output: bool,
+    start_timeout: float,
 ):
     if do_count_aggregation is None and count_by_time_bucket_size is None:
         await do_search_without_aggregation(
@@ -211,6 +215,7 @@ async def do_search(
             ignore_case,
             path_filter,
             raw_output,
+            start_timeout,
         )
     else:
         await run_function_in_process(
@@ -227,6 +232,7 @@ async def do_search(
             None,
             do_count_aggregation,
             count_by_time_bucket_size,
+            start_timeout,
         )
 
 
@@ -282,6 +288,13 @@ def main(argv):
     args_parser.add_argument(
         "--raw", action="store_true", help="Output the search results as raw logs."
     )
+    args_parser.add_argument(
+        "--start-timeout",
+        type=int,
+        default=300,
+        help="Maximum time (in seconds) the job can remain in PENDING state before being "
+        "cancelled. 0 to disable timeout.",
+    )
     parsed_args = args_parser.parse_args(argv[1:])
     if parsed_args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -329,6 +342,7 @@ def main(argv):
                 parsed_args.count,
                 parsed_args.count_by_time,
                 parsed_args.raw,
+                parsed_args.start_timeout,
             )
         )
     except asyncio.CancelledError:

@@ -59,14 +59,12 @@ def print_compression_job_status(job_row):
     )
 
 
-def handle_job_update(db, db_cursor, job_id, no_progress_reporting):
+def handle_job_update(db, db_cursor, job_id, no_progress_reporting, start_timeout):
     if no_progress_reporting:
-        polling_query = (
-            f"SELECT status, status_msg FROM {COMPRESSION_JOBS_TABLE_NAME} WHERE id={job_id}"
-        )
+        polling_query = f"SELECT status, status_msg, creation_time FROM {COMPRESSION_JOBS_TABLE_NAME} WHERE id={job_id}"
     else:
         polling_query = (
-            f"SELECT start_time, status, status_msg, uncompressed_size, compressed_size, duration "
+            f"SELECT start_time, status, status_msg, uncompressed_size, compressed_size, duration, creation_time "
             f"FROM {COMPRESSION_JOBS_TABLE_NAME} WHERE id={job_id}"
         )
 
@@ -106,6 +104,18 @@ def handle_job_update(db, db_cursor, job_id, no_progress_reporting):
                     print_compression_job_status(job_row)
                     job_last_uncompressed_size = job_uncompressed_size
         elif CompressionJobStatus.PENDING == job_status:
+            if start_timeout > 0:
+                current_time = datetime.datetime.now()
+                submission_time = job_row["creation_time"]
+                if (current_time - submission_time).total_seconds() > start_timeout:
+                    logger.error(f"Job {job_id} timed out after {start_timeout} seconds.")
+                    db_cursor.execute(
+                        f"UPDATE {COMPRESSION_JOBS_TABLE_NAME} "
+                        f"SET status='{CompressionJobStatus.CANCELLING}', "
+                        f"status_msg='Job start timed out' "
+                        f"WHERE id={job_id}"
+                    )
+                    db.commit()
             pass  # Simply wait another iteration
         else:
             error_msg = f"Unhandled CompressionJobStatus: {job_status}"
@@ -114,7 +124,12 @@ def handle_job_update(db, db_cursor, job_id, no_progress_reporting):
         time.sleep(0.5)
 
 
-def handle_job(sql_adapter: SqlAdapter, clp_io_config: ClpIoConfig, no_progress_reporting: bool):
+def handle_job(
+    sql_adapter: SqlAdapter,
+    clp_io_config: ClpIoConfig,
+    no_progress_reporting: bool,
+    start_timeout: int,
+):
     with (
         closing(sql_adapter.create_connection(True)) as db,
         closing(db.cursor(dictionary=True)) as db_cursor,
@@ -132,7 +147,7 @@ def handle_job(sql_adapter: SqlAdapter, clp_io_config: ClpIoConfig, no_progress_
             job_id = db_cursor.lastrowid
             logger.info(f"Compression job {job_id} submitted.")
 
-            handle_job_update(db, db_cursor, job_id, no_progress_reporting)
+            handle_job_update(db, db_cursor, job_id, no_progress_reporting, start_timeout)
         except Exception as ex:
             logger.error(ex)
             return CompressionJobCompletionStatus.FAILED
@@ -347,6 +362,13 @@ def main(argv):
     args_parser.add_argument(
         "-t", "--tags", help="A comma-separated list of tags to apply to the compressed archives."
     )
+    args_parser.add_argument(
+        "--start-timeout",
+        type=int,
+        default=300,
+        help="Maximum time (in seconds) the job can remain in PENDING state before being "
+        "cancelled. 0 to disable timeout.",
+    )
     parsed_args = args_parser.parse_args(argv[1:])
     if parsed_args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -386,6 +408,7 @@ def main(argv):
         sql_adapter=mysql_adapter,
         clp_io_config=clp_io_config,
         no_progress_reporting=parsed_args.no_progress_reporting,
+        start_timeout=parsed_args.start_timeout,
     )
 
 

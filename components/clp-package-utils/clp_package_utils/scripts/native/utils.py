@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import multiprocessing
 import time
 from contextlib import closing
@@ -91,7 +92,9 @@ def validate_dataset_exists(db_config: Database, dataset: str) -> None:
             raise ValueError(f"Dataset `{dataset}` doesn't exist.")
 
 
-def wait_for_query_job(sql_adapter: SqlAdapter, job_id: int) -> QueryJobStatus:
+def wait_for_query_job(
+    sql_adapter: SqlAdapter, job_id: int, start_timeout: float = 0.0
+) -> QueryJobStatus:
     """
     Waits for the query job with the given ID to complete.
     :param sql_adapter:
@@ -105,12 +108,22 @@ def wait_for_query_job(sql_adapter: SqlAdapter, job_id: int) -> QueryJobStatus:
         # Wait for the job to be marked complete
         while True:
             db_cursor.execute(
-                f"SELECT `status` FROM `{QUERY_JOBS_TABLE_NAME}` WHERE `id` = {job_id}"
+                f"SELECT `status`, `creation_time` FROM `{QUERY_JOBS_TABLE_NAME}` WHERE `id` = {job_id}"
             )
             # There will only ever be one row since it's impossible to have more than one job with
             # the same ID
-            new_status = QueryJobStatus(db_cursor.fetchall()[0]["status"])
+            row = db_cursor.fetchall()[0]
+            new_status = QueryJobStatus(row["status"])
             db_conn.commit()
+
+            if new_status == QueryJobStatus.PENDING:
+                if start_timeout > 0:
+                    creation_time = row["creation_time"]
+                    if (datetime.datetime.now() - creation_time).total_seconds() > start_timeout:
+                        db_cursor.execute(
+                            f"UPDATE `{QUERY_JOBS_TABLE_NAME}` SET `status` = '{QueryJobStatus.CANCELLING}' WHERE `id` = {job_id}"
+                        )
+                        db_conn.commit()
             if new_status in (
                 QueryJobStatus.SUCCEEDED,
                 QueryJobStatus.FAILED,
