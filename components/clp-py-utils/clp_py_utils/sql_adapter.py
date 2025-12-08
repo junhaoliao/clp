@@ -70,18 +70,26 @@ class SqlAdapter:
         self,
         disable_localhost_socket_connection: bool = False,
         user_type: ClpDbUserType = ClpDbUserType.CLP,
+        max_retries: int = 3,
+        retry_delay: int = 1,
     ) -> mysql.connector.abstracts.MySQLConnectionAbstract | mariadb.Connection:
         """
         Creates a connection to the database.
 
         :param disable_localhost_socket_connection: If true, force TCP connections.
         :param user_type: User type whose credentials should be used to connect.
+        :param max_retries: Maximum number of retries before failing.
+        :param retry_delay: Delay in seconds between retries.
         :return: The connection.
         """
         if self.database_config.type == DatabaseEngine.MYSQL:
-            return self._create_mysql_connection(disable_localhost_socket_connection, user_type)
+            return self._create_mysql_connection(
+                disable_localhost_socket_connection, user_type, max_retries, retry_delay
+            )
         if self.database_config.type == DatabaseEngine.MARIADB:
-            return self._create_mariadb_connection(disable_localhost_socket_connection, user_type)
+            return self._create_mariadb_connection(
+                disable_localhost_socket_connection, user_type, max_retries, retry_delay
+            )
         raise NotImplementedError
 
     def create_connection_pool(
@@ -127,39 +135,59 @@ class SqlAdapter:
         self,
         disable_localhost_socket_connection: bool = False,
         user_type: ClpDbUserType = ClpDbUserType.CLP,
+        max_retries: int = 3,
+        retry_delay: int = 1,
     ) -> mysql.connector.abstracts.MySQLConnectionAbstract:
-        try:
-            connection = mysql.connector.connect(
-                **self.database_config.get_mysql_connection_params(
-                    disable_localhost_socket_connection, user_type
+        for attempt in range(max_retries + 1):
+            try:
+                return mysql.connector.connect(
+                    **self.database_config.get_mysql_connection_params(
+                        disable_localhost_socket_connection, user_type
+                    )
                 )
-            )
-        except mysql.connector.Error as err:
-            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logging.exception("Database access denied.")
-            elif err.errno == errorcode.ER_BAD_DB_ERROR:
-                logging.exception(
-                    f'Specified database "{self.database_config.name}" does not exist.'
-                )
-            else:
-                logging.exception(err)
-            raise err
-        else:
-            return connection
+            except mysql.connector.Error as err:
+                if attempt < max_retries:
+                    logging.warning(
+                        f"MySQL connection failed: {err}. Retrying in {retry_delay}s..."
+                    )
+                    time.sleep(retry_delay)
+                    continue
+
+                if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                    logging.exception("Database access denied.")
+                elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                    logging.exception(
+                        f'Specified database "{self.database_config.name}" does not exist.'
+                    )
+                else:
+                    logging.exception(err)
+                raise err
+        # Should be unreachable
+        raise NotImplementedError
 
     def _create_mariadb_connection(
         self,
         disable_localhost_socket_connection: bool = False,
         user_type: ClpDbUserType = ClpDbUserType.CLP,
+        max_retries: int = 3,
+        retry_delay: int = 1,
     ) -> mariadb.Connection:
-        try:
-            connection = mariadb.connect(
-                **self.database_config.get_mysql_connection_params(
-                    disable_localhost_socket_connection, user_type
+        for attempt in range(max_retries + 1):
+            try:
+                return mariadb.connect(
+                    **self.database_config.get_mysql_connection_params(
+                        disable_localhost_socket_connection, user_type
+                    )
                 )
-            )
-        except mariadb.Error as err:
-            logging.exception(f"Error connecting to MariaDB: {err}")
-            raise err
-        else:
-            return connection
+            except mariadb.Error as err:
+                if attempt < max_retries:
+                    logging.warning(
+                        f"MariaDB connection failed: {err}. Retrying in {retry_delay}s..."
+                    )
+                    time.sleep(retry_delay)
+                    continue
+
+                logging.exception(f"Error connecting to MariaDB: {err}")
+                raise err
+        # Should be unreachable
+        raise NotImplementedError
