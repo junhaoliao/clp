@@ -14,14 +14,16 @@ on:
     - cron: "15 0 * * *"
   workflow_dispatch:
 
-env:
-  BINARIES_ARTIFACT_NAME_PREFIX: "clp-core-binaries-"
-  DEPS_IMAGE_NAME_PREFIX: "clp-core-dependencies-x86-"
-  RUNNER: >-
+x-job-defaults: &job_defaults
+  runs-on: >-
     ${{
       github.repository_owner == 'y-scope' && fromJSON('["self-hosted", "x64", "ubuntu-noble"]')
       || 'ubuntu-24.04'
     }}
+
+env:
+  BINARIES_ARTIFACT_NAME_PREFIX: "clp-core-binaries-"
+  DEPS_IMAGE_NAME_PREFIX: "clp-core-dependencies-x86-"
 
 concurrency:
   group: "${{github.workflow}}-${{github.ref}}"
@@ -32,8 +34,8 @@ concurrency:
 
 jobs:
   filter-relevant-changes:
+    <<: *job_defaults
     name: "filter-relevant-changes"
-    runs-on: "${{env.RUNNER}}"
     outputs:
       centos_stream_9_image_changed: "${{steps.filter.outputs.centos_stream_9_image}}"
       manylinux_2_28_x86_64_image_changed: "${{steps.filter.outputs.manylinux_2_28_x86_64_image}}"
@@ -101,10 +103,10 @@ jobs:
               - "tools/scripts/deps-download/**"
 
   centos-stream-9-deps-image:
+    <<: *job_defaults
     name: "centos-stream-9-deps-image"
     if: "needs.filter-relevant-changes.outputs.centos_stream_9_image_changed == 'true'"
     needs: "filter-relevant-changes"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -127,10 +129,10 @@ jobs:
           token: "${{secrets.GITHUB_TOKEN}}"
 
   manylinux_2_28-x86_64-deps-image:
+    <<: *job_defaults
     name: "manylinux_2_28-x86_64-deps-image"
     if: "needs.filter-relevant-changes.outputs.manylinux_2_28_x86_64_image_changed == 'true'"
     needs: "filter-relevant-changes"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -153,10 +155,10 @@ jobs:
           token: "${{secrets.GITHUB_TOKEN}}"
 
   musllinux_1_2-x86_64-deps-image:
+    <<: *job_defaults
     name: "musllinux_1_2-x86_64-deps-image"
     if: "needs.filter-relevant-changes.outputs.musllinux_1_2_x86_64_image_changed == 'true'"
     needs: "filter-relevant-changes"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -179,10 +181,10 @@ jobs:
           token: "${{secrets.GITHUB_TOKEN}}"
 
   ubuntu-jammy-deps-image:
+    <<: *job_defaults
     name: "ubuntu-jammy-deps-image"
     if: "needs.filter-relevant-changes.outputs.ubuntu_jammy_image_changed == 'true'"
     needs: "filter-relevant-changes"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -205,6 +207,7 @@ jobs:
           token: "${{secrets.GITHUB_TOKEN}}"
 
   centos-stream-9-binaries:
+    <<: *job_defaults
     # Run if the ancestor jobs succeeded OR they were skipped and clp was changed.
     if: >-
       success()
@@ -217,7 +220,6 @@ jobs:
         use_shared_libs: [true, false]
     name: "centos-stream-9-${{matrix.use_shared_libs == true && 'dynamic' || 'static'}}-linked-bins"
     continue-on-error: true
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -244,6 +246,7 @@ jobs:
             --num-jobs $(getconf _NPROCESSORS_ONLN)
 
   manylinux_2_28-x86_64-binaries:
+    <<: *job_defaults
     # Run if the ancestor jobs succeeded OR they were skipped and clp was changed.
     if: >-
       success()
@@ -257,7 +260,6 @@ jobs:
     name: >-
       manylinux_2_28-x86_64-${{matrix.use_shared_libs == true && 'dynamic' || 'static'}}-linked-bins
     continue-on-error: true
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -284,6 +286,7 @@ jobs:
             --num-jobs $(getconf _NPROCESSORS_ONLN)
 
   musllinux_1_2-x86_64-binaries:
+    <<: *job_defaults
     # Run if the ancestor jobs succeeded OR they were skipped and clp was changed.
     if: >-
       success()
@@ -297,7 +300,6 @@ jobs:
     name: >-
       musllinux_1_2-x86_64-${{matrix.use_shared_libs == true && 'dynamic' || 'static'}}-linked-bins
     continue-on-error: true
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -324,6 +326,7 @@ jobs:
             --num-jobs $(getconf _NPROCESSORS_ONLN)
 
   ubuntu-jammy-binaries:
+    <<: *job_defaults
     # Run if the ancestor jobs succeeded OR they were skipped and clp was changed.
     if: >-
       success()
@@ -342,7 +345,6 @@ jobs:
       OS_NAME: "ubuntu-jammy"
     name: "ubuntu-jammy-${{matrix.use_shared_libs == true && 'dynamic' || 'static'}}-linked-bins"
     continue-on-error: true
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -385,11 +387,11 @@ jobs:
           retention-days: 1
 
   ubuntu-jammy-binaries-image:
+    <<: *job_defaults
     name: "ubuntu-jammy-binaries-image"
     # Run if the ancestor jobs were successful/skipped and building clp was successful.
     if: "!cancelled() && !failure() && needs.ubuntu-jammy-binaries.result == 'success'"
     needs: "ubuntu-jammy-binaries"
-    runs-on: "${{env.RUNNER}}"
     env:
       OS_NAME: "ubuntu-jammy"
       TMP_OUTPUT_DIR: "/tmp"
@@ -448,6 +450,7 @@ jobs:
           labels: "${{steps.core_image_meta.outputs.labels}}"
 
   ubuntu-jammy-lint:
+    <<: *job_defaults
     name: "ubuntu-jammy-lint"
     # Run if the ancestor jobs succeeded OR they were skipped and clp was changed.
     if: >-
@@ -456,7 +459,6 @@ jobs:
     needs:
       - "filter-relevant-changes"
       - "ubuntu-jammy-deps-image"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -524,6 +526,7 @@ jobs:
             )}}
 
   package-image:
+    <<: *job_defaults
     name: "package-image"
     if: >-
       !cancelled() && !failure() && (
@@ -533,7 +536,6 @@ jobs:
     needs:
       - "filter-relevant-changes"
       - "ubuntu-jammy-deps-image"
-    runs-on: "${{env.RUNNER}}"
     steps:
       - uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
