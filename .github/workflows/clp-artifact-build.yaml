@@ -19,7 +19,7 @@ env:
   DEPS_IMAGE_NAME_PREFIX: "clp-core-dependencies-x86-"
   RUNNER: >-
     ${{
-      github.repository_owner == "y-scope" && fromJSON('["self-hosted", "x64", "ubuntu-noble"]')
+      github.repository_owner == 'y-scope' && fromJSON('["self-hosted", "x64", "ubuntu-noble"]')
       || "ubuntu-24.04"
     }}
 
