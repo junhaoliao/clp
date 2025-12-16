@@ -30,9 +30,9 @@ jobs:
     name: "filter-relevant-changes"
     runs-on: &runner >-
       ${{
-        github.repository_owner == 'y-scope' &&
-        fromJSON('["self-hosted", "x64", "ubuntu-noble"]') ||
-        'ubuntu-24.04'
+        github.repository_owner == 'y-scope'
+        && fromJSON('["self-hosted", "x64", "ubuntu-noble"]')
+        || 'ubuntu-24.04'
       }}
     outputs:
       centos_stream_9_image_changed: "${{steps.filter.outputs.centos_stream_9_image}}"
