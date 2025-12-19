@@ -1,0 +1,67 @@
+{{- if eq .Values.clpConfig.compression_scheduler.type "spider" }}
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: {{ include "clp.fullname" . }}-spider-scheduler
+  labels:
+    {{- include "clp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: "spider-scheduler"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: "spider-scheduler"
+  template:
+    metadata:
+      labels:
+        {{- include "clp.labels" . | nindent 8 }}
+        app.kubernetes.io/component: "spider-scheduler"
+    spec:
+      serviceAccountName: {{ include "clp.fullname" . }}-job-watcher
+      terminationGracePeriodSeconds: 300
+      securityContext:
+        runAsUser: {{ .Values.securityContext.firstParty.uid }}
+        runAsGroup: {{ .Values.securityContext.firstParty.gid }}
+        fsGroup: {{ .Values.securityContext.firstParty.gid }}
+      initContainers:
+        - {{- include "clp.waitFor" (dict
+            "root" .
+            "type" "job"
+            "name" "db-table-creator"
+          ) | nindent 10 }}
+      containers:
+        - name: "spider-scheduler"
+          image: "{{ include "clp.image.ref" . }}"
+          imagePullPolicy: "{{ .Values.image.clpPackage.pullPolicy }}"
+          env:
+            - name: "SPIDER_LOG_FILE"
+              value: "/var/log/spider_scheduler/spider_scheduler.log"
+            - name: "SPIDER_STORAGE_URL"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clp.fullname" . }}-database
+                  key: "spider_storage_url"
+          ports:
+            - name: "scheduler"
+              containerPort: 6000
+          volumeMounts:
+            - name: "config"
+              mountPath: "/etc/clp-config.yaml"
+              subPath: "clp-config.yaml"
+              readOnly: true
+          command: [
+            "/opt/clp/bin/spider_scheduler",
+            "--host", "{{ include "clp.fullname" . }}-spider-scheduler",
+            "--port", "6000",
+          ]
+      volumes:
+        - {{- include "clp.pvcVolume" (dict
+            "root" .
+            "component_category" "spider-scheduler"
+            "name" "logs"
+          ) | nindent 10 }}
+        - name: "config"
+          configMap:
+            name: {{ include "clp.fullname" . }}-config
+{{- end }}

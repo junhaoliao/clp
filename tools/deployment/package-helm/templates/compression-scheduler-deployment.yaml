@@ -29,6 +29,7 @@ spec:
             "type" "job"
             "name" "db-table-creator"
           ) | nindent 10 }}
+        {{- if eq .Values.clpConfig.compression_scheduler.type "celery" }}
         - {{- include "clp.waitFor" (dict
             "root" .
             "type" "service"
@@ -39,6 +40,7 @@ spec:
             "type" "service"
             "name" "redis"
           ) | nindent 10 }}
+        {{- end }}
       containers:
         - name: "compression-scheduler"
           image: "{{ include "clp.image.ref" . }}"
@@ -59,6 +61,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "clp.fullname" . }}-database
                   key: "username"
+            {{- if eq .Values.clpConfig.compression_scheduler.type "spider" }}
+            - name: "SPIDER_STORAGE_URL"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clp.fullname" . }}-database
+                  key: "spider_storage_url"
+            {{- end}}
             - name: "CLP_LOGGING_LEVEL"
               value: {{ .Values.clpConfig.compression_scheduler.logging_level | quote }}
             - name: "CLP_LOGS_DIR"

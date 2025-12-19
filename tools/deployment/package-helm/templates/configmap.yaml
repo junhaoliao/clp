@@ -74,9 +74,10 @@ data:
     database:
       auto_commit: false
       compress: true
-      host: "{{ include "clp.fullname" . }}-database"
-      names:
+      host: {{ include "clp.fullname" . }}-database
+      name:
         clp: {{ .Values.clpConfig.database.names.clp | quote }}
+        spider: {{ .Values.clpConfig.database.names.spider | quote }}
       port: 3306
       ssl_cert: null
       type: {{ .Values.clpConfig.database.type | quote }}
@@ -162,6 +163,10 @@ data:
       retention_period: null
       {{ end }}
       stream_collection_name: {{ .Values.clpConfig.results_cache.stream_collection_name | quote }}
+    spider_scheduler:
+      host: {{ include "clp.fullname" . }}-spider-scheduler
+      port: 6000
+      logging_level: {{ .Values.clpConfig.spider_scheduler.logging_level | quote }}
     {{- with .Values.clpConfig.stream_output }}
     stream_output:
       storage:
