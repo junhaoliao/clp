@@ -721,6 +721,7 @@ class BaseController(ABC):
             server_settings_json_updates["StreamFilesS3PathPrefix"] = (
                 f"{s3_config.bucket}/{s3_config.key_prefix}"
             )
+            server_settings_json_updates["StreamFilesS3EndpointUrl"] = s3_config.endpoint_url
             auth = s3_config.aws_authentication
             if AwsAuthType.profile == auth.type:
                 server_settings_json_updates["StreamFilesS3Profile"] = auth.profile
@@ -733,6 +734,7 @@ class BaseController(ABC):
             server_settings_json_updates["StreamFilesS3Region"] = None
             server_settings_json_updates["StreamFilesS3PathPrefix"] = None
             server_settings_json_updates["StreamFilesS3Profile"] = None
+            server_settings_json_updates["StreamFilesS3EndpointUrl"] = None
 
         query_engine = self._clp_config.package.query_engine
         if QueryEngine.PRESTO == query_engine:

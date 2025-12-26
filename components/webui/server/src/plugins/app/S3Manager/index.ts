@@ -18,12 +18,14 @@ class S3Manager {
 
     /**
      * @param region
-     * @param [profile]
+     * @param profile
+     * @param endpointUrl
      */
-    constructor (region: string, profile: Nullable<string>) {
+    constructor (region: string, profile: Nullable<string>, endpointUrl: Nullable<string>) {
         this.#s3Client = new S3Client({
             region,
             ...((null !== profile) && {profile}),
+            ...((null !== endpointUrl) && {endpoint: endpointUrl}),
         });
     }
 
@@ -68,6 +70,7 @@ export default fp(
     (fastify) => {
         const region = settings.StreamFilesS3Region;
         const profile = settings.StreamFilesS3Profile;
+        const endpointUrl = settings.StreamFilesS3EndpointUrl;
 
         // Only decorate if the region is set (i.e. s3 support is configured in package)
         // Disable no-unnecessary-condition since linter doesn't understand that settings
@@ -75,10 +78,10 @@ export default fp(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (null !== region && "" !== region) {
             fastify.log.info(
-                {region, profile},
+                {region, profile, endpointUrl},
                 "Initializing S3Manager"
             );
-            fastify.decorate("S3Manager", new S3Manager(region, profile));
+            fastify.decorate("S3Manager", new S3Manager(region, profile, endpointUrl));
         }
     },
 );
