@@ -26,16 +26,28 @@ spec:
         runAsUser: {{ .Values.securityContext.firstParty.uid }}
         runAsGroup: {{ .Values.securityContext.firstParty.gid }}
         fsGroup: {{ .Values.securityContext.firstParty.gid }}
+      initContainers:
+        - {{- include "clp.waitFor" (dict
+            "root" .
+            "type" "job"
+            "name" "db-table-creator"
+          ) | nindent 10 }}
+        {{- if eq .Values.clpConfig.compression_scheduler.type "celery" }}
+        - {{- include "clp.waitFor" (dict "root" . "type" "service" "name" "queue") | nindent 10 }}
+        - {{- include "clp.waitFor" (dict "root" . "type" "service" "name" "redis") | nindent 10 }}
+        {{- end }}
       containers:
         - name: "compression-worker"
           image: "{{ include "clp.image.ref" . }}"
           imagePullPolicy: "{{ .Values.image.clpPackage.pullPolicy }}"
           env:
+            {{- if eq .Values.clpConfig.compression_scheduler.type "celery" }}
             - {{- include "clp.celeryBrokerUrlEnvVar" . | nindent 14 }}
             - {{- include "clp.celeryResultBackendEnvVar" (dict
                 "root" .
                 "database" .Values.clpConfig.redis.compression_backend_database
               ) | nindent 14 }}
+            {{- end }}
             - name: "CLP_CONFIG_PATH"
               value: "/etc/clp-config.yaml"
             - name: "CLP_HOME"
@@ -48,6 +60,15 @@ spec:
               value: "/var/log/compression_worker/worker.log"
             - name: "PYTHONPATH"
               value: "/opt/clp/lib/python3/site-packages"
+            {{- if eq .Values.clpConfig.compression_scheduler.type "spider" }}
+            - name: "SPIDER_LOG_DIR"
+              value: "/var/log/compression_worker"
+            - name: "SPIDER_STORAGE_URL"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clp.fullname" . }}-database
+                  key: "spider_storage_url"
+            {{- end }}
           volumeMounts:
             - name: {{ include "clp.volumeName" (dict
                 "component_category" "compression-worker"
@@ -85,6 +106,7 @@ spec:
               ) | quote }}
               mountPath: "/var/data/staged-archives"
             {{- end }}
+          {{- if eq .Values.clpConfig.compression_scheduler.type "celery" }}
           command: [
             "python3", "-u",
             "/opt/clp/lib/python3/site-packages/bin/celery",
@@ -96,6 +118,14 @@ spec:
             "-Q", "compression",
             "-n", "compression-worker"
           ]
+          {{- else if eq .Values.clpConfig.compression_scheduler.type "spider" }}
+          command: [
+            "python3", "-u",
+            "-m", "job_orchestration.executor.start-spider-worker",
+            "--host", "compression_worker",
+            "--num-workers", "{{ .Values.workerConcurrency }}"
+          ]
+          {{- end }}
       volumes:
         - {{- include "clp.pvcVolume" (dict
             "root" .
