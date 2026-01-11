@@ -1,0 +1,443 @@
+name: "clp-release-packages"
+
+on:
+  push:
+    branches: ["main"]
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to upload assets to (e.g., v0.7.0)"
+        required: false
+        type: "string"
+
+env:
+  BINARIES_ARTIFACT_NAME_PREFIX: "clp-core-binaries-"
+  PACKAGE_ARTIFACT_NAME_PREFIX: "clp-package-"
+
+concurrency:
+  group: "${{github.workflow}}-${{github.ref}}"
+  cancel-in-progress: false
+
+jobs:
+  filter-relevant-changes:
+    name: "filter-relevant-changes"
+    runs-on: &runner_x64 >-
+      ${{
+        github.repository_owner == 'y-scope'
+        && fromJSON('["self-hosted", "x64", "ubuntu-noble"]')
+        || 'ubuntu-24.04'
+      }}
+    outputs:
+      manylinux_2_28_x86_64_image_changed: "${{steps.filter.outputs.manylinux_2_28_x86_64_image}}"
+      manylinux_2_28_aarch64_image_changed: "${{steps.filter.outputs.manylinux_2_28_aarch64_image}}"
+      ubuntu_jammy_image_changed: "${{steps.filter.outputs.ubuntu_jammy_image}}"
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - name: "Filter relevant changes"
+        uses: "dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36"  # v3.0.2
+        id: "filter"
+        with:
+          base: "main"
+          filters: |
+            manylinux_2_28_x86_64_image:
+              - ".github/actions/**"
+              - ".github/workflows/clp-release-packages.yaml"
+              - "components/core/tools/scripts/lib_install/*.sh"
+              - "components/core/tools/docker-images/clp-env-base-manylinux_2_28-x86_64/**"
+              - "components/core/tools/scripts/lib_install/manylinux_2_28/**"
+            manylinux_2_28_aarch64_image:
+              - ".github/actions/**"
+              - ".github/workflows/clp-release-packages.yaml"
+              - "components/core/tools/scripts/lib_install/*.sh"
+              - "components/core/tools/docker-images/clp-env-base-manylinux_2_28-aarch64/**"
+              - "components/core/tools/scripts/lib_install/manylinux_2_28/**"
+            ubuntu_jammy_image:
+              - ".github/actions/**"
+              - ".github/workflows/clp-release-packages.yaml"
+              - "components/core/tools/scripts/lib_install/*.sh"
+              - "components/core/tools/docker-images/clp-env-base-ubuntu-jammy/**"
+              - "components/core/tools/scripts/lib_install/ubuntu-jammy/**"
+
+  # =============================================================================
+  # Dependency image builds (only if changed)
+  # =============================================================================
+  manylinux_2_28-x86_64-deps-image:
+    name: "manylinux_2_28-x86_64-deps-image"
+    if: "needs.filter-relevant-changes.outputs.manylinux_2_28_x86_64_image_changed == 'true'"
+    needs: "filter-relevant-changes"
+    runs-on: *runner_x64
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - uses: "./.github/actions/clp-core-build-containers"
+        with:
+          image_name: "clp-core-dependencies-x86-manylinux_2_28"
+          docker_context: "components/core"
+          docker_file: "components/core/tools/docker-images/clp-env-base-manylinux_2_28-x86_64\
+            /Dockerfile"
+          push_deps_image: "false"
+          token: "${{secrets.GITHUB_TOKEN}}"
+
+  manylinux_2_28-aarch64-deps-image:
+    name: "manylinux_2_28-aarch64-deps-image"
+    if: "needs.filter-relevant-changes.outputs.manylinux_2_28_aarch64_image_changed == 'true'"
+    needs: "filter-relevant-changes"
+    runs-on: *runner_x64
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - name: "Set up QEMU for aarch64 emulation"
+        uses: "docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130"  # v3.7.0
+        with:
+          platforms: "arm64"
+
+      - uses: "./.github/actions/clp-core-build-containers"
+        with:
+          image_name: "clp-core-dependencies-aarch64-manylinux_2_28"
+          docker_context: "components/core"
+          docker_file: "components/core/tools/docker-images/clp-env-base-manylinux_2_28-aarch64\
+            /Dockerfile"
+          push_deps_image: "false"
+          token: "${{secrets.GITHUB_TOKEN}}"
+
+  ubuntu-jammy-deps-image:
+    name: "ubuntu-jammy-deps-image"
+    if: "needs.filter-relevant-changes.outputs.ubuntu_jammy_image_changed == 'true'"
+    needs: "filter-relevant-changes"
+    runs-on: *runner_x64
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - uses: "./.github/actions/clp-core-build-containers"
+        with:
+          image_name: "clp-core-dependencies-x86-ubuntu-jammy"
+          docker_context: "components/core"
+          docker_file: "components/core/tools/docker-images/clp-env-base-ubuntu-jammy/Dockerfile"
+          push_deps_image: "false"
+          token: "${{secrets.GITHUB_TOKEN}}"
+
+  # =============================================================================
+  # Manylinux core binaries (static-linked) - x86_64 and aarch64
+  # =============================================================================
+  build-manylinux-binaries:
+    name: "manylinux-${{matrix.arch}}-binaries"
+    if: >-
+      success()
+      || (!cancelled() && !failure())
+    needs:
+      - "filter-relevant-changes"
+      - "manylinux_2_28-x86_64-deps-image"
+      - "manylinux_2_28-aarch64-deps-image"
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ["x86_64", "aarch64"]
+        include:
+          - arch: "x86_64"
+            image_arch: "x86"
+            docker_platform: "amd64"
+          - arch: "aarch64"
+            image_arch: "aarch64"
+            docker_platform: "arm64"
+    runs-on: *runner_x64
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - name: "Set up QEMU for aarch64 emulation"
+        if: "matrix.arch == 'aarch64'"
+        uses: "docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130"  # v3.7.0
+        with:
+          platforms: "arm64"
+
+      - name: "Download dependency image artifact (if built in this workflow)"
+        if: >-
+          (matrix.arch == 'x86_64'
+          && needs.filter-relevant-changes.outputs.manylinux_2_28_x86_64_image_changed == 'true')
+          || (matrix.arch == 'aarch64'
+          && needs.filter-relevant-changes.outputs.manylinux_2_28_aarch64_image_changed == 'true')
+        uses: "actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131"  # v7.0.0
+        with:
+          name: "clp-core-dependencies-${{matrix.image_arch}}-manylinux_2_28"
+          path: "/tmp"
+
+      - name: "Load dependency image (if built in this workflow)"
+        if: >-
+          (matrix.arch == 'x86_64'
+          && needs.filter-relevant-changes.outputs.manylinux_2_28_x86_64_image_changed == 'true')
+          || (matrix.arch == 'aarch64'
+          && needs.filter-relevant-changes.outputs.manylinux_2_28_aarch64_image_changed == 'true')
+        run: >-
+          docker load
+          --input '/tmp/clp-core-dependencies-${{matrix.image_arch}}-manylinux_2_28.tar'
+        shell: "bash"
+
+      - name: "Determine image name"
+        id: "image_props"
+        run: |
+          use_published="${{
+            (matrix.arch == 'x86_64'
+            && needs.filter-relevant-changes.outputs.manylinux_2_28_x86_64_image_changed == 'false')
+            || (matrix.arch == 'aarch64'
+            && needs.filter-relevant-changes.outputs.manylinux_2_28_aarch64_image_changed == 'false')
+          }}"
+          image_name="clp-core-dependencies-${{matrix.image_arch}}-manylinux_2_28"
+          if [[ "$use_published" == "true" ]] ; then
+            repository=$(echo '${{github.repository}}' | tr '[:upper:]' '[:lower:]')
+            echo "image=ghcr.io/${repository}/${image_name}:main" >> "$GITHUB_OUTPUT"
+            echo "pull_flag=--pull=always" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${image_name}:latest" >> "$GITHUB_OUTPUT"
+            echo "pull_flag=" >> "$GITHUB_OUTPUT"
+          fi
+        shell: "bash"
+
+      - name: "Initialize dependency downloads"
+        run: "./tools/scripts/deps-download/init.sh"
+        shell: "bash"
+
+      - name: "Build static-linked binaries"
+        run: |
+          docker run \
+            ${{steps.image_props.outputs.pull_flag}} \
+            --platform linux/${{matrix.docker_platform}} \
+            --user $(id -u):$(id -g) \
+            --volume "$GITHUB_WORKSPACE":/mnt/repo \
+            --workdir /mnt/repo \
+            ${{steps.image_props.outputs.image}} \
+            bash -c "
+              CLP_CPP_MAX_PARALLELISM_PER_BUILD_TASK=\$(getconf _NPROCESSORS_ONLN) task deps:core \
+              && python3 /mnt/repo/components/core/tools/scripts/utils/build-and-run-unit-tests.py \
+                --source-dir /mnt/repo/components/core \
+                --build-dir /mnt/repo/components/core/build \
+                --num-jobs \$(getconf _NPROCESSORS_ONLN)
+            "
+        shell: "bash"
+
+      - name: "Package binaries"
+        id: "package_binaries"
+        run: |
+          # Get version from taskfile
+          version=$(grep -E "^\s+G_PACKAGE_VERSION:" taskfile.yaml | head -1 \
+            | sed 's/.*: *"\([^"]*\)".*/\1/')
+          if [[ -z "$version" ]]; then
+            version="unknown"
+          fi
+
+          output_dir="/tmp/${{env.BINARIES_ARTIFACT_NAME_PREFIX}}${{matrix.arch}}"
+          mkdir -p "${output_dir}"
+
+          tarball_name="clp-core-${{matrix.arch}}-manylinux_2_28-v${version}.tar.gz"
+
+          # Create tarball with the core binaries
+          tar czf "${output_dir}/${tarball_name}" \
+            -C "$GITHUB_WORKSPACE/components/core/build" \
+            clg clp clp-s glt make-dictionaries-readable
+
+          echo "output_dir=${output_dir}" >> "$GITHUB_OUTPUT"
+          echo "tarball_name=${tarball_name}" >> "$GITHUB_OUTPUT"
+        shell: "bash"
+
+      - name: "Upload binaries artifact"
+        uses: "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f"  # v6.0.0
+        with:
+          name: "${{env.BINARIES_ARTIFACT_NAME_PREFIX}}${{matrix.arch}}-manylinux"
+          path: "${{steps.package_binaries.outputs.output_dir}}"
+          retention-days: 7
+
+  # =============================================================================
+  # Ubuntu Jammy full packages (x86_64) - clp-json-pkg-tar and clp-text-pkg-tar
+  # =============================================================================
+  build-ubuntu-packages:
+    name: "ubuntu-x86_64-${{matrix.flavour}}-package"
+    if: >-
+      success()
+      || (!cancelled() && !failure())
+    needs:
+      - "filter-relevant-changes"
+      - "ubuntu-jammy-deps-image"
+    strategy:
+      fail-fast: false
+      matrix:
+        flavour: ["json", "text"]
+    runs-on: *runner_x64
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - name: "Download dependency image artifact (if built in this workflow)"
+        if: "needs.filter-relevant-changes.outputs.ubuntu_jammy_image_changed == 'true'"
+        uses: "actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131"  # v7.0.0
+        with:
+          name: "clp-core-dependencies-x86-ubuntu-jammy"
+          path: "/tmp"
+
+      - name: "Load dependency image (if built in this workflow)"
+        if: "needs.filter-relevant-changes.outputs.ubuntu_jammy_image_changed == 'true'"
+        run: "docker load --input '/tmp/clp-core-dependencies-x86-ubuntu-jammy.tar'"
+        shell: "bash"
+
+      - name: "Determine image name"
+        id: "image_props"
+        run: |
+          use_published="${{
+            needs.filter-relevant-changes.outputs.ubuntu_jammy_image_changed == 'false'
+          }}"
+          image_name="clp-core-dependencies-x86-ubuntu-jammy"
+          if [[ "$use_published" == "true" ]] ; then
+            repository=$(echo '${{github.repository}}' | tr '[:upper:]' '[:lower:]')
+            echo "image=ghcr.io/${repository}/${image_name}:main" >> "$GITHUB_OUTPUT"
+            echo "pull_flag=--pull=always" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${image_name}:latest" >> "$GITHUB_OUTPUT"
+            echo "pull_flag=" >> "$GITHUB_OUTPUT"
+          fi
+        shell: "bash"
+
+      - name: "Initialize dependency downloads"
+        run: "./tools/scripts/deps-download/init.sh"
+        shell: "bash"
+
+      - name: "Build ${{matrix.flavour}} package"
+        run: |
+          docker run \
+            ${{steps.image_props.outputs.pull_flag}} \
+            --user $(id -u):$(id -g) \
+            --volume "$GITHUB_WORKSPACE":/mnt/repo \
+            --workdir /mnt/repo \
+            --env npm_config_cache=/tmp/.npm \
+            --env HOME=/tmp \
+            ${{steps.image_props.outputs.image}} \
+            bash -c "
+              CLP_CPP_MAX_PARALLELISM_PER_BUILD_TASK=\$(getconf _NPROCESSORS_ONLN) \
+              task clp-${{matrix.flavour}}-pkg-tar
+            "
+        shell: "bash"
+
+      - name: "Copy package tarball"
+        id: "copy_package"
+        run: |
+          # Find the generated tarball
+          tarball=$(find build -maxdepth 1 -name "clp-${{matrix.flavour}}-*-v*.tar.gz" | head -1)
+          if [[ -z "$tarball" ]]; then
+            echo "Error: Package tarball not found"
+            exit 1
+          fi
+
+          output_dir="/tmp/${{env.PACKAGE_ARTIFACT_NAME_PREFIX}}${{matrix.flavour}}"
+          mkdir -p "${output_dir}"
+
+          cp "$tarball" "${output_dir}/"
+
+          echo "output_dir=${output_dir}" >> "$GITHUB_OUTPUT"
+          echo "tarball_name=$(basename "$tarball")" >> "$GITHUB_OUTPUT"
+        shell: "bash"
+
+      - name: "Upload package artifact"
+        uses: "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f"  # v6.0.0
+        with:
+          name: "${{env.PACKAGE_ARTIFACT_NAME_PREFIX}}ubuntu-x86_64-${{matrix.flavour}}"
+          path: "${{steps.copy_package.outputs.output_dir}}"
+          retention-days: 7
+
+  # =============================================================================
+  # Upload all artifacts to release
+  # =============================================================================
+  upload-release-assets:
+    name: "upload-release-assets"
+    if: "!cancelled() && !failure()"
+    needs:
+      - "build-manylinux-binaries"
+      - "build-ubuntu-packages"
+    runs-on: *runner_x64
+    permissions:
+      contents: "write"
+    steps:
+      - uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8"  # v6.0.1
+
+      - name: "Download all manylinux binary artifacts"
+        uses: "actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131"  # v7.0.0
+        with:
+          pattern: "${{env.BINARIES_ARTIFACT_NAME_PREFIX}}*"
+          path: "/tmp/release-assets"
+          merge-multiple: true
+
+      - name: "Download all Ubuntu package artifacts"
+        uses: "actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131"  # v7.0.0
+        with:
+          pattern: "${{env.PACKAGE_ARTIFACT_NAME_PREFIX}}*"
+          path: "/tmp/release-assets"
+          merge-multiple: true
+
+      - name: "List downloaded artifacts"
+        run: |
+          echo "Release assets:"
+          find /tmp/release-assets -type f -name "*.tar.gz" | sort
+        shell: "bash"
+
+      - name: "Determine release tag"
+        id: "release_info"
+        run: |
+          if [[ "${{github.event_name}}" == "release" ]]; then
+            echo "tag=${{github.event.release.tag_name}}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{inputs.release_tag}}" ]]; then
+            echo "tag=${{inputs.release_tag}}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Error: No release tag specified"
+            exit 1
+          fi
+        shell: "bash"
+
+      - name: "Upload release assets"
+        env:
+          GH_TOKEN: "${{secrets.GITHUB_TOKEN}}"
+        run: |
+          tag="${{steps.release_info.outputs.tag}}"
+          echo "Uploading assets to release: $tag"
+
+          for tarball in /tmp/release-assets/*.tar.gz; do
+            if [[ -f "$tarball" ]]; then
+              echo "Uploading: $(basename "$tarball")"
+              gh release upload "$tag" "$tarball" \
+                --repo "${{github.repository}}" \
+                --clobber
+            fi
+          done
+        shell: "bash"
