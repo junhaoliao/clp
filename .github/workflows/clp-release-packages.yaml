@@ -149,6 +149,7 @@ jobs:
   # =============================================================================
   build-manylinux-binaries:
     name: "manylinux-${{matrix.arch}}-binaries"
+    timeout-minutes: 60
     if: >-
       success()
       || (!cancelled() && !failure())
@@ -237,6 +238,7 @@ jobs:
       - name: "Build static-linked binaries"
         run: |
           # Running natively on each arch (no QEMU), so no --platform needed
+          # Only build binaries, don't run unit tests (CI handles testing)
           docker run \
             ${{steps.image_props.outputs.pull_flag}} \
             --user $(id -u):$(id -g) \
@@ -245,10 +247,8 @@ jobs:
             ${{steps.image_props.outputs.image}} \
             bash -c "
               CLP_CPP_MAX_PARALLELISM_PER_BUILD_TASK=\$(getconf _NPROCESSORS_ONLN) task deps:core \
-              && python3 /mnt/repo/components/core/tools/scripts/utils/build-and-run-unit-tests.py \
-                --source-dir /mnt/repo/components/core \
-                --build-dir /mnt/repo/components/core/build \
-                --num-jobs \$(getconf _NPROCESSORS_ONLN)
+              && cmake -S /mnt/repo/components/core -B /mnt/repo/components/core/build \
+              && cmake --build /mnt/repo/components/core/build --parallel \$(getconf _NPROCESSORS_ONLN)
             "
         shell: "bash"
 
