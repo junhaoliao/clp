@@ -338,10 +338,13 @@ jobs:
       - name: "Build ${{matrix.flavour}} package"
         run: |
           # Pass Docker socket and CLI to enable Docker-in-Docker for building
-          # the clp-package Docker image
+          # the clp-package Docker image.
+          # Add the docker group so the container can access the Docker socket.
+          DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
           docker run \
             ${{steps.image_props.outputs.pull_flag}} \
             --user $(id -u):$(id -g) \
+            --group-add "$DOCKER_GID" \
             --volume "$GITHUB_WORKSPACE":/mnt/repo \
             --volume /var/run/docker.sock:/var/run/docker.sock \
             --volume $(which docker):/usr/local/bin/docker:ro \
