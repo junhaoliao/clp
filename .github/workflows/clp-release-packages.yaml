@@ -351,6 +351,12 @@ jobs:
             "
         shell: "bash"
 
+      - name: "Install task (taskfile runner)"
+        run: |
+          # Install task for running the tarball creation outside the container
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+        shell: "bash"
+
       - name: "Build ${{matrix.flavour}} package tarball (outside container)"
         run: |
           # Build Docker image and create tarball - must be done outside container
