@@ -337,13 +337,14 @@ jobs:
 
       - name: "Build ${{matrix.flavour}} package"
         run: |
-          # Pass Docker socket to enable Docker-in-Docker for building the
-          # clp-package Docker image
+          # Pass Docker socket and CLI to enable Docker-in-Docker for building
+          # the clp-package Docker image
           docker run \
             ${{steps.image_props.outputs.pull_flag}} \
             --user $(id -u):$(id -g) \
             --volume "$GITHUB_WORKSPACE":/mnt/repo \
             --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume $(which docker):/usr/local/bin/docker:ro \
             --workdir /mnt/repo \
             --env npm_config_cache=/tmp/.npm \
             --env HOME=/tmp \
