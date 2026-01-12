@@ -335,7 +335,7 @@ jobs:
         run: "./tools/scripts/deps-download/init.sh"
         shell: "bash"
 
-      - name: "Build ${{matrix.flavour}} package"
+      - name: "Build package dependencies (inside container)"
         run: |
           docker run \
             ${{steps.image_props.outputs.pull_flag}} \
@@ -347,8 +347,15 @@ jobs:
             ${{steps.image_props.outputs.image}} \
             bash -c "
               CLP_CPP_MAX_PARALLELISM_PER_BUILD_TASK=\$(getconf _NPROCESSORS_ONLN) \
-              task clp-${{matrix.flavour}}-pkg-tar
+              task package-build-deps
             "
+        shell: "bash"
+
+      - name: "Build ${{matrix.flavour}} package tarball (outside container)"
+        run: |
+          # Build Docker image and create tarball - must be done outside container
+          # since it requires Docker access
+          task clp-${{matrix.flavour}}-pkg-tar
         shell: "bash"
 
       - name: "Copy package tarball"
