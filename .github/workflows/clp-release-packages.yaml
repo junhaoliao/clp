@@ -347,7 +347,7 @@ jobs:
             ${{steps.image_props.outputs.image}} \
             bash -c "
               CLP_CPP_MAX_PARALLELISM_PER_BUILD_TASK=\$(getconf _NPROCESSORS_ONLN) \
-              task package-build-deps
+              task package-build-deps generate-config-schemas
             "
         shell: "bash"
 
