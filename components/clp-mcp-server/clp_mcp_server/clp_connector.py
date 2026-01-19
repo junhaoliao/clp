@@ -23,7 +23,7 @@ class ClpConnector:
     def __init__(self, clp_config: Any) -> None:
         """Initializes the ClpConnector with MongoDB and MariaDB configurations."""
         mongo_url = f"mongodb://{clp_config.results_cache.host}:{clp_config.results_cache.port}/"
-        mongo_client = AsyncMongoClient(mongo_url)
+        mongo_client: AsyncMongoClient[dict[str, Any]] = AsyncMongoClient(mongo_url)
         self._results_cache = mongo_client[clp_config.results_cache.db_name]
 
         # Configuration to be used in `aiomysql.connect` to MariaDB.
@@ -113,7 +113,7 @@ class ClpConnector:
             err_msg = f"Query job with ID {query_id} not found."
             raise ValueError(err_msg)
 
-        return status
+        return QueryJobStatus(status)
 
     async def wait_query_completion(self, query_id: str, timeout: float | None = None) -> None:
         """
@@ -150,7 +150,7 @@ class ClpConnector:
 
             await asyncio.sleep(POLLING_INTERVAL_SECONDS)
 
-    async def read_results(self, query_id: str) -> list[dict]:
+    async def read_results(self, query_id: str) -> list[dict[str, Any]]:
         """
         Reads the results of a query.
 
