@@ -46,6 +46,14 @@ show_error_code_links = true
 show_error_context = true
 show_error_end = true
 
+[[tool.mypy.overrides]]
+module = [
+    "aiomysql",
+    "msgpack",
+    "paginate",
+]
+ignore_missing_imports = true
+
 [tool.ruff]
 extend = "../../ruff.toml"
 
