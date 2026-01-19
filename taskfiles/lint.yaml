@@ -776,9 +776,9 @@ tasks:
     internal: true
     vars:
       UV_PYTHON_PROJECTS:
+        - "{{.G_COMPONENTS_DIR}}/clp-mcp-server"
         - "{{.G_INTEGRATION_TESTS_DIR}}"
       UV_PYTHON_PROJECTS_IGNORE_ERRORS:
-        - "{{.G_COMPONENTS_DIR}}/clp-mcp-server"
         - "{{.G_COMPONENTS_DIR}}/clp-package-utils"
         - "{{.G_COMPONENTS_DIR}}/clp-py-utils"
         - "{{.G_COMPONENTS_DIR}}/job-orchestration"
