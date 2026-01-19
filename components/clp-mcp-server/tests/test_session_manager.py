@@ -204,6 +204,8 @@ class TestSessionManager:
     def active_session_manager(self) -> SessionManager:
         """
         Create a `SessionManager` with a test session where `get_instructions()` has been called.
+
+        :return: An active `SessionManager` instance.
         """
         manager = SessionManager(session_ttl_seconds=TestConstants.SESSION_TTL_SECONDS)
         session = manager.get_or_create_session(TestConstants.TEST_SESSION_ID)
@@ -271,7 +273,7 @@ class TestSessionManager:
                 _ = manager.get_or_create_session(sid)
 
             # Ensure created sessions expire
-            time.sleep(1)
+            await asyncio.sleep(1)
 
             # Create active sessions that we WILL keep accessing
             active_session_ids = [f"{TestConstants.ACTIVE_SESSION_PREFIX}{i}" for i in range(20)]
