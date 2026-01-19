@@ -11,11 +11,11 @@ LoggingLevel = Literal[
 ]
 
 
-def get_logging_formatter():
+def get_logging_formatter() -> logging.Formatter:
     return logging.Formatter("%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
 
-def get_logger(name: str):
+def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     # Setup console logging
     logging_console_handler = logging.StreamHandler()
@@ -26,7 +26,7 @@ def get_logger(name: str):
     return logger
 
 
-def set_logging_level(logger: logging.Logger, level: str):
+def set_logging_level(logger: logging.Logger, level: str) -> None:
     if level not in get_args(LoggingLevel):
         logger.warning(f"Invalid logging level: {level}, using INFO as default")
         logger.setLevel(logging.INFO)
