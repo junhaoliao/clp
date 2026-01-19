@@ -175,7 +175,7 @@ class SessionManager:
         """:param session_ttl_seconds: Session time-to-live in seconds."""
         self.sessions: dict[str, SessionState] = {}
         self._session_ttl_seconds: float = session_ttl_seconds
-        self._cleanup_task: asyncio.Task | None = None
+        self._cleanup_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Starts the asynchronous cleanup task."""
