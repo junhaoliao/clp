@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from clp_mcp_server.clp_connector import ClpConnector, QueryJobStatus
+from clp_mcp_server.clp_connector import ClpConnector
+from clp_mcp_server.constants import QueryJobStatus
 
 
 @pytest.fixture
@@ -80,8 +81,10 @@ async def test_wait_query_completion_succeeded(mock_clp_config: Any) -> None:
     connector = ClpConnector(mock_clp_config)
     # Simulate status: PENDING -> RUNNING -> SUCCEEDED
     statuses = [QueryJobStatus.PENDING, QueryJobStatus.RUNNING, QueryJobStatus.SUCCEEDED]
-    connector.read_job_status = AsyncMock(side_effect=statuses)
-    with patch("asyncio.sleep", AsyncMock()):
+    with (
+        patch.object(connector, "read_job_status", AsyncMock(side_effect=statuses)),
+        patch("asyncio.sleep", AsyncMock()),
+    ):
         await connector.wait_query_completion("42")
 
 
@@ -100,8 +103,10 @@ async def test_wait_query_completion_failure_cases(
 ) -> None:
     """Tests waiting for a query that ends in failure, cancellation, or unknown status."""
     connector = ClpConnector(mock_clp_config)
-    connector.read_job_status = AsyncMock(return_value=fail_status)
-    with pytest.raises(exc_type):
+    with (
+        patch.object(connector, "read_job_status", AsyncMock(return_value=fail_status)),
+        pytest.raises(exc_type),
+    ):
         await connector.wait_query_completion("fail_id")
 
 
