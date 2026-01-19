@@ -1,5 +1,7 @@
 """Unit tests for CLP MCP server's utility functions."""
 
+from typing import Any, ClassVar
+
 import pytest
 
 from clp_mcp_server.server.utils import (
@@ -15,13 +17,17 @@ class TestUtils:
 
     LINK = "http://localhost:4000/"
 
+    # Expected epoch values for date string conversion tests
+    EPOCH_WITH_MILLIS = 1729267200123  # 2024-10-18T16:00:00.123Z
+    EPOCH_WITHOUT_MILLIS = 1729267200000  # 2024-10-18T16:00:00.000Z
+
     # Error Messages:
     INVALID_DATE_STRING_ERROR = "Invalid date string"
     INVALID_DATE_STRING_FORMAT_ERROR = "Timestamp must end with 'Z' to indicate UTC."
     INVALID_DATE_STRING_VALUE_ERROR = "is earlier than `formatted_begin_timestamp`"
 
     # Test case: invalid timestamp types.
-    INVALID_TYPE_ENTRIES = [
+    INVALID_TYPE_ENTRIES: ClassVar[list[dict[str, Any]]] = [
         {"timestamp": None, "message": '{"message":"Log with None timestamp"}\n', "link": LINK},
         {
             "timestamp": "1729267200000",  # str instead of int
@@ -34,14 +40,14 @@ class TestUtils:
             "link": LINK,
         },
     ]
-    EXPECTED_INVALID_TYPE = [
+    EXPECTED_INVALID_TYPE: ClassVar[list[str]] = [
         f'timestamp: N/A, message: {{"message":"Log with None timestamp"}}\n, link: {LINK}',
         f'timestamp: N/A, message: {{"message":"Log with str timestamp"}}\n, link: {LINK}',
         f'timestamp: N/A, message: {{"message":"Log with float timestamp"}}\n, link: {LINK}',
     ]
 
     # Test case: invalid timestamp values.
-    INVALID_VALUE_ENTRIES = [
+    INVALID_VALUE_ENTRIES: ClassVar[list[dict[str, Any]]] = [
         {
             "timestamp": 9999999999999999,
             "message": '{"message":"Log with overflow timestamp"}\n',
@@ -53,7 +59,7 @@ class TestUtils:
             "link": LINK,
         },
     ]
-    EXPECTED_INVALID_VALUE = [
+    EXPECTED_INVALID_VALUE: ClassVar[list[str]] = [
         (f'timestamp: N/A, message: {{"message":"Log with overflow timestamp"}}\n, link: {LINK}'),
         (
             f'timestamp: N/A, message: {{"message":"Log with negative overflow timestamp"}}\n,'
@@ -62,17 +68,17 @@ class TestUtils:
     ]
 
     # Test case: missing timestamp and message fields.
-    MISSING_TIMESTAMP_AND_MESSAGE_ENTRY = [
+    MISSING_TIMESTAMP_AND_MESSAGE_ENTRY: ClassVar[list[dict[str, Any]]] = [
         {"_id": "test001", "link": LINK},
         {"_id": "test002", "message": '{"message":"Log with no timestamp"}\n', "link": LINK},
         {"_id": "test003", "timestamp": 0, "link": LINK},
     ]
-    EXPECTED_MISSING_TIMESTAMP_AND_MESSAGE = [
+    EXPECTED_MISSING_TIMESTAMP_AND_MESSAGE: ClassVar[list[str]] = [
         f'timestamp: N/A, message: {{"message":"Log with no timestamp"}}\n, link: {LINK}',
     ]
 
     # Testing basic functionality.
-    RAW_LOG_ENTRIES = [
+    RAW_LOG_ENTRIES: ClassVar[list[dict[str, Any]]] = [
         {
             "_id": "test000",
             "timestamp": None,
@@ -123,7 +129,7 @@ class TestUtils:
         },
     ]
 
-    EXPECTED_RESULTS = [
+    EXPECTED_RESULTS: ClassVar[list[str]] = [
         (
             "timestamp: 2024-10-18T16:00:00.123Z, message: "
             '{"ts":1729267200123,"pid":1234,"tid":5678,'
@@ -151,40 +157,35 @@ class TestUtils:
         ),
     ]
 
-    def test_convert_date_string_to_epoch(self):
+    def test_convert_date_string_to_epoch(self) -> None:
         """Validates converting ISO 8601 format to a Unix epoch."""
         result = convert_date_string_to_epoch("2024-10-18T16:00:00.123Z")
-        assert result == 1729267200123
+        assert result == self.EPOCH_WITH_MILLIS
 
         result = convert_date_string_to_epoch("2024-10-18T16:00:00Z")
-        assert result == 1729267200000
+        assert result == self.EPOCH_WITHOUT_MILLIS
 
         result = convert_date_string_to_epoch("2024-10-18T16:00Z")
-        assert result == 1729267200000
+        assert result == self.EPOCH_WITHOUT_MILLIS
 
-    def test_convert_date_string_to_epoch_invalid_date_string(self):
+    def test_convert_date_string_to_epoch_invalid_date_string(self) -> None:
         """Validates the handling of invalid date string."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_ERROR):
             convert_date_string_to_epoch("not-a-date")
-        assert self.INVALID_DATE_STRING_ERROR in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_ERROR):
             convert_date_string_to_epoch("2024-13-45T25:99:99Z")
-        assert self.INVALID_DATE_STRING_ERROR in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_ERROR):
             convert_date_string_to_epoch("")
-        assert self.INVALID_DATE_STRING_ERROR in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
-            print(convert_date_string_to_epoch("2024.10.18T16:00:00.123"))
-        assert self.INVALID_DATE_STRING_ERROR in str(exc_info.value)
+        with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_ERROR):
+            convert_date_string_to_epoch("2024.10.18T16:00:00.123")
 
-        with pytest.raises(ValueError) as exc_info:
-            print(convert_date_string_to_epoch("2024-10-18T16-00-00-123"))
-        assert self.INVALID_DATE_STRING_ERROR in str(exc_info.value)
+        with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_ERROR):
+            convert_date_string_to_epoch("2024-10-18T16-00-00-123")
 
-    def test_parse_timestamp_range_invalid_values(self):
+    def test_parse_timestamp_range_invalid_values(self) -> None:
         """Validates the handling of invalid date string types and values."""
         with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_FORMAT_ERROR):
             parse_timestamp_range("2024-10-18T16:00:00.123", "2025-10-18T16:00:00.123")
@@ -192,25 +193,25 @@ class TestUtils:
         with pytest.raises(ValueError, match=self.INVALID_DATE_STRING_VALUE_ERROR):
             parse_timestamp_range("2024-10-18T16:00:00.123Z", "2000-10-18T16:00:00.123Z")
 
-    def test_invalid_timestamp_type(self):
+    def test_invalid_timestamp_type(self) -> None:
         """Validates the handling of noninteger timestamp types."""
         result = format_query_results(self.INVALID_TYPE_ENTRIES)
 
         assert result == self.EXPECTED_INVALID_TYPE
 
-    def test_invalid_timestamp_value(self):
+    def test_invalid_timestamp_value(self) -> None:
         """Validates the handling of invalid timestamp values."""
         result = format_query_results(self.INVALID_VALUE_ENTRIES)
 
         assert result == self.EXPECTED_INVALID_VALUE
 
-    def test_missing_timestamp_and_message(self):
+    def test_missing_timestamp_and_message(self) -> None:
         """Validates the handling of log entries without timestamp and message field."""
         result = format_query_results(self.MISSING_TIMESTAMP_AND_MESSAGE_ENTRY)
 
         assert result == self.EXPECTED_MISSING_TIMESTAMP_AND_MESSAGE
 
-    def test_sort_and_format_query_results(self):
+    def test_sort_and_format_query_results(self) -> None:
         """Validates the post-processing functionality."""
         sorted_result = sort_by_timestamp(self.RAW_LOG_ENTRIES)
         formatted_results = format_query_results(sorted_result)
