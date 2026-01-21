@@ -30,7 +30,7 @@
     "chartjs-plugin-zoom": "^2.2.0",
     "color": "^5.0.3",
     "dayjs": "^1.11.19",
-    "monaco-editor": "^0.54.0",
+    "monaco-editor": "^0.55.1",
     "react": "^19.2.3",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.3",
