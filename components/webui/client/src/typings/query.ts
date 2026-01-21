@@ -1,4 +1,4 @@
-import {Type} from "@sinclair/typebox";
+import {Type} from "typebox";
 import {QUERY_JOB_TYPE} from "@webui/common/query";
 
 

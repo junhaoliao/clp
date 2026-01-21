@@ -1,5 +1,4 @@
-import {ValueErrorType} from "@sinclair/typebox/errors";
-import {Value} from "@sinclair/typebox/value";
+import {Value} from "typebox/value";
 import {
     DATASET_NAME_MAX_LEN,
     DatasetNameSchema,
@@ -24,12 +23,12 @@ const validateDatasetName = (datasetName: string): string | null => {
         const [firstError] = [...Value.Errors(DatasetNameSchema, datasetName)];
 
         if (firstError) {
-            // Check which validation failed using TypeBox error types
-            if (ValueErrorType.StringMaxLength === firstError.type) {
+            // Check which validation failed using TypeBox error keywords
+            if ("maxLength" === firstError.keyword) {
                 return "Dataset name can only be a maximum of " +
                     `${DATASET_NAME_MAX_LEN} characters long.`;
             }
-            if (ValueErrorType.StringPattern === firstError.type) {
+            if ("pattern" === firstError.keyword) {
                 return "Dataset name can only contain alphanumeric characters " +
                     "and underscores.";
             }

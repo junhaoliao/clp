@@ -1,7 +1,7 @@
 import {
     Static,
     Type,
-} from "@sinclair/typebox";
+} from "typebox";
 
 import {
     CLP_DEFAULT_TABLE_PREFIX,

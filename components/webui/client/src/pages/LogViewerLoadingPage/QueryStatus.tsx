@@ -3,11 +3,11 @@ import {
     useState,
 } from "react";
 
-import {Static} from "@sinclair/typebox";
+import {Static} from "typebox";
 import {
     AssertError,
     Value,
-} from "@sinclair/typebox/value";
+} from "typebox/value";
 import {Nullable} from "@webui/common/utility-types";
 import {isAxiosError} from "axios";
 

@@ -1,5 +1,5 @@
 import {FastifyPluginAsyncTypebox} from "@fastify/type-provider-typebox";
-import {Type} from "@sinclair/typebox";
+import {Type} from "typebox";
 
 
 /**

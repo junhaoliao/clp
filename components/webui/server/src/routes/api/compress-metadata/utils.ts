@@ -1,7 +1,7 @@
 import {brotliDecompressSync} from "node:zlib";
 
 import {decode} from "@msgpack/msgpack";
-import {Value} from "@sinclair/typebox/value";
+import {Value} from "typebox/value";
 import {CompressionMetadataDecoded} from "@webui/common/schemas/compress-metadata";
 import {
     ClpIoConfig,

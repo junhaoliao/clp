@@ -1,7 +1,7 @@
 import {
     Static,
     Type,
-} from "@sinclair/typebox";
+} from "typebox";
 
 import {ClpIoPartialConfigSchema} from "./compression.js";
 
