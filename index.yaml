@@ -28,9 +28,9 @@ entries:
     version: 0.1.3-dev.1
   - apiVersion: v2
     appVersion: 0.7.1-dev
-    created: "2026-01-20T20:07:31.765826161Z"
+    created: "2026-01-21T22:18:37.411210552Z"
     description: A Helm chart for CLP's (Compressed Log Processor) package deployment
-    digest: fb773a0a3e8c2126692ea63ef6baff168cc7211cb03e0923cc0c8af276b12da1
+    digest: 85d792fb2883f986ecd449a28e5520b3b40530b24d57ddc8b4e6c428f3a2b40e
     home: https://github.com/y-scope/clp
     icon: https://github.com/y-scope/clp/raw/main/docs/src/clp-logo.png
     keywords:
@@ -49,6 +49,6 @@ entries:
     - https://github.com/y-scope/clp
     type: application
     urls:
-    - https://github.com/junhaoliao/clp/releases/download/clp-0.1.2-dev.19/clp-0.1.2-dev.19.tgz
+    - https://github.com/junhaoliao/clp/raw/gh-pages/clp-0.1.2-dev.19.tgz
     version: 0.1.2-dev.19
-generated: "2026-01-21T19:40:58.424001428Z"
+generated: "2026-01-21T22:18:37.409682076Z"
