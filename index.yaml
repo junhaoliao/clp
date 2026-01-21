@@ -27,8 +27,33 @@ entries:
     - https://github.com/junhaoliao/clp/releases/download/clp-package-helm-0.1.3-dev.1/clp-0.1.3-dev.1.tgz
     version: 0.1.3-dev.1
   - apiVersion: v2
+    appVersion: 0.8.0
+    created: "2026-01-21T22:38:02.879592747Z"
+    description: A Helm chart for CLP's (Compressed Log Processor) package deployment
+    digest: c385772a2b965e4afd202ea88473e092d2210c3a032bc8869623418e5d569662
+    home: https://github.com/y-scope/clp
+    icon: https://github.com/y-scope/clp/raw/main/docs/src/clp-logo.png
+    keywords:
+    - analytics
+    - compression
+    - log-management
+    - log-parser
+    - logging
+    - search
+    maintainers:
+    - email: dev@yscope.com
+      name: y-scope
+      url: https://yscope.com
+    name: clp
+    sources:
+    - https://github.com/y-scope/clp
+    type: application
+    urls:
+    - https://github.com/junhaoliao/clp/raw/gh-pages/clp-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
     appVersion: 0.7.1-dev
-    created: "2026-01-21T22:28:09.769432384Z"
+    created: "2026-01-21T22:38:02.878366253Z"
     description: A Helm chart for CLP's (Compressed Log Processor) package deployment
     digest: 5e8a1f5a7d378527dc8e796ba0403154ec87b5fb468ba2f62240761ed42c105f
     home: https://github.com/y-scope/clp
@@ -51,4 +76,4 @@ entries:
     urls:
     - https://github.com/junhaoliao/clp/raw/gh-pages/clp-0.1.2-dev.19.tgz
     version: 0.1.2-dev.19
-generated: "2026-01-21T22:28:09.768055267Z"
+generated: "2026-01-21T22:38:02.876951221Z"
