@@ -173,12 +173,12 @@ impl IngestionJobManagerState {
                  URL: {endpoint_url}"
             )));
         }
-        let sqs_client_manager =
-            SqsClientWrapper::create(config.get().base.region.as_ref(), &self.inner.aws_authentication)
-                .await;
+        let sqs_client_manager = SqsClientWrapper::create(
+            config.get().base.region.as_ref(),
+            &self.inner.aws_authentication,
+        )
+        .await;
         self.create_s3_ingestion_job(ingestion_job_config, move |job_id, state| {
-        self.create_s3_ingestion_job(ingestion_job_config, move |job_id, sender| {
-            let listener = crate::ingestion_job::SqsListener::spawn(
                 job_id,
                 &sqs_client_manager,
                 &config,
