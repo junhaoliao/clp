@@ -94,6 +94,7 @@ clpConfig:
   # API server config
   api_server:
     port: 30301
+    logging_level: "INFO"
     default_max_num_query_results: 1000
     query_job_polling:
       initial_backoff_ms: 100

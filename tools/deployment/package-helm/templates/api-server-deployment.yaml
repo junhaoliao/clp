@@ -53,7 +53,7 @@ spec:
             - name: "CLP_LOGS_DIR"
               value: "/var/log/api_server"
             - name: "RUST_LOG"
-              value: "INFO"
+              value: {{ .Values.clpConfig.api_server.logging_level | quote }}
           ports:
             - name: "api-server"
               containerPort: 3001
