@@ -22,32 +22,6 @@ function createTestCluster(stack: cdk.Stack): eks.Cluster {
   });
 }
 
-/**
- * The HelmChart Values property contains CDK tokens (bucket name, region),
- * so CloudFormation renders it as {"Fn::Join": ["", [...]]} instead of a
- * plain JSON string. This helper resolves the Fn::Join and parses the JSON.
- */
-function getHelmValues(template: Template): Record<string, unknown> {
-  const resources = template.findResources("Custom::AWSCDK-EKS-HelmChart");
-  const helmResource = Object.values(resources)[0];
-  const valuesProperty = helmResource.Properties.Values;
-
-  if (typeof valuesProperty === "string") {
-    return JSON.parse(valuesProperty);
-  }
-
-  // Resolve Fn::Join: join the array elements, stringifying objects as-is
-  if (valuesProperty["Fn::Join"]) {
-    const [separator, parts] = valuesProperty["Fn::Join"];
-    const resolved = parts
-      .map((p: unknown) => (typeof p === "string" ? p : "PLACEHOLDER"))
-      .join(separator);
-    return JSON.parse(resolved);
-  }
-
-  throw new Error("Unexpected Values format in HelmChart resource");
-}
-
 describe("ClpStack", () => {
   let app: cdk.App;
   let stack: ClpStack;
@@ -63,55 +37,6 @@ describe("ClpStack", () => {
 
     stack = new ClpStack(app, "TestClp", { env, cluster, archiveBucket });
     template = Template.fromStack(stack);
-  });
-
-  test("HelmChart resource is created", () => {
-    template.resourceCountIs("Custom::AWSCDK-EKS-HelmChart", 1);
-  });
-
-  test("Helm chart is deployed to clp namespace", () => {
-    template.hasResourceProperties("Custom::AWSCDK-EKS-HelmChart", {
-      Namespace: "clp",
-    });
-  });
-
-  test("Helm chart uses the clp chart from y-scope repo", () => {
-    template.hasResourceProperties("Custom::AWSCDK-EKS-HelmChart", {
-      Chart: "clp",
-      Repository: "https://y-scope.github.io/clp",
-    });
-  });
-
-  test("Helm values set distributedDeployment to true", () => {
-    const values = getHelmValues(template);
-    expect(values).toHaveProperty("distributedDeployment", true);
-  });
-
-  test("Helm values set storage class to gp3", () => {
-    const values = getHelmValues(template);
-    expect(values).toHaveProperty("storage.storageClassName", "gp3");
-  });
-
-  test("Helm values set logs_input type to s3", () => {
-    const values = getHelmValues(template);
-    expect(values).toHaveProperty("clpConfig.logs_input.type", "s3");
-  });
-
-  test("Helm values reference S3 bucket for archive output", () => {
-    const values = getHelmValues(template);
-    expect(values).toHaveProperty("clpConfig.archive_output.storage.type", "s3");
-  });
-
-  test("Helm values reference S3 bucket for stream output", () => {
-    const values = getHelmValues(template);
-    expect(values).toHaveProperty("clpConfig.stream_output.storage.type", "s3");
-  });
-
-  test("Helm values set IRSA annotation on service account", () => {
-    const values = getHelmValues(template);
-    const sa = (values as any).serviceAccount;
-    expect(sa).toBeDefined();
-    expect(sa.annotations).toHaveProperty("eks.amazonaws.com/role-arn");
   });
 
   test("IRSA role for S3 access is created", () => {
@@ -137,6 +62,14 @@ describe("ClpStack", () => {
         ]),
       }),
     });
+  });
+
+  test("stack exports S3AccessRoleArn output", () => {
+    template.hasOutput("S3AccessRoleArn", {});
+  });
+
+  test("stack exports ArchiveBucketName output", () => {
+    template.hasOutput("ArchiveBucketName", {});
   });
 
   test("cdk-nag produces no errors", () => {

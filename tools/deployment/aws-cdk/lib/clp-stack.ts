@@ -58,65 +58,15 @@ export class ClpStack extends cdk.Stack {
       })
     );
 
-    // S3 config shared by archive_output, stream_output, and logs_input
-    const s3AuthConfig = {
-      aws_authentication: {
-        type: "default", // Uses the SDK credential chain (picks up IRSA)
-      },
-      region_code: this.region,
-      bucket: archiveBucket.bucketName,
-    };
+    // Export the role ARN for use with `helm install`
+    new cdk.CfnOutput(this, "S3AccessRoleArn", {
+      value: s3AccessRole.roleArn,
+      description: "IRSA role ARN for CLP service account S3 access",
+    });
 
-    // Deploy CLP Helm chart
-    new eks.HelmChart(this, "ClpHelmChart", {
-      cluster,
-      chart: "clp",
-      repository: "https://y-scope.github.io/clp",
-      namespace: "clp",
-      createNamespace: true,
-      values: {
-        image: {
-          clpPackage: {
-            repository: "ghcr.io/junhaoliao/clp/clp-package",
-            tag: "main",
-          },
-        },
-        distributedDeployment: true,
-        storage: {
-          storageClassName: "gp3",
-        },
-        serviceAccount: {
-          annotations: {
-            "eks.amazonaws.com/role-arn": s3AccessRole.roleArn,
-          },
-        },
-        clpConfig: {
-          logs_input: {
-            type: "s3",
-            aws_authentication: {
-              type: "default",
-            },
-          },
-          archive_output: {
-            storage: {
-              type: "s3",
-              s3_config: {
-                ...s3AuthConfig,
-                key_prefix: "archives/",
-              },
-            },
-          },
-          stream_output: {
-            storage: {
-              type: "s3",
-              s3_config: {
-                ...s3AuthConfig,
-                key_prefix: "streams/",
-              },
-            },
-          },
-        },
-      },
+    new cdk.CfnOutput(this, "ArchiveBucketName", {
+      value: archiveBucket.bucketName,
+      description: "S3 bucket for CLP archives and streams",
     });
 
     NagSuppressions.addStackSuppressions(

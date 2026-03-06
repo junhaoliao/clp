@@ -37,9 +37,9 @@ export class EksStack extends cdk.Stack {
       ],
     });
 
-    // System node group: On-Demand Graviton for core services
+    // System node group: On-Demand x86_64 for core services
     this.cluster.addNodegroupCapacity("SystemNodeGroup", {
-      instanceTypes: [new ec2.InstanceType("m7g.medium")],
+      instanceTypes: [new ec2.InstanceType("m5.large")],
       capacityType: eks.CapacityType.ON_DEMAND,
       minSize: 2,
       maxSize: 4,
@@ -47,13 +47,56 @@ export class EksStack extends cdk.Stack {
       labels: { role: "system" },
     });
 
-    // Worker node group: Spot Graviton for compression/query workers
+    // EBS CSI driver for dynamic PV provisioning
+    const ebsCsiRole = new iam.Role(this, "EbsCsiDriverRole", {
+      assumedBy: new iam.FederatedPrincipal(
+        this.cluster.openIdConnectProvider.openIdConnectProviderArn,
+        {},
+        "sts:AssumeRoleWithWebIdentity"
+      ),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonEBSCSIDriverPolicy"
+        ),
+      ],
+    });
+
+    new eks.CfnAddon(this, "EbsCsiAddon", {
+      addonName: "aws-ebs-csi-driver",
+      clusterName: this.cluster.clusterName,
+      serviceAccountRoleArn: ebsCsiRole.roleArn,
+    });
+
+    // gp3 StorageClass (set as default)
+    new eks.KubernetesManifest(this, "Gp3StorageClass", {
+      cluster: this.cluster,
+      manifest: [
+        {
+          apiVersion: "storage.k8s.io/v1",
+          kind: "StorageClass",
+          metadata: {
+            name: "gp3",
+            annotations: {
+              "storageclass.kubernetes.io/is-default-class": "true",
+            },
+          },
+          provisioner: "ebs.csi.aws.com",
+          parameters: {
+            type: "gp3",
+          },
+          volumeBindingMode: "WaitForFirstConsumer",
+          reclaimPolicy: "Delete",
+        },
+      ],
+    });
+
+    // Worker node group: Spot x86_64 for compression/query workers
     this.cluster.addNodegroupCapacity("WorkerNodeGroup", {
       instanceTypes: [
-        new ec2.InstanceType("c7g.xlarge"),
-        new ec2.InstanceType("c7g.2xlarge"),
-        new ec2.InstanceType("c6g.xlarge"),
-        new ec2.InstanceType("m7g.xlarge"),
+        new ec2.InstanceType("c5.xlarge"),
+        new ec2.InstanceType("c5.2xlarge"),
+        new ec2.InstanceType("m5.xlarge"),
+        new ec2.InstanceType("m5.2xlarge"),
       ],
       capacityType: eks.CapacityType.SPOT,
       minSize: 0,

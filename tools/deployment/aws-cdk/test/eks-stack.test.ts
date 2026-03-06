@@ -68,10 +68,10 @@ describe("EksStack", () => {
     });
   });
 
-  test("worker node group uses Graviton instance types", () => {
+  test("worker node group uses x86_64 instance types", () => {
     template.hasResourceProperties("AWS::EKS::Nodegroup", {
       CapacityType: "SPOT",
-      InstanceTypes: Match.arrayWith(["c7g.xlarge"]),
+      InstanceTypes: Match.arrayWith(["c5.xlarge"]),
     });
   });
 
