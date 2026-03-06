@@ -6,7 +6,6 @@ pub use clp_ingestion::*;
 use clp_rust_utils::{
     clp_config::{
         AwsAuthentication,
-        AwsAuthentication,
         package::{
             config::{Config as ClpConfig, LogsInput},
             credentials::Credentials as ClpCredentials,
@@ -83,9 +82,7 @@ impl IngestionJobManagerState {
         clp_credentials: ClpCredentials,
     ) -> anyhow::Result<Self> {
         let aws_authentication = match &clp_config.logs_input {
-            LogsInput::S3 { config } => match config.aws_authentication.clone() {
-                AwsAuthentication::Credentials { credentials } => credentials,
-            },
+            LogsInput::S3 { config } => config.aws_authentication.clone(),
             LogsInput::Fs { .. } => {
                 return Err(anyhow::anyhow!(
                     "Invalid CLP config: Unsupported logs input type. The current implementation \
@@ -309,8 +306,8 @@ impl IngestionJobManagerState {
             S3IngestionJobConfig::S3Scanner(config) => {
                 let s3_client_manager = S3ClientWrapper::create(
                     config.base.region.as_ref(),
-                    &self.inner.aws_authentication,
                     config.base.endpoint_url.as_ref(),
+                    &self.inner.aws_authentication,
                 )
                 .await;
                 ingestion_state.start().await?;
