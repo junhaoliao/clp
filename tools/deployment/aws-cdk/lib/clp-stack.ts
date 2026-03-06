@@ -30,7 +30,7 @@ export class ClpStack extends cdk.Stack {
 
     const conditionKey = new cdk.CfnJson(this, "OidcConditionKey", {
       value: {
-        [`${oidcIssuer}:sub`]: "system:serviceaccount:clp:clp-s3-access",
+        [`${oidcIssuer}:sub`]: "system:serviceaccount:clp:clp-service-account",
         [`${oidcIssuer}:aud`]: "sts.amazonaws.com",
       },
     });
