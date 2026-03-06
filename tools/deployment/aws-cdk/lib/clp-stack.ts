@@ -75,6 +75,12 @@ export class ClpStack extends cdk.Stack {
       namespace: "clp",
       createNamespace: true,
       values: {
+        image: {
+          clpPackage: {
+            repository: "ghcr.io/junhaoliao/clp/clp-package",
+            tag: "main",
+          },
+        },
         distributedDeployment: true,
         storage: {
           storageClassName: "gp3",
