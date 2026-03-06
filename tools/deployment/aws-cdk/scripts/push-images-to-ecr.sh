@@ -12,7 +12,7 @@ AWS_REGION="${2:-$(aws configure get region || echo us-east-2)}"
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 # CLP package image -- uses the tag from Chart.yaml appVersion
-CLP_TAG="${CLP_TAG:-0.9.1-dev}"
+CLP_TAG="${CLP_TAG:-0.9.0}"
 CLP_SOURCE="${CLP_SOURCE:-ghcr.io/y-scope/clp/clp-package:${CLP_TAG}}"
 
 # Third-party images used by the Helm chart (hardcoded in templates today)
@@ -22,7 +22,9 @@ declare -A IMAGES=(
   ["clp/mongo:7.0.1"]="mongo:7.0.1"
   ["clp/rabbitmq:3.9.8"]="rabbitmq:3.9.8"
   ["clp/redis:7.2.4"]="redis:7.2.4"
-  ["clp/kubectl:1.32.0"]="bitnami/kubectl:1.32.0"
+  # bitnami/kubectl only publishes "latest" on Docker Hub; we pin the ECR tag
+  # to the K8s version used by EKS so our reference is fixed.
+  ["clp/kubectl:1.32"]="bitnami/kubectl:latest"
 )
 
 echo "==> Authenticating Docker to ECR (${ECR_REGISTRY})"

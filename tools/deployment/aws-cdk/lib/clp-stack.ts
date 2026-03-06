@@ -58,6 +58,15 @@ export class ClpStack extends cdk.Stack {
       })
     );
 
+    // S3 config shared by archive_output, stream_output, and logs_input
+    const s3AuthConfig = {
+      aws_authentication: {
+        type: "default", // Uses the SDK credential chain (picks up IRSA)
+      },
+      region_code: this.region,
+      bucket: archiveBucket.bucketName,
+    };
+
     // Deploy CLP Helm chart
     new eks.HelmChart(this, "ClpHelmChart", {
       cluster,
@@ -70,13 +79,23 @@ export class ClpStack extends cdk.Stack {
         storage: {
           storageClassName: "gp3",
         },
+        serviceAccount: {
+          annotations: {
+            "eks.amazonaws.com/role-arn": s3AccessRole.roleArn,
+          },
+        },
         clpConfig: {
+          logs_input: {
+            type: "s3",
+            aws_authentication: {
+              type: "default",
+            },
+          },
           archive_output: {
             storage: {
               type: "s3",
               s3_config: {
-                region: this.region,
-                bucket: archiveBucket.bucketName,
+                ...s3AuthConfig,
                 key_prefix: "archives/",
               },
             },
@@ -85,8 +104,7 @@ export class ClpStack extends cdk.Stack {
             storage: {
               type: "s3",
               s3_config: {
-                region: this.region,
-                bucket: archiveBucket.bucketName,
+                ...s3AuthConfig,
                 key_prefix: "streams/",
               },
             },

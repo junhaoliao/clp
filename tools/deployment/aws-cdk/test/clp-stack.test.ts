@@ -92,9 +92,26 @@ describe("ClpStack", () => {
     expect(values).toHaveProperty("storage.storageClassName", "gp3");
   });
 
+  test("Helm values set logs_input type to s3", () => {
+    const values = getHelmValues(template);
+    expect(values).toHaveProperty("clpConfig.logs_input.type", "s3");
+  });
+
   test("Helm values reference S3 bucket for archive output", () => {
     const values = getHelmValues(template);
     expect(values).toHaveProperty("clpConfig.archive_output.storage.type", "s3");
+  });
+
+  test("Helm values reference S3 bucket for stream output", () => {
+    const values = getHelmValues(template);
+    expect(values).toHaveProperty("clpConfig.stream_output.storage.type", "s3");
+  });
+
+  test("Helm values set IRSA annotation on service account", () => {
+    const values = getHelmValues(template);
+    const sa = (values as any).serviceAccount;
+    expect(sa).toBeDefined();
+    expect(sa.annotations).toHaveProperty("eks.amazonaws.com/role-arn");
   });
 
   test("IRSA role for S3 access is created", () => {
