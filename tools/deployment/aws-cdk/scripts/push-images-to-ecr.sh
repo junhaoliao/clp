@@ -46,7 +46,10 @@ for ecr_path in "${!IMAGES[@]}"; do
       --image-scanning-configuration scanOnPush=true \
       --query 'repository.repositoryUri' --output text
 
-  docker pull "${source_image}"
+  # Pull remote images; skip pull for local images (no '/' in name means local)
+  if [[ "${source_image}" == *"/"* ]]; then
+    docker pull "${source_image}"
+  fi
   docker tag "${source_image}" "${ecr_image}"
   docker push "${ecr_image}"
 
