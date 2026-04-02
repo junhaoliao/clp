@@ -285,9 +285,19 @@ data:
       "LogViewerDir": "/opt/clp/var/www/webui/yscope-log-viewer",
       {{- if eq .Values.clpConfig.logs_input.type "fs" }}
       "LogsInputRootDir": "/mnt/logs",
+      "LogsInputS3AwsAuthType": null,
+      "LogsInputS3AwsProfile": null,
       {{- else }}
       "LogsInputRootDir": null,
+      {{- with .Values.clpConfig.logs_input.aws_authentication }}
+      "LogsInputS3AwsAuthType": {{ .type | quote }},
+      {{- if .profile }}
+      "LogsInputS3AwsProfile": {{ .profile | quote }},
+      {{- else }}
+      "LogsInputS3AwsProfile": null,
       {{- end }}
+      {{- end }}{{/* with .Values.clpConfig.logs_input.aws_authentication */}}
+      {{- end }}{{/* if eq .Values.clpConfig.logs_input.type "fs" */}}
       {{- if eq .Values.clpConfig.stream_output.storage.type "fs" }}
       "StreamFilesDir": "/var/data/streams",
       {{- else }}
