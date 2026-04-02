@@ -5,8 +5,14 @@ import {
 import {
     CLP_DEFAULT_DATASET_NAME,
     CLP_STORAGE_ENGINES,
+    STORAGE_TYPE,
 } from "@webui/common/config";
-import {CompressionJobCreation} from "@webui/common/schemas/compression";
+import {
+    CompressionJobCreation,
+    CompressionJobInputType,
+    FsCompressionJobCreation,
+    S3CompressionJobCreation,
+} from "@webui/common/schemas/compression";
 import {
     Form,
     Typography,
@@ -14,17 +20,90 @@ import {
 
 import {submitCompressionJob} from "../../../api/compress";
 import {DashboardCard} from "../../../components/DashboardCard";
-import {SETTINGS_STORAGE_ENGINE} from "../../../config";
+import {
+    SETTINGS_LOGS_INPUT_TYPE,
+    SETTINGS_STORAGE_ENGINE,
+} from "../../../config";
 import ClpSFormItems from "./ClpSFormItems";
 import PathsSelectFormItem from "./PathsSelectFormItem";
+import S3InputFormItems from "./S3InputFormItems";
 import SubmitFormItem from "./SubmitFormItem";
 
 
 type FormValues = {
-    paths: string[];
+    // FS fields
+    paths?: string[];
+
+    // S3 fields
+    bucket?: string;
+    regionCode?: string;
+    s3Paths?: string[];
+
+    // Common CLP-S fields
     dataset?: string;
     timestampKey?: string;
     unstructured?: boolean;
+};
+
+const isS3Input = STORAGE_TYPE.S3 === SETTINGS_LOGS_INPUT_TYPE;
+
+/**
+ * Applies CLP-S fields to a compression job payload.
+ *
+ * @param payload The payload to modify.
+ * @param values The form values.
+ */
+const applyClpSFields = (
+    payload: CompressionJobCreation,
+    values: FormValues,
+) => {
+    if ("undefined" === typeof values.dataset || 0 === values.dataset.length) {
+        payload.dataset = CLP_DEFAULT_DATASET_NAME;
+    } else {
+        payload.dataset = values.dataset;
+    }
+    if (true === values.unstructured) {
+        payload.unstructured = true;
+    } else if ("undefined" !== typeof values.timestampKey) {
+        payload.timestampKey = values.timestampKey;
+    }
+};
+
+/**
+ * Parses a list of selected S3 paths into keyPrefix/keys fields.
+ *
+ * Selection semantics:
+ * - If a single prefix (ending with "/") is selected: use `keyPrefix` mode.
+ * - If the bucket root ("") is selected: use `keyPrefix` with empty string.
+ * - If only object keys are selected: use `keys` mode.
+ *
+ * @param s3Payload The S3 payload to modify.
+ * @param s3Paths Selected values from the S3 TreeSelect.
+ */
+const applyS3Paths = (
+    s3Payload: S3CompressionJobCreation,
+    s3Paths: string[],
+) => {
+    // Separate prefixes (ending with "/" or empty string for root) from object keys.
+    const prefixes = s3Paths.filter((p) => p.endsWith("/") || "" === p);
+    const objectKeys = s3Paths.filter((p) => false === p.endsWith("/") && "" !== p);
+
+    if (0 < prefixes.length && 0 === objectKeys.length) {
+        // Pure prefix selection - use the first prefix.
+        const [firstPrefix] = prefixes;
+        s3Payload.keyPrefix = firstPrefix ?? "";
+    } else if (0 === prefixes.length && 0 < objectKeys.length) {
+        // Pure object selection.
+        s3Payload.keys = objectKeys;
+    } else {
+        // Mixed selection - set both.
+        if (0 < prefixes.length) {
+            s3Payload.keyPrefix = prefixes[0] as string;
+        }
+        if (0 < objectKeys.length) {
+            s3Payload.keys = objectKeys;
+        }
+    }
 };
 
 
@@ -56,19 +135,32 @@ const Compress = () => {
     });
 
     const handleSubmit = (values: FormValues) => {
-        const payload: CompressionJobCreation = {paths: values.paths};
+        let payload: CompressionJobCreation;
 
-        if (CLP_STORAGE_ENGINES.CLP_S === SETTINGS_STORAGE_ENGINE) {
-            if ("undefined" === typeof values.dataset || 0 === values.dataset.length) {
-                payload.dataset = CLP_DEFAULT_DATASET_NAME;
-            } else {
-                payload.dataset = values.dataset;
+        if (isS3Input) {
+            const s3Payload: S3CompressionJobCreation = {
+                bucket: values.bucket as string,
+                inputType: CompressionJobInputType.S3,
+                regionCode: values.regionCode as string,
+            };
+
+            if (values.s3Paths && 0 < values.s3Paths.length) {
+                applyS3Paths(s3Payload, values.s3Paths);
             }
-            if (true === values.unstructured) {
-                payload.unstructured = true;
-            } else if ("undefined" !== typeof values.timestampKey) {
-                payload.timestampKey = values.timestampKey;
+            if (CLP_STORAGE_ENGINES.CLP_S === SETTINGS_STORAGE_ENGINE) {
+                applyClpSFields(s3Payload, values);
             }
+            payload = s3Payload;
+        } else {
+            const fsPayload: FsCompressionJobCreation = {
+                inputType: CompressionJobInputType.FS,
+                paths: values.paths as string[],
+            };
+
+            if (CLP_STORAGE_ENGINES.CLP_S === SETTINGS_STORAGE_ENGINE) {
+                applyClpSFields(fsPayload, values);
+            }
+            payload = fsPayload;
         }
 
         mutate(payload);
@@ -81,7 +173,9 @@ const Compress = () => {
                 layout={"vertical"}
                 onFinish={handleSubmit}
             >
-                <PathsSelectFormItem/>
+                {isS3Input ?
+                    <S3InputFormItems/> :
+                    <PathsSelectFormItem/>}
                 {CLP_STORAGE_ENGINES.CLP_S === SETTINGS_STORAGE_ENGINE && <ClpSFormItems/>}
                 <SubmitFormItem isSubmitting={isSubmitting}/>
 
