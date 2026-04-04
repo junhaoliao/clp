@@ -2,8 +2,33 @@ apiVersion: v1
 entries:
   clp:
   - apiVersion: v2
+    appVersion: 0.10.1-dev
+    created: "2026-04-04T01:54:43.256336524Z"
+    description: A Helm chart for CLP's (Compressed Log Processor) package deployment
+    digest: ba265c80b69f84a39c86d5b8c8b2f799c13cce3a7b3f8109a682b70849604cbe
+    home: https://github.com/y-scope/clp
+    icon: https://github.com/y-scope/clp/raw/main/docs/src/clp-logo.png
+    keywords:
+    - analytics
+    - compression
+    - log-management
+    - log-parser
+    - logging
+    - search
+    maintainers:
+    - email: dev@yscope.com
+      name: y-scope
+      url: https://yscope.com
+    name: clp
+    sources:
+    - https://github.com/y-scope/clp
+    type: application
+    urls:
+    - https://github.com/junhaoliao/clp/raw/gh-pages/clp-0.2.1-dev.5.tgz
+    version: 0.2.1-dev.5
+  - apiVersion: v2
     appVersion: 0.9.1-dev
-    created: "2026-03-06T18:18:45.69685046Z"
+    created: "2026-04-04T01:54:43.254695612Z"
     description: A Helm chart for CLP's (Compressed Log Processor) package deployment
     digest: 6a771d99567ef10171c3b9e5f95bf58effcdb75d268616b650aefa4f1bfeecb4
     home: https://github.com/y-scope/clp
@@ -28,7 +53,7 @@ entries:
     version: 0.2.0-dev.2
   - apiVersion: v2
     appVersion: 0.9.1-dev
-    created: "2026-03-06T18:18:45.695706411Z"
+    created: "2026-04-04T01:54:43.253525719Z"
     description: A Helm chart for CLP's (Compressed Log Processor) package deployment
     digest: 9ec3f219a052b1fd7df98fc38bbb80dfd16985b1cd1b42046b0f5c7f8800d201
     home: https://github.com/y-scope/clp
@@ -53,7 +78,7 @@ entries:
     version: 0.1.4-dev.3
   - apiVersion: v2
     appVersion: 0.8.1-dev
-    created: "2026-03-06T18:18:45.693805685Z"
+    created: "2026-04-04T01:54:43.25234712Z"
     description: A Helm chart for CLP's (Compressed Log Processor) package deployment
     digest: eb614d3db88e8445bab34debb0a5d935751caef3330aaf1d3c711908275ac248
     home: https://github.com/y-scope/clp
@@ -76,4 +101,4 @@ entries:
     urls:
     - https://github.com/junhaoliao/clp/raw/gh-pages/clp-0.1.3-dev.2.tgz
     version: 0.1.3-dev.2
-generated: "2026-03-06T18:18:45.692327264Z"
+generated: "2026-04-04T01:54:43.250964371Z"
