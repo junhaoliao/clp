@@ -43,6 +43,18 @@ type ClientToServerEvents = {
             queryId: QueryId;
         }
     ) => Promise<void>;
+    "collection::find::loadMore": (
+        requestArgs: {
+            queryId: QueryId;
+            newLimit: number;
+        }
+    ) => void;
+    "collection::findOne::message": (
+        requestArgs: {
+            collectionName: string;
+            docId: string;
+        },
+        callback: (res: Response<{message: string}>) => void) => void;
 };
 
 /**

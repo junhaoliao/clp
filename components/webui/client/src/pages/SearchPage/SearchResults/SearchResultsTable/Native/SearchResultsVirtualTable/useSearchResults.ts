@@ -1,19 +1,19 @@
 import MongoSocketCollection from "../../../../../../api/socket/MongoSocketCollection";
-import {useCursor} from "../../../../../../api/socket/useCursor";
+import {useLazyCursor} from "../../../../../../api/socket/useLazyCursor";
 import useSearchStore, {SEARCH_STATE_DEFAULT} from "../../../../SearchState/index";
-import {SEARCH_MAX_NUM_RESULTS} from "../../typings";
+import {SEARCH_RESULTS_BATCH_SIZE} from "../../typings";
 import {SearchResult} from "./typings";
 
 
 /**
- * Custom hook to get search results for the current searchJobId.
+ * Custom hook to get search results for the current searchJobId with lazy loading support.
  *
  * @return
  */
 const useSearchResults = () => {
     const {searchJobId} = useSearchStore();
 
-    const searchResultsCursor = useCursor<SearchResult>(
+    return useLazyCursor<SearchResult>(
         () => {
             // If there is no active search job, there are no results to fetch. The cursor will
             // return null.
@@ -25,7 +25,7 @@ const useSearchResults = () => {
                 `Subscribing to updates to search results with job ID: ${searchJobId}`
             );
 
-            // Retrieve 1k most recent results.
+            // Retrieve initial batch of results sorted by timestamp descending.
             const options = {
                 sort: [
                     [
@@ -37,16 +37,21 @@ const useSearchResults = () => {
                         "desc",
                     ],
                 ],
-                limit: SEARCH_MAX_NUM_RESULTS,
+                limit: SEARCH_RESULTS_BATCH_SIZE,
+                projection: {message: 0},
             };
 
             const collection = new MongoSocketCollection(searchJobId);
-            return collection.find({}, options);
-        },
-        [searchJobId]
-    );
 
-    return searchResultsCursor;
+            return {
+                cursor: collection.find({}, options),
+                initialLimit: SEARCH_RESULTS_BATCH_SIZE,
+            };
+        },
+        [searchJobId],
+        SEARCH_RESULTS_BATCH_SIZE,
+    );
 };
+
 
 export {useSearchResults};

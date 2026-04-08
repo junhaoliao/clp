@@ -57,7 +57,17 @@ class MongoSocketCursor {
             `on collection:${this.#collectionName}`
         );
 
+        // Buffer updates received before the queryId is known, since the server may emit
+        // change-stream updates between creating the watcher and sending the ack response.
+        let pendingUpdates: {queryId: number; data: object[]}[] | null = [];
+
         this.#updateListener = (respArgs: {queryId: number; data: object[]}) => {
+            if (null !== pendingUpdates) {
+                pendingUpdates.push(respArgs);
+
+                return;
+            }
+
             // Server sends updates for multiple queryIDs using the same event name.
             if (this.#queryId === respArgs.queryId) {
                 onDataUpdate(respArgs.data);
@@ -78,19 +88,47 @@ class MongoSocketCursor {
 
         if ("error" in response) {
             this.#socket.off("collection::find::update", this.#updateListener);
+            pendingUpdates = null;
             throw new Error(`Subscription failed: ${response.error}`);
         }
 
-        // Set the initial documents received from the server.
-        onDataUpdate(response.data.initialDocuments);
-
         this.#queryId = response.data.queryId;
+
+        // Apply the initial documents, then replay any buffered updates that arrived during
+        // the subscription handshake so the client has the latest data.
+        onDataUpdate(response.data.initialDocuments);
+        for (const update of pendingUpdates) {
+            if (this.#queryId === update.queryId) {
+                onDataUpdate(update.data);
+            }
+        }
+        pendingUpdates = null;
+
         console.debug(
             `Successfully subscribed to query: ${JSON.stringify(this.#query)} ` +
             `with options:${JSON.stringify(this.#options)} ` +
             `on collection:${this.#collectionName} ` +
             `MongoSocketIoQueryID:${this.#queryId}`
         );
+    }
+
+    /**
+     * Requests more results by increasing the query limit. The server will re-query with the new
+     * limit and emit an update through the existing subscription.
+     *
+     * @param newLimit
+     */
+    loadMore (newLimit: number): void {
+        if (null === this.#queryId) {
+            console.error("Cannot loadMore: no active subscription");
+
+            return;
+        }
+
+        this.#socket.emit("collection::find::loadMore", {
+            queryId: this.#queryId,
+            newLimit,
+        });
     }
 
     /**

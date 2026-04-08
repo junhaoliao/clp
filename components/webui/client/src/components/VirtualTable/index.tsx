@@ -1,5 +1,6 @@
 import React, {
     useCallback,
+    useEffect,
     useRef,
 } from "react";
 
@@ -13,16 +14,47 @@ import {
 
 
 /**
- * Virtual table that supports keyboard navigation.
+ * Virtual table that supports keyboard navigation and scroll events on the virtual scroll
+ * container.
  *
  * @param props
+ * @param props.onVirtualScroll
  * @param props.tableProps
  * @return
  */
 const VirtualTable = <RecordType extends object = Record<string, unknown>>({
+    onVirtualScroll,
     ...tableProps
 }: VirtualTableProps<RecordType>) => {
     const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (null === containerRef.current || "undefined" === typeof onVirtualScroll) {
+            return () => {};
+        }
+
+        const scrollNode = containerRef.current.querySelector<HTMLElement>(
+            VIRTUAL_TABLE_HOLDER_SELECTOR
+        );
+
+        if (null === scrollNode) {
+            return () => {};
+        }
+
+        const emitScrollInfo = () => {
+            const {scrollTop, scrollHeight, clientHeight} = scrollNode;
+            onVirtualScroll({scrollTop, scrollHeight, clientHeight});
+        };
+
+        scrollNode.addEventListener("scroll", emitScrollInfo);
+
+        // Fire immediately so the parent can trigger loadMore if content fits the viewport.
+        emitScrollInfo();
+
+        return () => {
+            scrollNode.removeEventListener("scroll", emitScrollInfo);
+        };
+    }, [onVirtualScroll]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
         if (null === containerRef.current) {

@@ -127,7 +127,13 @@ class MongoSocketIoServer {
             ServerToClientEvents,
             InterServerEvents,
             SocketData
-        >(fastify.server);
+        >(fastify.server, {
+            // Large query results (e.g., documents with long message fields) can produce
+            // payloads that take significant time to serialize and transfer. Increase the
+            // ping timeout so the heartbeat doesn't declare the connection dead while a
+            // large payload is in flight.
+            pingTimeout: 300000,
+        });
 
         return new MongoSocketIoServer(io, fastify.log, mongoDb);
     }
@@ -146,6 +152,14 @@ class MongoSocketIoServer {
             socket.on(
                 "collection::find::unsubscribe",
                 this.#collectionFindUnsubscribeListener.bind(this, socket)
+            );
+            socket.on(
+                "collection::find::loadMore",
+                this.#collectionFindLoadMoreListener.bind(this, socket)
+            );
+            socket.on(
+                "collection::findOne::message",
+                this.#collectionFindOneMessageListener.bind(this, socket)
             );
         });
     }
@@ -392,14 +406,100 @@ class MongoSocketIoServer {
         }
 
         this.#unsubscribe(socket, queryId);
-        await socket.leave(queryId.toString());
-
         removeItemFromArray(subscribedQueryIds, queryId);
+
+        // Only leave the room if the socket has no remaining subscriptions to this queryId.
+        // A socket may subscribe to the same queryId multiple times (e.g., React Strict Mode),
+        // and leaving the room prematurely would prevent updates from reaching other active
+        // subscriptions on the same socket.
+        if (false === subscribedQueryIds.includes(queryId)) {
+            await socket.leave(queryId.toString());
+        }
 
         this.#logger.debug(
             `Subscribed queryIDs map ${
                 JSON.stringify(Array.from(this.#subscribedQueryIdsMap.entries()))}`
         );
+    }
+
+    /**
+     * Listener for loading more results from a subscribed find query. Updates the watcher's limit,
+     * re-queries, and emits the updated data.
+     *
+     * @param socket
+     * @param requestArgs
+     * @param requestArgs.queryId
+     * @param requestArgs.newLimit
+     */
+    async #collectionFindLoadMoreListener (
+        socket: MongoCustomSocket,
+        requestArgs: {queryId: number; newLimit: number}
+    ): Promise<void> {
+        const {queryId, newLimit} = requestArgs;
+        this.#logger.debug(
+            `Socket:${socket.id} requested loadMore for query:${queryId} with newLimit:${newLimit}`
+        );
+
+        const queryHash: string | undefined = this.#queryIdToQueryHashMap.get(queryId);
+        if ("undefined" === typeof queryHash) {
+            this.#logger.error(`Query:${queryId} not found in query map`);
+
+            return;
+        }
+
+        const queryParams: QueryParameters = getQuery(queryHash);
+        const collection = this.#collections.get(queryParams.collectionName);
+        if ("undefined" === typeof collection) {
+            this.#logger.error(`${queryParams.collectionName} is missing from server`);
+
+            return;
+        }
+
+        try {
+            await collection.updateQueryLimit(queryId, newLimit);
+        } catch (error: unknown) {
+            this.#logger.error(error, `Error in loadMore for query:${queryId}`);
+        }
+    }
+
+    /**
+     * Listener for fetching a single document's message field. Converts the string document ID
+     * to an ObjectId for the MongoDB query, and returns only the message field to keep payloads
+     * small.
+     *
+     * @param socket
+     * @param requestArgs
+     * @param requestArgs.collectionName
+     * @param requestArgs.docId
+     * @param callback
+     */
+    async #collectionFindOneMessageListener (
+        _socket: MongoCustomSocket,
+        requestArgs: {collectionName: string; docId: string},
+        callback: (res: Response<{message: string}>) => void
+    ): Promise<void> {
+        const {collectionName, docId} = requestArgs;
+
+        try {
+            const {ObjectId} = await import("mongodb");
+            const collection = this.#mongoDb.collection(collectionName);
+            const doc = await collection.findOne(
+                {_id: new ObjectId(docId)},
+                {projection: {message: 1}}
+            );
+
+            if (null === doc || "undefined" === typeof doc.message) {
+                callback({error: `Document ${docId} not found in ${collectionName}`});
+
+                return;
+            }
+
+            callback({data: {message: doc.message as string}});
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            this.#logger.error(error, `Error fetching message for doc:${docId}`);
+            callback({error: errMsg});
+        }
     }
 }
 

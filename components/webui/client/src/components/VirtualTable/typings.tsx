@@ -12,12 +12,24 @@ const SCROLL_INCREMENT = 32;
 const VIRTUAL_TABLE_HOLDER_SELECTOR = ".ant-table-tbody-virtual-holder";
 
 /**
- * Antd Table props with virtual omitted since set by VirtualTable.
+ * Scroll info passed to the onVirtualScroll callback.
  */
-type VirtualTableProps<RecordType> = Omit<TableProps<RecordType>, "virtual">;
+interface VirtualScrollInfo {
+    scrollTop: number;
+    scrollHeight: number;
+    clientHeight: number;
+}
+
+/**
+ * Antd Table props with virtual omitted since set by VirtualTable, plus an optional callback for
+ * scroll events on the virtual scroll container.
+ */
+type VirtualTableProps<RecordType> = Omit<TableProps<RecordType>, "virtual"> & {
+    onVirtualScroll?: (info: VirtualScrollInfo) => void;
+};
 
 export {
     SCROLL_INCREMENT,
     VIRTUAL_TABLE_HOLDER_SELECTOR,
 };
-export type {VirtualTableProps};
+export type {VirtualScrollInfo, VirtualTableProps};

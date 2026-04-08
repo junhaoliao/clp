@@ -132,8 +132,13 @@ class MongoWatcherCollection {
             {fullDocument: "updateLookup"}
         );
 
-        const watcher: Watcher = {changeStream: mongoWatcher, subscribers: []};
-        this.#setupWatcherListener(watcher, queryParams, queryId, emitUpdate);
+        const watcher: Watcher = {
+            changeStream: mongoWatcher,
+            emitUpdate,
+            queryParams,
+            subscribers: [],
+        };
+        this.#setupWatcherListener(watcher, queryId);
         this.#queryIdtoWatcherMap.set(queryId, watcher);
     }
 
@@ -161,15 +166,11 @@ class MongoWatcherCollection {
      * Sets up listener to emit updates to clients on change events.
      *
      * @param watcher
-     * @param queryParameters
      * @param queryId
-     * @param emitUpdate
      */
     #setupWatcherListener (
         watcher: Watcher,
-        queryParameters: QueryParameters,
         queryId: QueryId,
-        emitUpdate: (data: object[]) => void
     ) {
         let lastEmitTime = 0;
         let emitTimeout: NodeJS.Timeout | null = null;
@@ -178,8 +179,8 @@ class MongoWatcherCollection {
             const currentTime = Date.now();
             if (CLIENT_UPDATE_TIMEOUT_MILLIS <= currentTime - lastEmitTime) {
                 lastEmitTime = currentTime;
-                const data = await this.find(queryParameters);
-                emitUpdate(data);
+                const data = await this.find(watcher.queryParams);
+                watcher.emitUpdate(data);
             } else if (null === emitTimeout) {
                 const delay = CLIENT_UPDATE_TIMEOUT_MILLIS - (currentTime - lastEmitTime);
 
@@ -187,8 +188,8 @@ class MongoWatcherCollection {
                     emitTimeout = null;
 
                     const fetchAndEmit = async () => {
-                        const data = await this.find(queryParameters);
-                        emitUpdate(data);
+                        const data = await this.find(watcher.queryParams);
+                        watcher.emitUpdate(data);
                     };
 
                     fetchAndEmit().catch((error: unknown) => {
@@ -209,6 +210,23 @@ class MongoWatcherCollection {
                 this.#logger.error(error, "Error in emitUpdatesWithTimeout");
             });
         });
+    }
+
+    /**
+     * Updates the limit for a watched query, re-queries with the new limit, and emits the result.
+     *
+     * @param queryId
+     * @param newLimit
+     */
+    async updateQueryLimit (queryId: QueryId, newLimit: number): Promise<void> {
+        const watcher = this.#queryIdtoWatcherMap.get(queryId);
+        if ("undefined" === typeof watcher) {
+            throw new Error(`No watcher found for queryID:${queryId}`);
+        }
+
+        watcher.queryParams.options.limit = newLimit;
+        const data = await this.find(watcher.queryParams);
+        watcher.emitUpdate(data);
     }
 }
 

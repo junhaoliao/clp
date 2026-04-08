@@ -59,6 +59,8 @@ const CLIENT_UPDATE_TIMEOUT_MILLIS = 500;
  */
 interface Watcher {
     changeStream: ChangeStream;
+    emitUpdate: (data: object[]) => void;
+    queryParams: QueryParameters;
     subscribers: ConnectionId[];
 }
 

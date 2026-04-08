@@ -1,20 +1,19 @@
-import type {PrestoSearchResult} from "@webui/common/presto";
-
 import MongoSocketCollection from "../../../../../../api/socket/MongoSocketCollection";
-import {useCursor} from "../../../../../../api/socket/useCursor";
+import {useLazyCursor} from "../../../../../../api/socket/useLazyCursor";
+import {PrestoSearchResult} from "@webui/common/presto";
 import useSearchStore, {SEARCH_STATE_DEFAULT} from "../../../../SearchState/index";
-import {SEARCH_MAX_NUM_RESULTS} from "../../typings";
+import {SEARCH_RESULTS_BATCH_SIZE} from "../../typings";
 
 
 /**
- * Custom hook to get Presto search results for the current searchJobId.
+ * Custom hook to get Presto search results for the current searchJobId with lazy loading support.
  *
  * @return
  */
 const usePrestoSearchResults = () => {
     const searchJobId = useSearchStore((state) => state.searchJobId);
 
-    const searchResultsCursor = useCursor<PrestoSearchResult>(
+    return useLazyCursor<PrestoSearchResult>(
         () => {
             // If there is no active search job, there are no results to fetch. The cursor will
             // return null.
@@ -26,7 +25,7 @@ const usePrestoSearchResults = () => {
                 `Subscribing to updates to Presto search results with job ID: ${searchJobId}`
             );
 
-            // Retrieve 1k most recent results.
+            // Retrieve initial batch of results sorted by _id descending.
             const options = {
                 sort: [
                     [
@@ -34,16 +33,20 @@ const usePrestoSearchResults = () => {
                         "desc",
                     ],
                 ],
-                limit: SEARCH_MAX_NUM_RESULTS,
+                limit: SEARCH_RESULTS_BATCH_SIZE,
             };
 
             const collection = new MongoSocketCollection(searchJobId);
-            return collection.find({}, options);
-        },
-        [searchJobId]
-    );
 
-    return searchResultsCursor;
+            return {
+                cursor: collection.find({}, options),
+                initialLimit: SEARCH_RESULTS_BATCH_SIZE,
+            };
+        },
+        [searchJobId],
+        SEARCH_RESULTS_BATCH_SIZE,
+    );
 };
+
 
 export {usePrestoSearchResults};
