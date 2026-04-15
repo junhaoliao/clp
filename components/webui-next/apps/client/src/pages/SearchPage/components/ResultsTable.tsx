@@ -72,7 +72,8 @@ const renderResultsContent = ({
     isQuerying: boolean;
     parentRef: React.RefObject<HTMLDivElement | null>;
     results: SearchResult[] | null;
-    virtualizer: ReturnType<typeof useVirtualizer>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    virtualizer: any;
 }) => {
     if (isQuerying && null === results) {
         return (
@@ -121,7 +122,7 @@ const renderResultsContent = ({
                             position: "relative",
                         }}
                     >
-                        {virtualizer.getVirtualItems().map((virtualRow) => {
+                        {virtualizer.getVirtualItems().map((virtualRow: {index: number; key: string; start: number; size: number}) => {
                             const result = results[virtualRow.index];
                             if (!result) {
                                 return null;
@@ -271,6 +272,7 @@ const ResultsTable = () => {
     }, [results,
         updateNumSearchResultsTable]);
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const virtualizer = useVirtualizer({
         count: results?.length ?? 0,
         estimateSize: () => INITIAL_ROW_HEIGHT_ESTIMATE,

@@ -121,7 +121,6 @@ tasks:
     deps:
       - "docker-images:package"
       - "generate-config-schemas"
-      - "webui-next"
       - task: "utils:checksum:validate"
         vars:
           CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
@@ -257,6 +256,7 @@ tasks:
       - "python-libs"
       - "rust"
       - "webui"
+      - "webui-next"
 
   webui:
     env:

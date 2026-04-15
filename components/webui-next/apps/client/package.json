@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -b && vite build",
+    "build": "tsc -b tsconfig.app.json && vite build",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest run",

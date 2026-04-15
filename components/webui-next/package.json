@@ -11,6 +11,12 @@
     "lint:fix": "turbo lint:fix",
     "check-types": "turbo check-types"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
+  },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.10.0",
     "eslint": "^9.39.4",

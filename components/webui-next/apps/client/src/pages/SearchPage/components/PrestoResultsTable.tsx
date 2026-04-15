@@ -43,7 +43,8 @@ const renderPrestoResultsContent = ({
     isQuerying: boolean;
     parentRef: React.RefObject<HTMLDivElement | null>;
     results: PrestoSearchResult[] | null;
-    virtualizer: ReturnType<typeof useVirtualizer>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    virtualizer: any;
 }) => {
     if (isQuerying && null === results) {
         return (
@@ -91,7 +92,7 @@ const renderPrestoResultsContent = ({
                             position: "relative",
                         }}
                     >
-                        {virtualizer.getVirtualItems().map((virtualRow) => {
+                        {virtualizer.getVirtualItems().map((virtualRow: {index: number; key: string; start: number; size: number}) => {
                             const result = results[virtualRow.index];
                             if (!result?.row) {
                                 return null;
