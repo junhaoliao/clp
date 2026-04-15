@@ -1,0 +1,31 @@
+{
+  "name": "clp-webui",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "test:coverage": "turbo test:coverage",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "check-types": "turbo check-types"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "eslint": "^9.39.4",
+    "eslint-config-yscope": "1.1.2",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-newlines": "^1.4.1",
+    "eslint-plugin-jsdoc": "^60.8.3",
+    "eslint-plugin-no-autofix": "^2.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^16.5.0",
+    "turbo": "^2",
+    "typescript": "^6",
+    "typescript-eslint": "^8.58.2"
+  }
+}

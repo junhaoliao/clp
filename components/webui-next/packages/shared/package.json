@@ -1,0 +1,29 @@
+{
+  "name": "@clp/webui-shared",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./schemas": "./dist/schemas/index.js",
+    "./config": "./dist/config.js",
+    "./socket": "./dist/socket.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "^4",
+    "typescript": "^6",
+    "vitest": "^4"
+  }
+}

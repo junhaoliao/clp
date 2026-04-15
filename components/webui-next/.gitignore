@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+*.env.local
+.env
+.playwright-cli/
+.claude/
+test-results/
+playwright-report/

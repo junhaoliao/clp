@@ -1,0 +1,42 @@
+# Docker Compose for integration/E2E testing of the webui-next stack.
+# Starts MariaDB and MongoDB with the same schema used by the production CLP package.
+#
+# Usage:
+#   docker compose -f docker-compose.test.yaml up -d
+#   docker compose -f docker-compose.test.yaml down -v
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: x-5kk4S9n3M
+      MARIADB_DATABASE: clp-db
+      MARIADB_USER: clp-user
+      MARIADB_PASSWORD: 3zSAEYJaHA4
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    environment:
+      # No auth for test environment
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mariadb-data:
+  mongodb-data:

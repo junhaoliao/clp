@@ -44,3 +44,4 @@ COPY --link --chown=${UID} ./build/python-libs/ lib/python3/site-packages/
 COPY --link --chown=${UID} ./build/rust-targets/release/api_server bin/
 COPY --link --chown=${UID} ./build/rust-targets/release/log-ingestor bin/
 COPY --link --chown=${UID} ./build/webui/ var/www/webui/
+COPY --link --chown=${UID} ./build/webui-next/ var/www/webui-next/

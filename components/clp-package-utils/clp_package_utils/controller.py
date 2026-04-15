@@ -834,6 +834,152 @@ class BaseController(ABC):
 
         return env_vars
 
+    def _set_up_env_for_webui_next(self, container_clp_config: ClpConfig) -> EnvVarsDict:
+        """
+        Sets up environment variables and settings for the new Web UI (webui-next) component.
+
+        :param container_clp_config: CLP configuration inside the containers.
+        :return: Dictionary of environment variables necessary to launch the component.
+        """
+        component_name = "webui-next"
+        logger.info(f"Setting up environment for {component_name}...")
+
+        container_webui_next_dir = CONTAINER_CLP_HOME / "var" / "www" / "webui-next"
+        client_settings_json_path = (
+            self._clp_home / "var" / "www" / "webui-next" / "apps" / "client" / "public"
+            / "settings.json"
+        )
+        server_settings_json_path = (
+            self._clp_home / "var" / "www" / "webui-next" / "apps" / "server" / "settings.json"
+        )
+
+        # Read, update, and write back client's and server's settings.json
+        clp_db_connection_params = self._clp_config.database.get_clp_connection_params_and_type(
+            True
+        )
+        table_prefix = clp_db_connection_params["table_prefix"]
+        if StorageEngine.CLP_S == self._clp_config.package.storage_engine:
+            archives_table_name = ""
+            files_table_name = ""
+        else:
+            archives_table_name = get_archives_table_name(table_prefix, None)
+            files_table_name = get_files_table_name(table_prefix, None)
+
+        client_settings_json_updates = {
+            "ClpStorageEngine": self._clp_config.package.storage_engine,
+            "ClpQueryEngine": self._clp_config.package.query_engine,
+            "LogsInputType": self._clp_config.logs_input.type,
+            "MaxDatasetsPerQuery": self._clp_config.query_scheduler.max_datasets_per_query,
+            "MongoDbSearchResultsMetadataCollectionName": (
+                self._clp_config.webui.results_metadata_collection_name
+            ),
+            "SqlDbClpArchivesTableName": archives_table_name,
+            "SqlDbClpDatasetsTableName": get_datasets_table_name(table_prefix),
+            "SqlDbClpFilesTableName": files_table_name,
+            "SqlDbClpTablePrefix": table_prefix,
+            "SqlDbCompressionJobsTableName": COMPRESSION_JOBS_TABLE_NAME,
+        }
+
+        server_settings_json_updates = {
+            "SqlDbHost": container_clp_config.database.host,
+            "SqlDbPort": container_clp_config.database.port,
+            "SqlDbName": self._clp_config.database.names[ClpDbNameType.CLP],
+            "SqlDbQueryJobsTableName": QUERY_JOBS_TABLE_NAME,
+            "SqlDbCompressionJobsTableName": COMPRESSION_JOBS_TABLE_NAME,
+            "MongoDbHost": container_clp_config.results_cache.host,
+            "MongoDbPort": container_clp_config.results_cache.port,
+            "MongoDbName": self._clp_config.results_cache.db_name,
+            "MongoDbSearchResultsMetadataCollectionName": (
+                self._clp_config.webui.results_metadata_collection_name
+            ),
+            "MongoDbStreamFilesCollectionName": (
+                self._clp_config.results_cache.stream_collection_name
+            ),
+            "ClientDir": str(container_webui_next_dir / "client"),
+            "LogViewerDir": str(container_webui_next_dir / "yscope-log-viewer"),
+            "StreamTargetUncompressedSize": self._clp_config.stream_output.target_uncompressed_size,
+            "ArchiveOutputCompressionLevel": self._clp_config.archive_output.compression_level,
+            "ArchiveOutputTargetArchiveSize": self._clp_config.archive_output.target_archive_size,
+            "ArchiveOutputTargetDictionariesSize": (
+                self._clp_config.archive_output.target_dictionaries_size
+            ),
+            "ArchiveOutputTargetEncodedFileSize": (
+                self._clp_config.archive_output.target_encoded_file_size
+            ),
+            "ArchiveOutputTargetSegmentSize": self._clp_config.archive_output.target_segment_size,
+            "ClpQueryEngine": self._clp_config.package.query_engine,
+            "ClpStorageEngine": self._clp_config.package.storage_engine,
+        }
+
+        stream_storage = self._clp_config.stream_output.storage
+        if StorageType.S3 == stream_storage.type:
+            s3_config = stream_storage.s3_config
+            server_settings_json_updates["StreamFilesDir"] = None
+            server_settings_json_updates["StreamFilesS3Region"] = s3_config.region_code
+            server_settings_json_updates["StreamFilesS3PathPrefix"] = (
+                f"{s3_config.bucket}/{s3_config.key_prefix}"
+            )
+            auth = s3_config.aws_authentication
+            if AwsAuthType.profile == auth.type:
+                server_settings_json_updates["StreamFilesS3Profile"] = auth.profile
+            else:
+                server_settings_json_updates["StreamFilesS3Profile"] = None
+        elif StorageType.FS == stream_storage.type:
+            server_settings_json_updates["StreamFilesDir"] = str(
+                container_clp_config.stream_output.get_directory()
+            )
+            server_settings_json_updates["StreamFilesS3Region"] = None
+            server_settings_json_updates["StreamFilesS3PathPrefix"] = None
+            server_settings_json_updates["StreamFilesS3Profile"] = None
+
+        query_engine = self._clp_config.package.query_engine
+        if QueryEngine.PRESTO == query_engine:
+            server_settings_json_updates["PrestoHost"] = container_clp_config.presto.host
+            server_settings_json_updates["PrestoPort"] = container_clp_config.presto.port
+        else:
+            server_settings_json_updates["PrestoHost"] = None
+            server_settings_json_updates["PrestoPort"] = None
+
+        if StorageType.FS == self._clp_config.logs_input.type:
+            client_settings_json_updates["LogsInputRootDir"] = str(CONTAINER_INPUT_LOGS_ROOT_DIR)
+            server_settings_json_updates["LogsInputRootDir"] = str(CONTAINER_INPUT_LOGS_ROOT_DIR)
+        else:
+            client_settings_json_updates["LogsInputRootDir"] = None
+            server_settings_json_updates["LogsInputRootDir"] = None
+
+        resolved_client_settings_json_path = resolve_host_path_in_container(
+            client_settings_json_path
+        )
+        client_settings_json = self._read_and_update_settings_json(
+            resolved_client_settings_json_path, client_settings_json_updates
+        )
+        with open(resolved_client_settings_json_path, "w") as client_settings_json_file:
+            client_settings_json_file.write(json.dumps(client_settings_json))
+
+        resolved_server_settings_json_path = resolve_host_path_in_container(
+            server_settings_json_path
+        )
+        server_settings_json = self._read_and_update_settings_json(
+            resolved_server_settings_json_path, server_settings_json_updates
+        )
+        with open(resolved_server_settings_json_path, "w") as settings_json_file:
+            settings_json_file.write(json.dumps(server_settings_json))
+
+        env_vars = EnvVarsDict()
+
+        # Connection config
+        env_vars |= {
+            "CLP_WEBUI_NEXT_HOST": _get_ip_from_hostname(self._clp_config.webui.host),
+            "CLP_WEBUI_NEXT_PORT": str(self._clp_config.webui.port + 1),
+        }
+
+        # Security config
+        env_vars |= {
+            "CLP_WEBUI_RATE_LIMIT": str(self._clp_config.webui.rate_limit),
+        }
+
+        return env_vars
+
     def _set_up_env_for_mcp_server(self) -> EnvVarsDict:
         """
         Sets up environment variables and directories for the MCP server component.
@@ -1060,6 +1206,7 @@ class DockerComposeController(BaseController):
         env_vars |= self._set_up_env_for_api_server()
         env_vars |= self._set_up_env_for_log_ingestor()
         env_vars |= self._set_up_env_for_webui(container_clp_config)
+        env_vars |= self._set_up_env_for_webui_next(container_clp_config)
         env_vars |= self._set_up_env_for_mcp_server()
         env_vars |= self._set_up_env_for_garbage_collector()
 

@@ -1,0 +1,49 @@
+{
+  "name": "@clp/webui-server",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./routes": {
+      "types": "./dist/routes/index.d.ts",
+      "import": "./dist/routes/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node --env-file=.env dist/index.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clp/webui-shared": "workspace:*",
+    "@hono/node-server": "^1",
+    "@hono/zod-openapi": "^1",
+    "hono-rate-limiter": "^0.5",
+    "@aws-sdk/client-s3": "^3",
+    "@aws-sdk/s3-request-presigner": "^3",
+    "@msgpack/msgpack": "^3",
+    "drizzle-orm": "^0.45",
+    "mysql2": "^3",
+    "mongodb": "^7",
+    "hono": "^4",
+    "socket.io": "^4",
+    "presto-client": "^1",
+    "@types/presto-client": "^1",
+    "zod": "^4",
+    "dotenv": "^17",
+    "close-with-grace": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "drizzle-kit": "^0.31",
+    "tsx": "^4",
+    "typescript": "^6",
+    "vitest": "^4",
+    "@vitest/coverage-v8": "^4"
+  }
+}

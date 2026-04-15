@@ -21,6 +21,7 @@ vars:
   G_CORE_COMPONENT_SUBMODULES_DIR: "{{.G_CORE_COMPONENT_DIR}}/submodules"
   G_PYTHON_WHEELS_YSCOPE_CLP_CORE_DIR: "{{.ROOT_DIR}}/python-wheels/yscope-clp-core"
   G_WEBUI_SRC_DIR: "{{.G_COMPONENTS_DIR}}/webui"
+  G_WEBUI_NEXT_SRC_DIR: "{{.G_COMPONENTS_DIR}}/webui-next"
 
   # Build paths
   G_BUILD_DIR: "{{.ROOT_DIR}}/build"
@@ -33,6 +34,7 @@ vars:
   G_RUST_BUILD_DIR: "{{.G_BUILD_DIR}}/rust-targets"
   G_SPIDER_BUILD_DIR: "{{.G_BUILD_DIR}}/spider"
   G_WEBUI_BUILD_DIR: "{{.G_BUILD_DIR}}/webui"
+  G_WEBUI_NEXT_BUILD_DIR: "{{.G_BUILD_DIR}}/webui-next"
 
   # Taskfile paths
   G_UTILS_TASKFILE: "{{.ROOT_DIR}}/tools/yscope-dev-utils/exports/taskfiles/utils/utils.yaml"
@@ -50,6 +52,7 @@ vars:
   G_PYTHON_LIBS_CHECKSUM_FILE: "{{.G_BUILD_DIR}}/python-libs.md5"
   G_WEBUI_CHECKSUM_FILE: "{{.G_BUILD_DIR}}/webui.md5"
   G_WEBUI_PACKAGE_NODE_MODULES_CHECKSUM_FILE: "{{.G_BUILD_DIR}}/webui-package-node-modules.md5"
+  G_WEBUI_NEXT_CHECKSUM_FILE: "{{.G_BUILD_DIR}}/webui-next.md5"
 
 tasks:
   default:
@@ -110,6 +113,7 @@ tasks:
       - "{{.G_CONFIG_SCHEMA_BUILD_DIR}}/clp-config.schema.json"
       - "{{.G_WEBUI_BUILD_DIR}}/client/settings.json"
       - "{{.G_WEBUI_BUILD_DIR}}/server/dist/settings.json"
+      - "{{.G_WEBUI_NEXT_BUILD_DIR}}/server/dist/index.js"
       - "{{.TASKFILE}}"
       - "components/package-template/src/**/*"
       - "tools/deployment/package/**/*"
@@ -117,6 +121,7 @@ tasks:
     deps:
       - "docker-images:package"
       - "generate-config-schemas"
+      - "webui-next"
       - task: "utils:checksum:validate"
         vars:
           CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
@@ -146,6 +151,10 @@ tasks:
         rsync --archive --mkpath
         "{{.G_WEBUI_BUILD_DIR}}/server/dist/settings.json"
         "{{.OUTPUT_DIR}}/var/www/webui/server/dist/"
+      - >-
+        rsync --archive --mkpath
+        "{{.G_WEBUI_NEXT_BUILD_DIR}}/"
+        "{{.OUTPUT_DIR}}/var/www/webui-next/"
       - >-
         rsync --archive
         "tools/deployment/package/"
@@ -307,6 +316,96 @@ tasks:
       - "rm -rf '{{.G_WEBUI_SRC_DIR}}/common/node_modules'"
       - "rm -rf '{{.G_WEBUI_SRC_DIR}}/node_modules'"
       - "rm -rf '{{.G_WEBUI_SRC_DIR}}/server/node_modules'"
+
+  # webui-next tasks (Hono + Zod + shadcn rewrite)
+  webui-next:
+    env:
+      NODE_ENV: "production"
+    vars:
+      CHECKSUM_FILE: "{{.G_WEBUI_NEXT_CHECKSUM_FILE}}"
+      OUTPUT_DIR: "{{.G_WEBUI_NEXT_BUILD_DIR}}"
+    sources:
+      - "{{.G_DEPS_LOG_VIEWER_BUILD_CHECKSUM_FILE}}"
+      - "{{.TASKFILE}}"
+      - "**/*"
+      - exclude: "**/dist/**/*"
+      - exclude: "**/node_modules/**/*"
+    dir: "{{.G_WEBUI_NEXT_SRC_DIR}}"
+    generates: ["{{.CHECKSUM_FILE}}"]
+    deps:
+      - "deps:yscope-log-viewer:build"
+      - "webui-next-deps"
+    cmds:
+      - "rm -rf '{{.OUTPUT_DIR}}'"
+      - "mkdir -p '{{.OUTPUT_DIR}}'"
+      - |-
+        cd "{{.G_WEBUI_NEXT_SRC_DIR}}"
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH corepack enable
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm --filter @clp/webui-server build
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm --filter @clp/webui-client build
+      - |-
+        mkdir -p "{{.OUTPUT_DIR}}/apps/server"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/apps/server/dist/" "{{.OUTPUT_DIR}}/apps/server/dist/"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/apps/server/package.json" "{{.OUTPUT_DIR}}/apps/server/"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/apps/server/settings.json" "{{.OUTPUT_DIR}}/apps/server/"
+      - |-
+        mkdir -p "{{.OUTPUT_DIR}}/apps/client"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/apps/client/dist/" "{{.OUTPUT_DIR}}/apps/client/"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/apps/client/public/" "{{.OUTPUT_DIR}}/apps/client/public/"
+      - |-
+        mkdir -p "{{.OUTPUT_DIR}}/packages/shared"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/packages/shared/dist/" "{{.OUTPUT_DIR}}/packages/shared/dist/"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/packages/shared/package.json" "{{.OUTPUT_DIR}}/packages/shared/"
+      - |-
+        rsync -a "{{.G_DEPS_LOG_VIEWER_BUILD_DIR}}/" "{{.OUTPUT_DIR}}/yscope-log-viewer/"
+      - |-
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/package.json" "{{.G_WEBUI_NEXT_SRC_DIR}}/pnpm-workspace.yaml" "{{.OUTPUT_DIR}}/"
+        rsync -a "{{.G_WEBUI_NEXT_SRC_DIR}}/pnpm-lock.yaml" "{{.OUTPUT_DIR}}/" || true
+      - |-
+        cd "{{.OUTPUT_DIR}}"
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH corepack enable
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install --prod --frozen-lockfile || \
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install --prod
+      - task: "utils:checksum:compute"
+        vars:
+          CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
+          INCLUDE_PATTERNS: ["{{.OUTPUT_DIR}}"]
+
+  webui-next-deps:
+    internal: true
+    vars:
+      PACKAGE_OUTPUT_DIR: "{{.G_WEBUI_NEXT_SRC_DIR}}/node_modules"
+    sources:
+      - "{{.G_NODEJS_22_CHECKSUM_FILE}}"
+      - "{{.TASKFILE}}"
+      - "apps/client/package.json"
+      - "apps/server/package.json"
+      - "packages/shared/package.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+    dir: "{{.G_WEBUI_NEXT_SRC_DIR}}"
+    deps:
+      - "toolchains:nodejs-22"
+    cmds:
+      - "rm -rf '{{.PACKAGE_OUTPUT_DIR}}'"
+      - |-
+        cd "{{.G_WEBUI_NEXT_SRC_DIR}}"
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH corepack enable
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH corepack install
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install --frozen-lockfile || \
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install
+
+  clean-webui-next:
+    cmds:
+      - "rm -rf '{{.G_WEBUI_NEXT_BUILD_DIR}}'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/node_modules'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/apps/client/node_modules'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/apps/server/node_modules'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/packages/shared/node_modules'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/apps/client/dist'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/apps/server/dist'"
+      - "rm -rf '{{.G_WEBUI_NEXT_SRC_DIR}}/packages/shared/dist'"
+      - "rm -f '{{.G_WEBUI_NEXT_CHECKSUM_FILE}}'"
 
   package-tar:
     internal: true

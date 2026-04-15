@@ -409,6 +409,53 @@ services:
         "http://webui:4000/"
       ]
 
+  webui-next:
+    <<: *service_defaults
+    hostname: "webui-next"
+    environment:
+      AWS_ACCESS_KEY_ID: "${CLP_STREAM_OUTPUT_AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${CLP_STREAM_OUTPUT_AWS_SECRET_ACCESS_KEY:-}"
+      CLP_DB_PASS: "${CLP_DB_PASS:?Please set a value.}"
+      CLP_DB_USER: "${CLP_DB_USER:-clp-user}"
+      HOST: "0.0.0.0"
+      NODE_ENV: "production"
+      NODE_PATH: "/opt/clp/var/www/webui-next/node_modules"
+      PORT: "4001"
+      RATE_LIMIT: "${CLP_WEBUI_RATE_LIMIT:-1000}"
+    ports:
+      - host_ip: "${CLP_WEBUI_NEXT_HOST:-127.0.0.1}"
+        published: "${CLP_WEBUI_NEXT_PORT:-4001}"
+        target: 4001
+    volumes:
+      - "${CLP_AWS_CONFIG_DIR_HOST:-empty}:/opt/clp/.aws:ro"
+      - "${CLP_LOGS_INPUT_DIR_HOST:-empty}:${CLP_LOGS_INPUT_DIR_CONTAINER:-/mnt/logs}:ro"
+      - "${CLP_STREAM_OUTPUT_DIR_HOST:-empty}:/var/data/streams:ro"
+      - type: "bind"
+        source: "./var/www/webui-next/apps/client/public/settings.json"
+        target: "/opt/clp/var/www/webui-next/apps/client/public/settings.json"
+        read_only: true
+      - type: "bind"
+        source: "./var/www/webui-next/apps/server/settings.json"
+        target: "/opt/clp/var/www/webui-next/apps/server/settings.json"
+        read_only: true
+    depends_on:
+      db-table-creator:
+        condition: "service_completed_successfully"
+      results-cache-indices-creator:
+        condition: "service_completed_successfully"
+    command: [
+      "/opt/clp/bin/node-22",
+      "/opt/clp/var/www/webui-next/apps/server/dist/index.js"
+    ]
+    healthcheck:
+      <<: *healthcheck_defaults
+      test: [
+        "CMD",
+        "curl",
+        "-f",
+        "http://webui-next:4001/"
+      ]
+
   garbage-collector:
     <<: *service_defaults
     hostname: "garbage_collector"
