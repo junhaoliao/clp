@@ -846,7 +846,7 @@ class BaseController(ABC):
 
         container_webui_next_dir = CONTAINER_CLP_HOME / "var" / "www" / "webui-next"
         client_settings_json_path = (
-            self._clp_home / "var" / "www" / "webui-next" / "apps" / "client" / "public"
+            self._clp_home / "var" / "www" / "webui-next" / "apps" / "client"
             / "settings.json"
         )
         server_settings_json_path = (
@@ -895,7 +895,7 @@ class BaseController(ABC):
             "MongoDbStreamFilesCollectionName": (
                 self._clp_config.results_cache.stream_collection_name
             ),
-            "ClientDir": str(container_webui_next_dir / "client"),
+            "ClientDir": str(container_webui_next_dir / "apps" / "client"),
             "LogViewerDir": str(container_webui_next_dir / "yscope-log-viewer"),
             "StreamTargetUncompressedSize": self._clp_config.stream_output.target_uncompressed_size,
             "ArchiveOutputCompressionLevel": self._clp_config.archive_output.compression_level,

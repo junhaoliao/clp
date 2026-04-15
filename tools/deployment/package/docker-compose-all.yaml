@@ -431,8 +431,8 @@ services:
       - "${CLP_LOGS_INPUT_DIR_HOST:-empty}:${CLP_LOGS_INPUT_DIR_CONTAINER:-/mnt/logs}:ro"
       - "${CLP_STREAM_OUTPUT_DIR_HOST:-empty}:/var/data/streams:ro"
       - type: "bind"
-        source: "./var/www/webui-next/apps/client/public/settings.json"
-        target: "/opt/clp/var/www/webui-next/apps/client/public/settings.json"
+        source: "./var/www/webui-next/apps/client/settings.json"
+        target: "/opt/clp/var/www/webui-next/apps/client/settings.json"
         read_only: true
       - type: "bind"
         source: "./var/www/webui-next/apps/server/settings.json"

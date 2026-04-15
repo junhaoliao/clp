@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import {Button} from "../../../components/ui/button";
+import {SETTINGS_LOGS_INPUT_ROOT_DIR} from "../../../config";
 
 
 interface FileNode {
@@ -270,7 +271,7 @@ const PathsSelect = ({onPathsChange, paths}: PathsSelectProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const loadedDirsRef = useRef<Set<string>>(new Set());
 
-    const rootPath = "/";
+    const rootPath = SETTINGS_LOGS_INPUT_ROOT_DIR ?? "/";
 
     const loadDirectory = useCallback(async (dirPath: string) => {
         if (loadedDirsRef.current.has(dirPath)) {

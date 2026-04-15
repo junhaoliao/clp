@@ -17,6 +17,17 @@ import {
 import {PathsSelect} from "./PathsSelect";
 
 
+// Mock config module
+vi.mock("../../../config", () => ({
+    SETTINGS_LOGS_INPUT_ROOT_DIR: "/",
+    SETTINGS_LOGS_INPUT_TYPE: "fs",
+    SETTINGS_MAX_DATASETS_PER_QUERY: 10,
+    SETTINGS_QUERY_ENGINE: "clp-s",
+    SETTINGS_STORAGE_ENGINE: "clp-s",
+    STREAM_TYPE: "json",
+}));
+
+
 // Mock lucide-react icons as simple text spans
 vi.mock("lucide-react", () => ({
     Folder: ({className}: {className?: string}) => (
