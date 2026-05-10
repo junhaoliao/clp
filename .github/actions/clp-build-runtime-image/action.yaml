@@ -71,3 +71,5 @@ runs:
         push: true
         tags: "${{steps.extract-gh-meta.outputs.tags}}"
         labels: "${{steps.extract-gh-meta.outputs.labels}}"
+        build-args: |
+          UBUNTU_VERSION=${{inputs.platform_version_id}}

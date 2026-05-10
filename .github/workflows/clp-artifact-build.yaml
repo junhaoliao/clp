@@ -43,6 +43,7 @@ jobs:
       musllinux_1_2_aarch64_image_changed: "${{steps.filter.outputs.musllinux_1_2_aarch64_image}}"
       musllinux_1_2_x86_64_image_changed: "${{steps.filter.outputs.musllinux_1_2_x86_64_image}}"
       ubuntu_jammy_image_changed: "${{steps.filter.outputs.ubuntu_jammy_image}}"
+      ubuntu_noble_image_changed: "${{steps.filter.outputs.ubuntu_noble_image}}"
       clp_changed: "${{steps.filter.outputs.clp}}"
       yscope_clp_core_changed: "${{steps.filter.outputs.yscope-clp-core}}"
     steps:
@@ -100,6 +101,10 @@ jobs:
               - *_deps_images_common_paths
               - "components/core/tools/docker-images/clp-env-base-ubuntu-jammy/**"
               - "components/core/tools/scripts/lib_install/ubuntu-jammy/**"
+            ubuntu_noble_image:
+              - *_deps_images_common_paths
+              - "components/core/tools/docker-images/clp-env-base-ubuntu-noble/**"
+              - "components/core/tools/scripts/lib_install/ubuntu-noble/**"
             clp:
               - ".github/actions/**"
               - ".github/workflows/clp-artifact-build.yaml"
@@ -267,6 +272,32 @@ jobs:
       - uses: "./.github/actions/clp-core-build-containers"
         env:
           OS_NAME: "ubuntu-jammy"
+        with:
+          image_name: "${{env.DEPS_IMAGE_NAME_PREFIX_X86}}${{env.OS_NAME}}"
+          docker_context: "components/core"
+          docker_file: "components/core/tools/docker-images/clp-env-base-${{env.OS_NAME}}\
+            /Dockerfile"
+          push_deps_image: >-
+            ${{github.event_name != 'pull_request' && github.ref == 'refs/heads/main'}}
+          token: "${{secrets.GITHUB_TOKEN}}"
+
+  ubuntu-noble-deps-image:
+    name: "ubuntu-noble-deps-image"
+    if: "needs.filter-relevant-changes.outputs.ubuntu_noble_image_changed == 'true'"
+    needs: "filter-relevant-changes"
+    runs-on: *runner
+    steps:
+      - uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"  # v6.0.2
+        with:
+          submodules: "recursive"
+
+      - name: "Work around actions/runner-images/issues/6775"
+        run: "chown $(id -u):$(id -g) -R ."
+        shell: "bash"
+
+      - uses: "./.github/actions/clp-core-build-containers"
+        env:
+          OS_NAME: "ubuntu-noble"
         with:
           image_name: "${{env.DEPS_IMAGE_NAME_PREFIX_X86}}${{env.OS_NAME}}"
           docker_context: "components/core"
@@ -687,3 +718,5 @@ jobs:
           image_registry: "ghcr.io"
           image_registry_username: "${{github.actor}}"
           image_registry_password: "${{secrets.GITHUB_TOKEN}}"
+          platform_id: "ubuntu"
+          platform_version_id: "jammy"

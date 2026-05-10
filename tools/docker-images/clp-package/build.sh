@@ -36,6 +36,18 @@ build_cmd=(
     --file "${script_dir}/Dockerfile"
 )
 
+# Detect the host's Ubuntu codename so the runtime image's glibc matches the host's.
+# Binaries built on the host are copied into the runtime image, so the base image must
+# have a glibc version >= the host's.
+ubuntu_version="jammy"
+if [[ -f /etc/os-release ]]; then
+    host_codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+    if [[ -n "$host_codename" ]]; then
+        ubuntu_version="$host_codename"
+    fi
+fi
+build_cmd+=(--build-arg "UBUNTU_VERSION=${ubuntu_version}")
+
 if command -v git >/dev/null && git -C "$script_dir" rev-parse --is-inside-work-tree >/dev/null;
 then
     build_cmd+=(

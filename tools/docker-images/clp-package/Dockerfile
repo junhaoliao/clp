@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:jammy AS base
+ARG UBUNTU_VERSION=jammy
+FROM ubuntu:${UBUNTU_VERSION} AS base
 
 WORKDIR /root
 
