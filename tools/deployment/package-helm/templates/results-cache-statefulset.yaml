@@ -23,6 +23,22 @@ spec:
           "root" .
           "component" "resultsCache"
         ) | nindent 6 }}
+      initContainers:
+        - name: "results-cache-indices-creator"
+          image: "{{ include "clp.image.ref" . }}"
+          imagePullPolicy: "{{ .Values.image.clpPackage.pullPolicy }}"
+          restartPolicy: Always
+          env:
+            - name: "PYTHONPATH"
+              value: "/opt/clp/lib/python3/site-packages"
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              python3 -u -m clp_py_utils.initialize-results-cache \
+                --uri "mongodb://{{ include "clp.resultsCacheHost" . }}:{{ include "clp.resultsCachePort" . | int }}/{{ .Values.clpConfig.results_cache.db_name }}" \
+                --stream-collection "{{ .Values.clpConfig.results_cache.stream_collection_name }}"
+              exec sleep infinity
       containers:
         - name: "results-cache"
           image: "mongo:8.0.21"
@@ -46,16 +62,28 @@ spec:
           ]
           readinessProbe:
             {{- include "clp.readinessProbeTimings" . | nindent 12 }}
-            exec: &results-cache-health-check
+            exec:
+              command:
+                - "mongosh"
+                - "127.0.0.1:27017/admin"
+                - "--quiet"
+                - "--eval"
+                - |
+                  if (db.runCommand('ping').ok !== 1) { quit(1); }
+                  try {
+                    var status = db.runCommand({replSetGetStatus: 1});
+                    var hasPrimary = status.members.some(function(m) { return m.stateStr === 'PRIMARY'; });
+                    if (!hasPrimary) { quit(1); }
+                  } catch (e) { quit(1); }
+          livenessProbe:
+            {{- include "clp.livenessProbeTimings" . | nindent 12 }}
+            exec:
               command:
                 - "mongosh"
                 - "127.0.0.1:27017/test"
                 - "--quiet"
                 - "--eval"
                 - "db.runCommand('ping').ok"
-          livenessProbe:
-            {{- include "clp.livenessProbeTimings" . | nindent 12 }}
-            exec: *results-cache-health-check
       volumes:
         - name: "config"
           configMap:

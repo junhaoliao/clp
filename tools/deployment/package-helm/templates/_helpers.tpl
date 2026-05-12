@@ -406,6 +406,32 @@ command: [
 {{- end }}
 
 {{/*
+Creates an initContainer that waits for the results-cache to be ready. When the results cache is
+bundled, it waits for the results-cache service (pod readiness, which includes PRIMARY availability
+since the readiness probe checks for it). When the results cache is not bundled, it waits for the
+results-cache-indices-creator Job to complete (which initializes the replica set and creates
+indexes on the externally-managed MongoDB instance).
+
+@param {object} . Root template context
+@return {string} YAML-formatted initContainer definition
+*/}}
+{{- define "clp.waitForResultsCache" -}}
+{{- if has "results_cache" .Values.clpConfig.bundled -}}
+{{- include "clp.waitFor" (dict
+    "root" .
+    "type" "service"
+    "name" "results-cache"
+  ) -}}
+{{- else -}}
+{{- include "clp.waitFor" (dict
+    "root" .
+    "type" "job"
+    "name" "results-cache-indices-creator"
+  ) -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Creates scheduling configuration (nodeSelector, affinity, tolerations, topologySpreadConstraints)
 for a component.
 
