@@ -1,0 +1,33 @@
+{
+  "name": "@webui/utils",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLP Dashboard shared utilities",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w --preserveWatchOutput",
+    "lint:check": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "YScope Inc. <dev@yscope.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:",
+    "dayjs": "catalog:"
+  },
+  "devDependencies": {
+    "eslint-config-yscope": "1.1.2",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

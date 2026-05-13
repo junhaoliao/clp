@@ -284,24 +284,30 @@ tasks:
       - "rm -rf '{{.OUTPUT_DIR}}'"
       - "mkdir -p '{{.OUTPUT_DIR}}'"
       - |-
-        cd common
+        cd packages/common
         PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
         rsync -a package.json dist "{{.OUTPUT_DIR}}/common/"
       - |-
-        cd client
+        cd apps/webui
         PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build -- \
         --emptyOutDir --outDir '{{.OUTPUT_DIR}}/client'
       - |-
         rsync -a "{{.G_DEPS_LOG_VIEWER_BUILD_DIR}}/" "{{.OUTPUT_DIR}}/yscope-log-viewer/"
       - |-
-        cd server
+        cd packages/server
         PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npx tsc --outDir '{{.OUTPUT_DIR}}/server/dist'
         rsync -a package.json "{{.OUTPUT_DIR}}/server/"
       - |-
-        rsync -a package.json package-lock.json "{{.OUTPUT_DIR}}/"
+        cd packages/datasource
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
+        rsync -a package.json dist "{{.OUTPUT_DIR}}/datasource/"
+      - |-
+        rsync -a package.json pnpm-lock.yaml pnpm-workspace.yaml "{{.OUTPUT_DIR}}/"
       - |-
         cd "{{.OUTPUT_DIR}}"
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm ci --omit=dev
+        python3 {{.ROOT_DIR}}/taskfiles/webui-rewrite-workspace.py pnpm-workspace.yaml
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install --prod --node-linker=hoisted
+        rm -f pnpm-workspace.yaml
       - task: "utils:checksum:compute"
         vars:
           CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
@@ -310,10 +316,10 @@ tasks:
   clean-webui-package-node-modules:
     internal: true
     cmds:
-      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/client/node_modules'"
-      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/common/node_modules'"
+      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/apps/webui/node_modules'"
+      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/packages/common/node_modules'"
       - "rm -rf '{{.G_WEBUI_SRC_DIR}}/node_modules'"
-      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/server/node_modules'"
+      - "rm -rf '{{.G_WEBUI_SRC_DIR}}/packages/server/node_modules'"
 
   package-tar:
     internal: true
@@ -478,11 +484,11 @@ tasks:
     sources:
       - "{{.G_NODEJS_22_CHECKSUM_FILE}}"
       - "{{.TASKFILE}}"
-      - "client/package.json"
-      - "common/package.json"
-      - "package-lock.json"
+      - "apps/webui/package.json"
+      - "packages/common/package.json"
+      - "pnpm-lock.yaml"
       - "package.json"
-      - "server/package.json"
+      - "packages/server/package.json"
     dir: "{{.G_WEBUI_SRC_DIR}}"
     generates:
       - "{{.G_WEBUI_PACKAGE_NODE_MODULES_CHECKSUM_FILE}}"
@@ -494,13 +500,10 @@ tasks:
           INCLUDE_PATTERNS: ["{{.PACKAGE_OUTPUT_DIR}}"]
     cmds:
       - task: "clean-webui-package-node-modules"
-      - "PATH='{{.G_NODEJS_22_BIN_DIR}}':$PATH npm run init"
+      - "PATH='{{.G_NODEJS_22_BIN_DIR}}':$PATH pnpm run init"
 
-      # Verify that npm fully hoisted all workspace packages to the root node_modules. If this
-      # fails, a peer dependency conflict is forcing npm to create a per-workspace node_modules, and
-      # you should check the npm install output and resolve any hoisting conflicts.
-      - for: ["client", "common", "server"]
-        cmd: "test ! -d '{{.G_WEBUI_SRC_DIR}}/{{.ITEM}}/node_modules'"
+      # pnpm intentionally creates per-workspace node_modules (symlinks to the content store),
+      # so the npm-style hoisting check does not apply.
 
       # This command must be last
       - task: "utils:checksum:compute"
