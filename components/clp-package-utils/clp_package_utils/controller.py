@@ -740,6 +740,7 @@ class BaseController(ABC):
             "SqlDbName": self._clp_config.database.names[ClpDbNameType.CLP],
             "SqlDbQueryJobsTableName": QUERY_JOBS_TABLE_NAME,
             "SqlDbCompressionJobsTableName": COMPRESSION_JOBS_TABLE_NAME,
+            "SqlDbClpDatasetsTableName": get_datasets_table_name(table_prefix),
             "MongoDbHost": container_clp_config.results_cache.host,
             "MongoDbPort": container_clp_config.results_cache.port,
             "MongoDbName": self._clp_config.results_cache.db_name,
