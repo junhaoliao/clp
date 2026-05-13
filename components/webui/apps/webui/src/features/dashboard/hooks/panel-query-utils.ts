@@ -26,25 +26,45 @@ interface ExecutePanelQueryOpts {
 export async function executePanelQuery (opts: ExecutePanelQueryOpts): Promise<DataQueryResponse> {
     const dsType = opts.panel.datasource.type;
     const interpolatedQueries = opts.panel.queries.map((q) => {
-        if ("string" !== typeof q.query) {
-            return {...q};
+        if ("string" === typeof q.query) {
+            if ("mysql" === dsType) {
+                const {params, sql} = parameterizeVariables(q.query, opts.resolvedVars);
+                return {...q, params, query: sql};
+            }
+
+            return {...q, query: opts.replaceVariables(q.query)};
         }
 
-        if ("mysql" === dsType) {
-            const {params, sql} = parameterizeVariables(q.query, opts.resolvedVars);
-            return {...q, params, query: sql};
+        // CLP query objects: interpolate variables in queryString
+        if ("clp" === dsType && "object" === typeof q.query && null !== q.query) {
+            const obj = q.query as Record<string, unknown>;
+            const qs = "string" === typeof obj["queryString"] ?
+                opts.replaceVariables(obj["queryString"]) : "";
+            return {...q, query: {...obj, queryString: qs}};
         }
 
-        return {...q, query: opts.replaceVariables(q.query)};
+        return {...q};
     });
 
     if (0 === interpolatedQueries.length) {
         return {data: []};
     }
 
-    // CLP queries use SSE streaming for progressive results from the async job queue
+    // CLP queries: extract structured fields (queryString, datasets) from query objects
     if ("clp" === dsType) {
-        return executeClpPanelQuery(interpolatedQueries, opts);
+        const clpQueries = interpolatedQueries.map((q) => {
+            const queryObj = "object" === typeof q.query && null !== q.query ?
+                q.query as Record<string, unknown> :
+                {queryString: q.query};
+            return {
+                ...q,
+                datasets: Array.isArray(queryObj["datasets"]) ?
+                    queryObj["datasets"] as string[] : [],
+                ignoreCase: Boolean(queryObj["ignoreCase"]),
+                query: typeof queryObj["queryString"] === "string" ? queryObj["queryString"] : (typeof q.query === "string" ? q.query : ""),
+            };
+        });
+        return executeClpPanelQuery(clpQueries, opts);
     }
 
     const response = await fetch(`/api/datasource/${dsType}/query`, {

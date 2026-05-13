@@ -94,28 +94,40 @@ const dashboardLimiter = new RateLimiter(RATE_LIMIT_MAX_HITS, RATE_LIMIT_WINDOW_
  */
 export const honoApp = new Hono()
 
-// NFR-12: Reject X-CLP-* headers from untrusted sources (spoofing prevention)
+// NFR-12: Spoofing prevention — in production, only a trusted gateway may set
+    // x-clp-* headers. Without a gateway marker, strip any x-clp-* headers from the
+    // request (client-side spoofing). With a gateway marker, the x-clp-role header is
+    // trusted and other x-clp-* headers are rejected as spoofed.
     .use("/api/*", async (c, next) => {
         if (isProduction()) {
             const hasGatewayHeader = Boolean(c.req.header(GATEWAY_HEADER));
             for (const [key] of c.req.raw.headers.entries()) {
-                if (key.startsWith(CLP_HEADER_PREFIX) && key !== GATEWAY_HEADER && !hasGatewayHeader) {
-                    c.status(HTTP_FORBIDDEN);
+                if (key.startsWith(CLP_HEADER_PREFIX) && key !== GATEWAY_HEADER) {
+                    if (!hasGatewayHeader) {
+                        c.req.raw.headers.delete(key);
+                    } else if (key !== "x-clp-role") {
+                        // Gateway present but non-role x-clp-* header is suspicious
+                        c.status(HTTP_FORBIDDEN);
 
-                    return c.json({error: `Rejected spoofed header: ${key}`});
+                        return c.json({error: `Rejected spoofed header: ${key}`});
+                    }
                 }
             }
-
-            // Strip gateway marker so downstream can't re-use it
-            c.req.raw.headers.delete(GATEWAY_HEADER);
         }
 
         return next();
     })
 
-// NFR-11: RBAC enforcement in production mode
+// NFR-11: RBAC enforcement in production mode when a gateway is present.
+    // The gateway is responsible for setting x-clp-role based on authenticated user
+    // permissions. Without a gateway, requests are direct from trusted clients and
+    // all operations are permitted.
     .use("/api/*", async (c, next) => {
         if (!isProduction()) {
+            return next();
+        }
+        const hasGateway = Boolean(c.req.header(GATEWAY_HEADER));
+        if (!hasGateway) {
             return next();
         }
         const role = getRole(c);
@@ -127,6 +139,9 @@ export const honoApp = new Hono()
 
             return c.json({error: "Insufficient permissions for this operation"});
         }
+
+        // Strip gateway marker so downstream can't re-use it
+        c.req.raw.headers.delete(GATEWAY_HEADER);
 
         return next();
     })

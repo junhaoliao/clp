@@ -77,13 +77,17 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
         if (!d) return;
         const maxY = d.panels.reduce((max, p) => Math.max(max, p.gridPos.y + p.gridPos.h), 0);
         const id = `panel-${Date.now()}`;
+        const dsType = "logs" === type ? "clp" : "mysql";
+        const query = "clp" === dsType ?
+          {queryString: "", datasets: []} :
+          "";
         const newPanel: DashboardPanel = {
           id,
           type,
           title: type.charAt(0).toUpperCase() + type.slice(1),
           gridPos: {...DEFAULT_GRID_POS[type] ?? {x: 0, y: 0, w: 6, h: 4}, y: maxY},
-          datasource: {type: "mysql", uid: "default"},
-          queries: [{refId: "A", datasource: {type: "mysql", uid: "default"}, query: ""}],
+          datasource: {type: dsType, uid: "default"},
+          queries: [{refId: "A", datasource: {type: dsType, uid: "default"}, query}],
           options: {},
         };
         set({

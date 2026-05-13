@@ -245,7 +245,19 @@ export function usePanelQueries (panel: DashboardPanel, opts?: UsePanelQueriesOp
     }, []);
 
     const query = useQuery({
-        enabled: (false !== opts?.enabled) && 0 < panel.queries.length && panel.queries.some((q) => "" !== q.query),
+        enabled: (false !== opts?.enabled) && 0 < panel.queries.length && panel.queries.some((q) => {
+            if ("string" === typeof q.query) {
+                return "" !== q.query;
+            }
+            // CLP query objects: {queryString, datasets}
+            if ("object" === typeof q.query && null !== q.query) {
+                const obj = q.query as Record<string, unknown>;
+                const qs = "string" === typeof obj["queryString"] ? obj["queryString"] : "";
+                return "" !== qs;
+            }
+
+            return false;
+        }),
         queryFn: () => enqueue(queryFn),
         queryKey: queryKey,
         refetchOnWindowFocus: false,

@@ -19,6 +19,7 @@ import {executeClpQueryStreaming} from "./clp-query-executor.js";
 import type {DatasourceStorage} from "../storage/datasource-storage.js";
 import {InMemoryDatasourceStorage} from "../storage/datasource-storage.js";
 import {toMySQLDatetime} from "../storage/datetime-utils.js";
+import settings from "../../settings.json" with {type: "json"};
 
 
 /** Datasource storage (swappable: in-memory for dev, MySQL for production) */
@@ -198,6 +199,19 @@ export const datasourceRoutes = new Hono()
                 await stream.writeSSE({data: JSON.stringify({type: "error", errors: [{message, refId: requestId}]})});
             }
         });
+    })
+    .get("/clp/datasets", async (c) => {
+        try {
+            // eslint-disable-next-line dot-notation
+            const tableName = settings["SqlDbClpDatasetsTableName"] ?? "clp_datasets";
+            const rows = await executeMySQLQuery(
+                `SELECT name FROM ${tableName} ORDER BY name`,
+            );
+            // eslint-disable-next-line dot-notation
+            return c.json(rows.map((r) => r["name"] as string));
+        } catch {
+            return c.json([]);
+        }
     });
 
 /**
@@ -402,16 +416,11 @@ async function executeMySQLQuery (
 ): Promise<Record<string, unknown>[]> {
     // In production, this uses the @fastify/mysql connection
     // For now, use mysql2 directly with env-based config
+    const {SqlDbHost: host, SqlDbPort: port, SqlDbName: database} = settings;
     // eslint-disable-next-line dot-notation
-    const host = process.env["MYSQL_HOST"] ?? "localhost";
+    const user = process.env["CLP_DB_USER"] ?? "clp-user";
     // eslint-disable-next-line dot-notation
-    const port = parseInt(process.env["MYSQL_PORT"] ?? "3306", 10);
-    // eslint-disable-next-line dot-notation
-    const user = process.env["MYSQL_USER"] ?? "clp";
-    // eslint-disable-next-line dot-notation
-    const password = process.env["MYSQL_PASSWORD"] ?? "";
-    // eslint-disable-next-line dot-notation
-    const database = process.env["MYSQL_DATABASE"] ?? "clp";
+    const password = process.env["CLP_DB_PASS"] ?? "";
 
     const mysql = await import("mysql2/promise");
     const connection = await mysql.createConnection({host, port, user, password, database});
@@ -461,16 +470,11 @@ async function executeMySQLQueryStream (
     timeoutMs: number = QUERY_TIMEOUTS.MYSQL_QUERY_TIMEOUT_MS,
     params?: unknown[],
 ): Promise<void> {
+    const {SqlDbHost: host, SqlDbPort: port, SqlDbName: database} = settings;
     // eslint-disable-next-line dot-notation
-    const host = process.env["MYSQL_HOST"] ?? "localhost";
+    const user = process.env["CLP_DB_USER"] ?? "clp-user";
     // eslint-disable-next-line dot-notation
-    const port = parseInt(process.env["MYSQL_PORT"] ?? "3306", 10);
-    // eslint-disable-next-line dot-underscore-dangle
-    const user = process.env["MYSQL_USER"] ?? "clp";
-    // eslint-disable-next-line dot-notation
-    const password = process.env["MYSQL_PASSWORD"] ?? "";
-    // eslint-disable-next-line dot-notation
-    const database = process.env["MYSQL_DATABASE"] ?? "clp";
+    const password = process.env["CLP_DB_PASS"] ?? "";
 
     // Use callback-based mysql2 for streaming support (query().stream())
     const mysqlCb = await import("mysql2");
@@ -622,5 +626,6 @@ function buildInfinityQuery (query: {refId: string; query: unknown; [key: string
 
     return result as unknown as Parameters<typeof executeInfinityQuery>[0];
 }
+
 
 export type DatasourceRoutesType = typeof datasourceRoutes;

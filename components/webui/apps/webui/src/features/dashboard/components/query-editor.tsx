@@ -1,3 +1,4 @@
+import React from "react";
 import type {DashboardPanel} from "@webui/common/dashboard/types";
 
 
@@ -62,18 +63,62 @@ const MysqlQueryEditor = ({panel, updatePanel}: {panel: DashboardPanel; updatePa
  * @param root0.updatePanel
  */
 const ClpQueryEditor = ({panel, updatePanel}: {panel: DashboardPanel; updatePanel: (id: string, updates: Partial<DashboardPanel>) => void}) => {
-    const queryStr = strVal(panel.queries[0]?.query, "");
+    // CLP query is stored as an object: {queryString: string, datasets: string[]}
+    const query0 = panel.queries[0]?.query;
+    const queryObj = "object" === typeof query0 && null !== query0 ?
+        query0 as Record<string, unknown> :
+        {queryString: "string" === typeof query0 ? query0 : "", datasets: []};
+    const queryString = strVal(queryObj["queryString"], "string" === typeof query0 ? query0 : "");
+    const datasets = Array.isArray(queryObj["datasets"]) ?
+        queryObj["datasets"] as string[] :
+        [];
+
+    const doUpdate = (patch: Record<string, unknown>) => {
+        updateQuery(panel, updatePanel, {...queryObj, ...patch});
+    };
+
+    // Fetch available datasets from server
+    const [availableDatasets, setAvailableDatasets] = React.useState<string[]>([]);
+    React.useEffect(() => {
+        fetch("/api/datasource/clp/datasets")
+            .then((res) => res.ok ? res.json() : [])
+            .then((data: string[]) => setAvailableDatasets(data))
+            .catch(() => setAvailableDatasets([]));
+    }, []);
 
     return (
-        <div>
-            <label className={"text-xs text-muted-foreground"}>KQL Query</label>
-            <textarea
-                className={"w-full h-24 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
-                placeholder={"level:ERROR AND service:web"}
-                value={queryStr}
-                onChange={(e) => {
-                    updateQuery(panel, updatePanel, e.target.value);
-                }}/>
+        <div className={"space-y-2"}>
+            <div>
+                <label className={"text-xs text-muted-foreground"}>Datasets</label>
+                <select
+                    className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs"}
+                    value={0 < datasets.length ? datasets[0] : ""}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        doUpdate({datasets: val ? [val] : []});
+                    }}
+                >
+                    <option value={""}>Default (all)</option>
+                    {availableDatasets.map((ds) => (
+                        <option key={ds} value={ds}>{ds}</option>
+                    ))}
+                </select>
+                <p className={"text-[10px] text-muted-foreground mt-1"}>
+                    {0 === availableDatasets.length ?
+                        "No datasets found — ingest data first" :
+                        "Select a dataset or use default"}
+                </p>
+            </div>
+            <div>
+                <label className={"text-xs text-muted-foreground"}>KQL Query</label>
+                <textarea
+                    className={"w-full h-24 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
+                    placeholder={"level:ERROR AND service:web"}
+                    value={queryString}
+                    onChange={(e) => {
+                        doUpdate({queryString: e.target.value});
+                    }}/>
+            </div>
         </div>
     );
 };

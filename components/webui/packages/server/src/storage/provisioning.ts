@@ -2,6 +2,7 @@ import type {DatasourceInstance, DatasourceType} from "@webui/common/dashboard/t
 import type {DatasourceStorage} from "./datasource-storage.js";
 import {toMySQLDatetime} from "./datetime-utils.js";
 import {nanoid} from "nanoid";
+import settings from "../../settings.json" with {type: "json"};
 
 export interface ProvisionedDatasource {
   name: string;
@@ -24,11 +25,11 @@ function getDefaultProvisioningConfig(): ProvisioningConfig {
         uid: "clp-mysql",
         isDefault: true,
         config: {
-          host: process.env["MYSQL_HOST"] ?? "localhost",
-          port: parseInt(process.env["MYSQL_PORT"] ?? "3306", 10),
-          user: process.env["MYSQL_USER"] ?? "clp",
-          password: process.env["MYSQL_PASSWORD"] ?? "",
-          database: process.env["MYSQL_DATABASE"] ?? "clp",
+          host: settings.SqlDbHost,
+          port: settings.SqlDbPort,
+          user: process.env["CLP_DB_USER"] ?? "clp-user",
+          password: process.env["CLP_DB_PASS"] ?? "",
+          database: settings.SqlDbName,
         },
       },
       {

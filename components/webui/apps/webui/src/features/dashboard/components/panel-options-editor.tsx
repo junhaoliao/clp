@@ -218,8 +218,18 @@ export const PanelOptionsEditor = () => {
                     className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs"}
                     value={panel.datasource.type}
                     onChange={(e) => {
+                        const newType = e.target.value as "mysql" | "clp" | "infinity";
+                        const queries = panel.queries.map((q) => {
+                            const query = "clp" === newType && "string" === typeof q.query ?
+                                {queryString: q.query, datasets: []} :
+                                "mysql" === newType && "object" === typeof q.query && null !== q.query ?
+                                    (q.query as Record<string, unknown>)["queryString"] ?? "" :
+                                    q.query;
+                            return {...q, datasource: {...q.datasource, type: newType}, query};
+                        });
                         updatePanel(panel.id, {
-                            datasource: {...panel.datasource, type: e.target.value as "mysql" | "clp" | "infinity"},
+                            datasource: {...panel.datasource, type: newType},
+                            queries,
                         });
                     }}
                 >

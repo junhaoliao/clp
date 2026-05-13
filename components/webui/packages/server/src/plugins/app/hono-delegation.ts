@@ -20,11 +20,11 @@ async function honoDelegation(fastify: FastifyInstance, _opts: FastifyPluginOpti
   // Wire MySQL storage for persistence
   const {CLP_DB_USER, CLP_DB_PASS} = fastify.config;
   const mysqlConfig = {
-    host: process.env["MYSQL_HOST"] ?? "localhost",
-    port: parseInt(process.env["MYSQL_PORT"] ?? "3306", 10),
+    host: settings.SqlDbHost,
+    port: settings.SqlDbPort,
     user: CLP_DB_USER,
     password: CLP_DB_PASS,
-    database: process.env["MYSQL_DATABASE"] ?? "clp-db",
+    database: settings.SqlDbName,
   };
 
   const getMySQLConnection = () => mysql.createConnection(mysqlConfig);
