@@ -1,0 +1,71 @@
+import {
+    AutoComplete,
+    Col,
+    Form,
+    Input,
+    Row,
+} from "antd";
+
+import {AWS_REGION_CODES} from "./awsRegionCodes";
+import S3KeysFormItem from "./S3KeysFormItem";
+
+
+const BUCKET_PLACEHOLDER_TEXT = "my-logs-bucket";
+const BUCKET_TOOLTIP_TEXT = "The S3 bucket containing the logs to compress.";
+const REGION_PLACEHOLDER_TEXT = "us-east-1";
+const REGION_TOOLTIP_TEXT = "The region where the bucket is located.";
+
+
+/**
+ * Region options for the AutoComplete, derived from the full AWS region list.
+ */
+const REGION_OPTIONS = AWS_REGION_CODES.map((code) => ({value: code}));
+
+/**
+ * Renders S3-specific form items for compression job submission.
+ *
+ * @param props
+ * @param props.isScanner
+ * @return
+ */
+const S3InputFormItems = ({isScanner = false}: {isScanner?: boolean}) => {
+    const bucket = Form.useWatch<string>("bucket");
+    const regionCode = Form.useWatch<string>("regionCode");
+
+    return (
+        <>
+            <Row gutter={8}>
+                <Col span={5}>
+                    <Form.Item
+                        label={"Region"}
+                        name={"regionCode"}
+                        rules={[{required: true, message: "Please enter a region"}]}
+                        tooltip={REGION_TOOLTIP_TEXT}
+                    >
+                        <AutoComplete
+                            filterOption={true}
+                            options={REGION_OPTIONS}
+                            placeholder={REGION_PLACEHOLDER_TEXT}/>
+                    </Form.Item>
+                </Col>
+                <Col span={19}>
+                    <Form.Item
+                        label={"S3 Bucket"}
+                        name={"bucket"}
+                        rules={[{required: true, message: "Please enter a bucket name"}]}
+                        tooltip={BUCKET_TOOLTIP_TEXT}
+                    >
+                        <Input
+                            placeholder={BUCKET_PLACEHOLDER_TEXT}/>
+                    </Form.Item>
+                </Col>
+            </Row>
+            <S3KeysFormItem
+                bucket={bucket}
+                isScanner={isScanner}
+                regionCode={regionCode}/>
+        </>
+    );
+};
+
+export default S3InputFormItems;
