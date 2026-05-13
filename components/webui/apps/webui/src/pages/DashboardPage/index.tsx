@@ -18,14 +18,13 @@ import {
     Redo2,
     RefreshCw,
     Save,
-    Trash2,
+    Settings,
     Undo2,
     Upload,
 } from "lucide-react";
 
 import {Button} from "@/components/ui/button";
 import {
-    deleteDashboard,
     getDashboard,
     updateDashboard,
 } from "@/features/dashboard/api/dashboard-api";
@@ -36,15 +35,16 @@ import {
 } from "@/features/dashboard/api/export-import";
 import {AddPanelDialog} from "@/features/dashboard/components/add-panel-dialog";
 import {DashboardGrid} from "@/features/dashboard/components/dashboard-grid";
+import {DashboardSettings} from "@/features/dashboard/components/dashboard-settings";
 import {DashboardTabs} from "@/features/dashboard/components/dashboard-tabs";
 import {
     FullScreenPanel,
     useFullScreenPanel,
 } from "@/features/dashboard/components/full-screen-panel";
 import {PanelOptionsEditor} from "@/features/dashboard/components/panel-options-editor";
+import {ResizableSidebar} from "@/features/dashboard/components/resizable-sidebar";
 import {TimeRangePicker} from "@/features/dashboard/components/time-range-picker";
 import {VariableBar} from "@/features/dashboard/components/variable-bar";
-import {VariableEditor} from "@/features/dashboard/components/variable-editor";
 import {useAutoRefresh} from "@/features/dashboard/hooks/use-auto-refresh";
 import {useCascadingVariables} from "@/features/dashboard/hooks/use-cascading-variables";
 import {usePanelErrorSummary} from "@/features/dashboard/hooks/use-panel-error-summary";
@@ -99,6 +99,7 @@ export const DashboardPage = () => {
     const setEditing = useDashboardLayoutStore((s) => s.setEditing);
     const selectedPanelId = useDashboardLayoutStore((s) => s.selectedPanelId);
     const [showAddPanel, setShowAddPanel] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const {fullScreenPanel, openFullScreen, closeFullScreen} = useFullScreenPanel();
     const errorSummary = usePanelErrorSummary(dashboard?.panels ?? []);
 
@@ -142,19 +143,6 @@ export const DashboardPage = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ["dashboard",
                 uid]});
-            queryClient.invalidateQueries({queryKey: ["dashboards"]});
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: () => {
-            if (!uid) {
-                throw new Error("No dashboard to delete");
-            }
-
-            return deleteDashboard(uid);
-        },
-        onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ["dashboards"]});
         },
     });
@@ -218,7 +206,16 @@ export const DashboardPage = () => {
                                     <Redo2 className={"size-4"}/>
                                 </Button>
                                 <Button
-                                    disabled={saveMutation.isPending}
+                                    size={"sm"}
+                                    variant={"ghost"}
+                                    onClick={() => {
+                                        setShowSettings(true);
+                                    }}
+                                >
+                                    <Settings className={"size-4"}/>
+                                </Button>
+                                <Button
+                                    disabled={!isDirty || saveMutation.isPending}
                                     size={"sm"}
                                     onClick={() => {
                                         saveMutation.mutate();
@@ -252,7 +249,7 @@ export const DashboardPage = () => {
                                     {" "}
                                     Refresh
                                 </Button>
-                                <Button
+                                {errorSummary.hasErrors && (<Button
                                     size={"sm"}
                                     variant={"ghost"}
                                     onClick={() => {
@@ -262,7 +259,7 @@ export const DashboardPage = () => {
                                     <AlertTriangle className={"size-4"}/>
                                     {" "}
                                     Retry Failed
-                                </Button>
+                                </Button>)}
                                 <Button
                                     size={"sm"}
                                     variant={"outline"}
@@ -273,6 +270,15 @@ export const DashboardPage = () => {
                                     <Pencil className={"size-4"}/>
                                     {" "}
                                     Edit
+                                </Button>
+                                <Button
+                                    size={"sm"}
+                                    variant={"ghost"}
+                                    onClick={() => {
+                                        setShowSettings(true);
+                                    }}
+                                >
+                                    <Settings className={"size-4"}/>
                                 </Button>
                                 <Button
                                     size={"sm"}
@@ -310,17 +316,7 @@ export const DashboardPage = () => {
                                         <Upload className={"size-4"}/>
                                     </span>
                                 </label>
-                                <Button
-                                    className={"text-destructive"}
-                                    disabled={deleteMutation.isPending}
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        deleteMutation.mutate();
-                                    }}
-                                >
-                                    <Trash2 className={"size-4"}/>
-                                </Button>
+
                             </>
                         )}
                 </div>
@@ -343,15 +339,9 @@ export const DashboardPage = () => {
                 </div>
 
                 {isEditing && selectedPanelId && (
-                    <div className={"w-64 border-l bg-background overflow-auto"}>
+                    <ResizableSidebar side="right">
                         <PanelOptionsEditor/>
-                    </div>
-                )}
-
-                {isEditing && (
-                    <div className={"w-64 border-l bg-background overflow-auto"}>
-                        <VariableEditor/>
-                    </div>
+                    </ResizableSidebar>
                 )}
             </div>
 
@@ -369,6 +359,13 @@ export const DashboardPage = () => {
                     panel={fullScreenPanel}
                     onClose={closeFullScreen}/>
             )}
+
+            <DashboardSettings
+                key={showSettings ? "open" : "closed"}
+                open={showSettings}
+                onClose={() => {
+                    setShowSettings(false);
+                }}/>
         </div>
     );
 };

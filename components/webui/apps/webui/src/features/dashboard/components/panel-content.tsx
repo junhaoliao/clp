@@ -32,7 +32,8 @@ interface PanelContentProps {
 
 export const PanelContent = ({panel, width, height, isVisible, annotations}: PanelContentProps) => {
     const plugin = getPanelPlugin(panel.type);
-    const {data, state, error, refetch, isSlowQuery, rowsTruncated} = usePanelQueries(panel, {enabled: isVisible, panelWidthPx: width});
+    const requiresQuery = false !== plugin?.meta.requiresQuery || true === panel.options["enableDataBinding"];
+    const {data, state, error, refetch, isRefetching, isSlowQuery, rowsTruncated} = usePanelQueries(panel, {enabled: requiresQuery && isVisible, panelWidthPx: width});
     const timeRange = useDashboardTimeStore((s) => s.timeRange);
     const setTimeRange = useDashboardTimeStore((s) => s.setTimeRange);
     const variableValues = useDashboardVariableStore((s) => s.variableValues);
@@ -71,13 +72,17 @@ export const PanelContent = ({panel, width, height, isVisible, annotations}: Pan
     const displayData = isTablePanel ?
         data :
         truncateDataForDisplay(data);
+    const panelState = requiresQuery ?
+        state :
+        "data";
 
     return (
         <PanelChrome
             errorMessage={error ?? undefined}
+            isRefetching={isRefetching}
             isSlowQuery={isSlowQuery}
             rowsTruncated={rowsTruncated}
-            state={state}
+            state={panelState}
             onRetry={refetch}
         >
             <Suspense fallback={<EmptyState message={"Loading panel..."}/>}>

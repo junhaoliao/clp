@@ -26,12 +26,15 @@ export function StatPanel({data, options, width, height}: PanelComponentProps) {
   const suffix = (options["suffix"] as string) ?? "";
   const decimals = (options["decimals"] as number) ?? 2;
   const color = options["color"] as string | undefined;
+  const unit = options["unit"] as string | undefined;
   const showTrend = (options["trendIndicator"] as boolean) ?? true;
   const showSparkline = (options["sparkline"] as boolean) ?? false;
 
   const formatted = typeof lastValue === "number"
-    ? lastValue.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals})
+    ? ("bytes" === unit ? formatBytes(lastValue) : lastValue.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals}))
     : String(lastValue);
+
+  const showSuffix = "bytes" !== unit;
 
   const trend = computeTrend(valueField.values);
   const trendColor = trend?.direction === "up" ? "text-green-500" : trend?.direction === "down" ? "text-red-500" : "text-muted-foreground";
@@ -44,7 +47,7 @@ export function StatPanel({data, options, width, height}: PanelComponentProps) {
         className={`font-bold tabular-nums ${compact ? "text-xl" : "text-3xl"}`}
         style={color ? {color} : undefined}
       >
-        {prefix}{formatted}{suffix}
+        {prefix}{formatted}{showSuffix ? suffix : ""}
       </span>
       {showTrend && trend && (
         <div className={`flex items-center gap-1 text-xs ${trendColor}`}>
@@ -62,6 +65,18 @@ export function StatPanel({data, options, width, height}: PanelComponentProps) {
       )}
     </div>
   );
+}
+
+function formatBytes(value: number): string {
+  const IEC_UNITS = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+  const divisor = 1024;
+  if (0 === value) return "0 B";
+  let unitIdx = 0;
+  while (unitIdx < IEC_UNITS.length - 1 && Math.abs(value) >= divisor) {
+    value /= divisor;
+    ++unitIdx;
+  }
+  return `${value.toFixed(1)} ${IEC_UNITS[unitIdx]}`;
 }
 
 function computeTrend(values: unknown[]): {direction: "up" | "down" | "flat"; percent: number} | null {

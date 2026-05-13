@@ -1,19 +1,52 @@
 import {create} from "zustand";
 
+import {ONE_HOUR_MS} from "../components/time-range-picker-constants";
+
+import {toLocal} from "@/lib/utils";
+
+
+const DEFAULT_RANGE_HOURS = 6;
+const DEFAULT_RANGE_MS = DEFAULT_RANGE_HOURS * ONE_HOUR_MS;
+
+
+/**
+ *
+ */
+const defaultRange = () => {
+    const now = new Date();
+
+    return {
+        from: toLocal(new Date(now.getTime() - DEFAULT_RANGE_MS)),
+        to: toLocal(now),
+    };
+};
+
 interface DashboardTimeState {
-  timeRange: {from: string; to: string};
-  refreshInterval: string | null;
-  timezone: string;
-  setTimeRange: (from: string, to: string) => void;
-  setRefreshInterval: (interval: string | null) => void;
-  setTimezone: (tz: string) => void;
+    activePreset: string | null;
+    liveTail: boolean;
+    refreshInterval: string | null;
+    timeRange: {from: string; to: string};
+    setActivePreset: (preset: string | null) => void;
+    setLiveTail: (v: boolean) => void;
+    setRefreshInterval: (interval: string | null) => void;
+    setTimeRange: (from: string, to: string) => void;
 }
 
 export const useDashboardTimeStore = create<DashboardTimeState>()((set) => ({
-  timeRange: {from: "now-6h", to: "now"},
-  refreshInterval: null,
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  setTimeRange: (from, to) => set({timeRange: {from, to}}),
-  setRefreshInterval: (interval) => set({refreshInterval: interval}),
-  setTimezone: (tz) => set({timezone: tz}),
+    activePreset: "24h",
+    liveTail: true,
+    refreshInterval: null,
+    setActivePreset: (preset) => {
+        set({activePreset: preset});
+    },
+    setLiveTail: (v) => {
+        set({liveTail: v});
+    },
+    setRefreshInterval: (interval) => {
+        set({refreshInterval: interval});
+    },
+    setTimeRange: (from, to) => {
+        set({timeRange: {from, to}});
+    },
+    timeRange: defaultRange(),
 }));

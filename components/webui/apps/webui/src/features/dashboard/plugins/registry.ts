@@ -10,6 +10,7 @@ export interface PanelPluginMeta {
   minGridPos: Partial<GridPos>;
   supportsMultiQuery?: boolean;
   isTimeAware?: boolean;
+  requiresQuery?: boolean;
 }
 
 export interface PanelComponentProps {

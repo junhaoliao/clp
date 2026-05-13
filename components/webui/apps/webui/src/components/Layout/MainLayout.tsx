@@ -24,6 +24,7 @@ type MenuItem = Required<MenuProps>["items"][number];
 
 const SIDEBAR_MENU_ITEMS: MenuItem[] = [
     {label: <Link to={"/ingest"}>Ingest</Link>, key: "/ingest", icon: <UploadOutlined/>},
+    {label: <Link to={"/ingest-new"}>Ingest (new)</Link>, key: "/ingest-new", icon: <UploadOutlined/>},
     {label: <Link to={"/search"}>Search</Link>, key: "/search", icon: <SearchOutlined/>},
     {label: <Link to={"/dashboards"}>Dashboards</Link>, key: "/dashboards", icon: <DashboardOutlined/>},
 ];

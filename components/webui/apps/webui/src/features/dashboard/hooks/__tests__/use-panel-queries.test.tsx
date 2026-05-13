@@ -196,4 +196,107 @@ describe("usePanelQueries", () => {
             expect(capturedSignal?.aborted).toBe(true);
         });
     });
+
+    it("should not poll on interval (refetchInterval: false overrides global default)", async () => {
+        vi.useFakeTimers({shouldAdvanceTime: true});
+
+        const mockData = [{name: "test", fields: [], length: 0}];
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({data: mockData}),
+        });
+
+        // Create a wrapper with the global refetchInterval default (like the real app)
+        const queryClientWithInterval = new QueryClient({
+            defaultOptions: {queries: {retry: false, refetchInterval: 10_000}},
+        });
+
+        function WrapperWithInterval ({children}: {children: ReactNode}) {
+            return (
+                <QueryClientProvider client={queryClientWithInterval}>
+                    {children}
+                </QueryClientProvider>
+            );
+        }
+
+        renderHook(() => usePanelQueries(mockPanel), {wrapper: WrapperWithInterval});
+
+        // Advance through the initial fetch
+        await vi.advanceTimersByTimeAsync(100);
+
+        const fetchCountAfterInitial = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+
+        // Advance past the global 10s interval — fetch should NOT be called again
+        // because refetchInterval: false on the query overrides the global default
+        await vi.advanceTimersByTimeAsync(15_000);
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(fetchCountAfterInitial);
+
+        vi.useRealTimers();
+    });
+
+    it("should set isRefetching=false and isLoading=true on initial load", () => {
+        // Create a fetch that never resolves so we stay in loading state
+        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+        const wrapper = createWrapper();
+        const {result} = renderHook(() => usePanelQueries(mockPanel), {wrapper});
+
+        expect(result.current.isLoading).toBe(true);
+        expect(result.current.isRefetching).toBe(false);
+        expect(result.current.state).toBe("loading");
+    });
+
+    it("should set isRefetching=false after fetch completes", async () => {
+        const mockData = [{name: "test", fields: [{name: "value", values: [1], type: "number"}], length: 1}];
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({data: mockData}),
+        });
+
+        const wrapper = createWrapper();
+        const {result} = renderHook(() => usePanelQueries(mockPanel), {wrapper});
+
+        await waitFor(() => {
+            expect(result.current.state).not.toBe("loading");
+        }, {timeout: 10_000});
+
+        expect(result.current.isRefetching).toBe(false);
+        expect(result.current.isLoading).toBe(false);
+    });
+
+    it("should set isRefetching=true and keep state=data during background refetch", async () => {
+        // First fetch resolves immediately with data
+        const mockData = [{name: "test", fields: [{name: "value", values: [1], type: "number"}], length: 1}];
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({data: mockData}),
+        });
+
+        const wrapper = createWrapper();
+        const {result} = renderHook(() => usePanelQueries(mockPanel), {wrapper});
+
+        // Wait for initial fetch to complete
+        await waitFor(() => {
+            expect(result.current.state).not.toBe("loading");
+        }, {timeout: 10_000});
+
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.isRefetching).toBe(false);
+
+        // Now make the next fetch hang (simulating a background refetch in progress)
+        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+        // Trigger a refetch
+        result.current.refetch();
+
+        // Wait for the refetch to start (isRefetching becomes true)
+        await waitFor(() => {
+            expect(result.current.isRefetching).toBe(true);
+        }, {timeout: 10_000});
+
+        // During background refetch: isLoading is false, state remains "data"
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.state).toBe("data");
+    });
 });

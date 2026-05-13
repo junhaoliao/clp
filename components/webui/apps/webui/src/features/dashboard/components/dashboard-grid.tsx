@@ -198,7 +198,15 @@ export const DashboardGrid = ({panels, isEditing, onFullScreen, annotations}: Da
                 }}
             >
                 {panels.map((panel) => (
-                    <div key={panel.id}>
+                    <div
+                        key={panel.id}
+                        style={{
+                            gridColumnEnd: panel.gridPos.x + panel.gridPos.w + 1,
+                            gridColumnStart: panel.gridPos.x + 1,
+                            gridRowEnd: panel.gridPos.y + panel.gridPos.h + 1,
+                            gridRowStart: panel.gridPos.y + 1,
+                        }}
+                    >
                         {panelRenderer(panel, false)}
                     </div>
                 ))}

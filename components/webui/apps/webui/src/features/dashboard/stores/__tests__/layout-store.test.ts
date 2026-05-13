@@ -1,5 +1,6 @@
 import {describe, it, expect, beforeEach} from "vitest";
 import {useDashboardLayoutStore} from "../layout-store";
+import {initializePanelPlugins} from "../../plugins/init";
 import type {Dashboard} from "@webui/common/dashboard/types";
 
 const mockDashboard: Dashboard = {
@@ -27,6 +28,7 @@ const mockDashboard: Dashboard = {
 
 describe("DashboardLayoutStore", () => {
   beforeEach(() => {
+    initializePanelPlugins();
     useDashboardLayoutStore.getState().reset();
     // Clear undo history
     useDashboardLayoutStore.temporal.getState().clear();
@@ -67,6 +69,25 @@ describe("DashboardLayoutStore", () => {
     expect(state.dashboard?.panels).toHaveLength(2);
     expect(state.dashboard?.panels[1]!.type).toBe("stat");
     expect(state.selectedPanelId).toBeTruthy();
+  });
+
+  it("should add markdown panel with empty queries (no query scaffold)", () => {
+    useDashboardLayoutStore.getState().setDashboard(mockDashboard);
+    useDashboardLayoutStore.getState().addPanel("markdown");
+    const state = useDashboardLayoutStore.getState();
+    const mdPanel = state.dashboard?.panels.find((p) => "markdown" === p.type);
+    expect(mdPanel).toBeDefined();
+    expect(mdPanel!.queries).toHaveLength(0);
+  });
+
+  it("should add timeseries panel with query scaffold", () => {
+    useDashboardLayoutStore.getState().setDashboard(mockDashboard);
+    useDashboardLayoutStore.getState().addPanel("timeseries");
+    const state = useDashboardLayoutStore.getState();
+    const tsPanel = state.dashboard?.panels.find((p) => "timeseries" === p.type && "p1" !== p.id);
+    expect(tsPanel).toBeDefined();
+    expect(tsPanel!.queries).toHaveLength(1);
+    expect(tsPanel!.queries[0]!.refId).toBe("A");
   });
 
   it("should remove a panel", () => {

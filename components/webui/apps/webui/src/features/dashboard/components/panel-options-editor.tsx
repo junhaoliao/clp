@@ -31,14 +31,39 @@ function strOpt (val: unknown, fallback: string): string {
 const PanelTypeOptions = ({panel, updatePanel}: {panel: DashboardPanel; updatePanel: (id: string, updates: Partial<DashboardPanel>) => void}) => {
     if ("markdown" === panel.type) {
         return (
-            <div>
-                <label className={"text-xs text-muted-foreground"}>Content</label>
-                <textarea
-                    className={"w-full h-32 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
-                    value={strOpt(panel.options["content"], "")}
-                    onChange={(e) => {
-                        updatePanel(panel.id, {options: {...panel.options, content: e.target.value}});
-                    }}/>
+            <div className="space-y-3">
+                <div>
+                    <label className={"text-xs text-muted-foreground"}>Content</label>
+                    <textarea
+                        className={"w-full h-32 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
+                        value={strOpt(panel.options["content"], "")}
+                        onChange={(e) => {
+                            updatePanel(panel.id, {options: {...panel.options, content: e.target.value}});
+                        }}/>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        checked={true === panel.options["enableDataBinding"]}
+                        id={"enableDataBinding"}
+                        type={"checkbox"}
+                        onChange={(e) => {
+                            const updates: Partial<DashboardPanel> = {
+                                options: {...panel.options, enableDataBinding: e.target.checked},
+                            };
+                            if (e.target.checked && 0 === panel.queries.length) {
+                                const dsType = panel.datasource.type as "mysql" | "clp" | "infinity";
+                                updates.datasource = {...panel.datasource, type: dsType};
+                                updates.queries = [{refId: "A", datasource: {type: dsType, uid: panel.datasource.uid}, query: ""}];
+                            }
+                            updatePanel(panel.id, updates);
+                        }}/>
+                    <label
+                        className={"text-xs"}
+                        htmlFor={"enableDataBinding"}
+                    >
+                        Enable query data binding
+                    </label>
+                </div>
             </div>
         );
     }
@@ -212,50 +237,52 @@ export const PanelOptionsEditor = () => {
                 panel={panel}
                 updatePanel={updatePanel}/>
 
-            <div>
-                <label className={"text-xs text-muted-foreground"}>Datasource Type</label>
-                <select
-                    className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs"}
-                    value={panel.datasource.type}
-                    onChange={(e) => {
-                        const newType = e.target.value as "mysql" | "clp" | "infinity";
-                        const queries = panel.queries.map((q) => {
-                            const query = "clp" === newType && "string" === typeof q.query ?
-                                {queryString: q.query, datasets: []} :
-                                "mysql" === newType && "object" === typeof q.query && null !== q.query ?
-                                    (q.query as Record<string, unknown>)["queryString"] ?? "" :
-                                    q.query;
-                            return {...q, datasource: {...q.datasource, type: newType}, query};
-                        });
-                        updatePanel(panel.id, {
-                            datasource: {...panel.datasource, type: newType},
-                            queries,
-                        });
-                    }}
-                >
-                    <option value={"mysql"}>MySQL</option>
-                    <option value={"clp"}>CLP/KQL</option>
-                    <option value={"infinity"}>Infinity (HTTP)</option>
-                </select>
-            </div>
+            {(false !== plugin?.meta.requiresQuery || true === panel.options["enableDataBinding"]) && (<>
+                <div>
+                    <label className={"text-xs text-muted-foreground"}>Datasource Type</label>
+                    <select
+                        className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs"}
+                        value={panel.datasource.type}
+                        onChange={(e) => {
+                            const newType = e.target.value as "mysql" | "clp" | "infinity";
+                            const queries = panel.queries.map((q) => {
+                                const query = "clp" === newType && "string" === typeof q.query ?
+                                    {queryString: q.query, datasets: []} :
+                                    "mysql" === newType && "object" === typeof q.query && null !== q.query ?
+                                        (q.query as Record<string, unknown>)["queryString"] ?? "" :
+                                        q.query;
+                                return {...q, datasource: {...q.datasource, type: newType}, query};
+                            });
+                            updatePanel(panel.id, {
+                                datasource: {...panel.datasource, type: newType},
+                                queries,
+                            });
+                        }}
+                    >
+                        <option value={"mysql"}>MySQL</option>
+                        <option value={"clp"}>CLP/KQL</option>
+                        <option value={"infinity"}>Infinity (HTTP)</option>
+                    </select>
+                </div>
 
-            {0 < panel.queries.length && (
-                <QueryEditor
-                    panel={panel}
-                    updatePanel={updatePanel}/>
-            )}
+                {0 < panel.queries.length && (
+                    <QueryEditor
+                        panel={panel}
+                        updatePanel={updatePanel}/>
+                )}
 
-            <div>
-                <label className={"text-xs text-muted-foreground"}>Time Override (relative, e.g. now-1h)</label>
-                <input
-                    className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs font-mono"}
-                    placeholder={"Uses dashboard range if empty"}
-                    type={"text"}
-                    value={panel.timeFrom ?? ""}
-                    onChange={(e) => {
-                        updatePanel(panel.id, {timeFrom: e.target.value || undefined} as Partial<DashboardPanel>);
-                    }}/>
-            </div>
+                <div>
+                    <label className={"text-xs text-muted-foreground"}>Time Override (relative, e.g. now-1h)</label>
+                    <input
+                        className={"w-full h-7 mt-1 rounded border border-input bg-background px-2 text-xs font-mono"}
+                        placeholder={"Uses dashboard range if empty"}
+                        type={"text"}
+                        value={panel.timeFrom ?? ""}
+                        onChange={(e) => {
+                            updatePanel(panel.id, {timeFrom: e.target.value || undefined} as Partial<DashboardPanel>);
+                        }}/>
+                </div>
+            </>)}
 
             <GridPositionEditor
                 panel={panel}

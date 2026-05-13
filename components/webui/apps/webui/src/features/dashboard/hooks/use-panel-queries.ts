@@ -35,6 +35,7 @@ const SLOW_QUERY_THRESHOLD_MS = 15_000;
 interface UsePanelQueriesResult {
     data: DataFrame[];
     error: string | null;
+    isRefetching: boolean;
     isSlowQuery: boolean;
     isLoading: boolean;
     refetch: () => void;
@@ -48,17 +49,6 @@ interface UsePanelQueriesOptions {
     panelWidthPx?: number;
 }
 
-/**
- *
- * @param query
- * @param query.data
- * @param refetch
- * @param query.error
- * @param isSlowQuery
- * @param query.isLoading
- * @param retryCount
- * @param query.isFetching
- */
 function computeResult (
     query: {data: DataQueryResponse | undefined; error: Error | null; isLoading: boolean; isFetching: boolean},
     refetch: () => void,
@@ -69,12 +59,12 @@ function computeResult (
     const error = query.error instanceof Error ?
         query.error.message :
         query.data?.errors?.[0]?.message ?? null;
-    const isLoading = query.isLoading || query.isFetching;
+    const isRefetching = query.isFetching && !query.isLoading;
     const isEmpty = !query.isFetching && !error && 0 === data.length;
     const rowsTruncated = data.some((frame) => true === frame.rowsTruncated);
 
     let state: UsePanelQueriesResult["state"] = "data";
-    if (query.isFetching) {
+    if (query.isLoading) {
         state = "loading";
     } else if (error) {
         state = "error";
@@ -85,7 +75,8 @@ function computeResult (
     return {
         data: data,
         error: error,
-        isLoading: isLoading,
+        isLoading: query.isLoading,
+        isRefetching: isRefetching,
         isSlowQuery: isSlowQuery,
         refetch: refetch,
         retryCount: retryCount,
@@ -257,6 +248,7 @@ export function usePanelQueries (panel: DashboardPanel, opts?: UsePanelQueriesOp
         }),
         queryFn: () => enqueue(queryFn),
         queryKey: queryKey,
+        refetchInterval: false,
         refetchOnWindowFocus: false,
         retry: 1,
         staleTime: 30_000,

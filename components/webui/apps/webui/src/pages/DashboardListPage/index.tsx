@@ -45,9 +45,11 @@ export function DashboardListPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboards</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="size-4" /> New Dashboard
-        </Button>
+        {0 < dashboards.length && (
+          <Button onClick={handleCreate}>
+            <Plus className="size-4" /> New Dashboard
+          </Button>
+        )}
       </div>
 
       {dashboards.length > 0 && (
@@ -71,7 +73,11 @@ export function DashboardListPage() {
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <LayoutDashboard className="size-12 mb-4" />
           <p className="text-lg">{searchQuery ? "No dashboards match your search" : "No dashboards yet"}</p>
-          {!searchQuery && <p className="text-sm">Create your first dashboard to get started</p>}
+          {!searchQuery && (
+            <Button className="mt-4" onClick={handleCreate}>
+              <Plus className="size-4" /> New Dashboard
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

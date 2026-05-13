@@ -8,14 +8,16 @@ interface PanelChromeProps {
   state: PanelState;
   errorMessage?: string | undefined;
   onRetry?: (() => void) | undefined;
+  isRefetching?: boolean | undefined;
   isSlowQuery?: boolean | undefined;
   rowsTruncated?: boolean | undefined;
   children: ReactNode;
 }
 
-export function PanelChrome({state, errorMessage, onRetry, isSlowQuery, rowsTruncated, children}: PanelChromeProps) {
+export function PanelChrome({state, errorMessage, onRetry, isRefetching, isSlowQuery, rowsTruncated, children}: PanelChromeProps) {
   return (
     <div className="h-full flex flex-col relative">
+      {isRefetching && state === "data" && <LinearProgressBar />}
       {state === "loading" && <LoadingState isSlow={isSlowQuery ?? false} />}
       {state === "error" && <ErrorState message={errorMessage ?? "Query failed"} onRetry={onRetry ?? undefined} />}
       {state === "empty" && <EmptyState />}
@@ -72,6 +74,14 @@ function EmptyState() {
   return (
     <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">
       No data
+    </div>
+  );
+}
+
+function LinearProgressBar() {
+  return (
+    <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden z-10">
+      <div className="h-full bg-primary animate-indeterminate-progress" />
     </div>
   );
 }

@@ -1,176 +1,268 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import {useDashboardTimeStore} from "../stores/time-store";
-import {useState, useCallback, useEffect} from "react";
-import {parseTimeRange} from "../hooks/parse-time-range";
+import {
+    useMemo,
+    useRef,
+} from "react";
 
-dayjs.extend(relativeTime);
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import {
+    ChevronDown,
+    Circle,
+} from "lucide-react";
 
-const TIME_RANGE_OPTIONS = [
-  {label: "Last 5 minutes", value: "now-5m"},
-  {label: "Last 15 minutes", value: "now-15m"},
-  {label: "Last 1 hour", value: "now-1h"},
-  {label: "Last 6 hours", value: "now-6h"},
-  {label: "Last 24 hours", value: "now-24h"},
-  {label: "Last 7 days", value: "now-7d"},
-  {label: "Last 30 days", value: "now-30d"},
-  {label: "Absolute range", value: "absolute"},
-] as const;
+import {QUICK_RANGES} from "./time-range-picker-constants";
+import {formatRangeSummary} from "./time-range-picker-utils";
+import {useTimeRangePickerState} from "./use-time-range-picker-state";
 
-const REFRESH_OPTIONS = [
-  {label: "Off", value: ""},
-  {label: "5s", value: "5s"},
-  {label: "10s", value: "10s"},
-  {label: "30s", value: "30s"},
-  {label: "1m", value: "1m"},
-  {label: "5m", value: "5m"},
-] as const;
+import {Button} from "@/components/ui/button";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {Toggle} from "@/components/ui/toggle";
 
-const COMMON_TIMEZONES = [
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Berlin",
-  "Asia/Tokyo",
-  "Asia/Shanghai",
-  "Australia/Sydney",
-];
 
-export function TimeRangePicker() {
-  const timeRange = useDashboardTimeStore((s) => s.timeRange);
-  const refreshInterval = useDashboardTimeStore((s) => s.refreshInterval);
-  const tz = useDashboardTimeStore((s) => s.timezone);
-  const setTimeRange = useDashboardTimeStore((s) => s.setTimeRange);
-  const setRefreshInterval = useDashboardTimeStore((s) => s.setRefreshInterval);
-  const setTimezone = useDashboardTimeStore((s) => s.setTimezone);
-  const [showAbsolute, setShowAbsolute] = useState(false);
-  const [absoluteFrom, setAbsoluteFrom] = useState("");
-  const [absoluteTo, setAbsoluteTo] = useState("");
+/**
+ * Time range picker with live toggle and popover for quick/absolute ranges.
+ */
+// eslint-disable-next-line max-lines-per-function
+export const TimeRangePicker = () => {
+    const {
+        committedPreset,
+        draftActivePreset,
+        draftEnd,
+        draftLive,
+        draftStart,
+        handleApply,
+        handleDraftChange,
+        handleLiveToggle,
+        handleQuickRange,
+        handleRecentRange,
+        isDraftModified,
+        isRangeInvalid,
+        liveTail,
+        popoverOpen,
+        recentRanges,
+        setDraftLive,
+        setPopoverOpen,
+        timeRange,
+    } = useTimeRangePickerState();
 
-  // Sync URL params on mount and on time range change
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlFrom = params.get("from");
-    const urlTo = params.get("to");
-    if (urlFrom && urlTo) {
-      setTimeRange(urlFrom, urlTo);
-    }
-  }, []);
+    const toInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (timeRange.from.startsWith("now")) {
-      url.searchParams.set("from", timeRange.from);
-    } else {
-      url.searchParams.delete("from");
-    }
-    if (timeRange.to.startsWith("now")) {
-      url.searchParams.set("to", timeRange.to);
-    } else {
-      url.searchParams.delete("to");
-    }
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }, [timeRange]);
+    const triggerLabel = useMemo(() => {
+        const preset = QUICK_RANGES.find((r) => r.key === committedPreset);
 
-  const handleRelativeChange = useCallback((value: string) => {
-    if (value === "absolute") {
-      setShowAbsolute(true);
-      const from = parseTimeRange(timeRange.from);
-      const to = parseTimeRange(timeRange.to);
-      setAbsoluteFrom(dayjs(from).tz(tz).format("YYYY-MM-DDTHH:mm"));
-      setAbsoluteTo(dayjs(to).tz(tz).format("YYYY-MM-DDTHH:mm"));
-    } else {
-      setShowAbsolute(false);
-      setTimeRange(value, "now");
-    }
-  }, [timeRange, tz, setTimeRange]);
+        return preset ?
+            preset.label :
+            formatRangeSummary(timeRange.from, timeRange.to);
+    }, [committedPreset,
+        timeRange.from,
+        timeRange.to]);
 
-  const applyAbsoluteRange = useCallback(() => {
-    if (absoluteFrom && absoluteTo) {
-      const fromMs = dayjs.tz(absoluteFrom, tz).valueOf();
-      const toMs = dayjs.tz(absoluteTo, tz).valueOf();
-      setTimeRange(String(fromMs), String(toMs));
-      setShowAbsolute(false);
-    }
-  }, [absoluteFrom, absoluteTo, tz, setTimeRange]);
+    return (
+        <div className={"flex items-stretch"}>
+            <Toggle
+                className={"gap-1.5 rounded-r-none border-r-0 h-8 text-xs"}
+                pressed={liveTail}
+                variant={"outline"}
+                onPressedChange={handleLiveToggle}
+            >
+                <Circle
+                    className={`h-3 w-3 ${liveTail ?
+                        "fill-green-500 text-green-500" :
+                        "fill-gray-400 text-gray-400"}`}/>
+                Live
+            </Toggle>
 
-  const selectedValue = showAbsolute ? "absolute" : timeRange.from;
+            <Popover
+                open={popoverOpen}
+                onOpenChange={setPopoverOpen}
+            >
+                <PopoverTrigger
+                    render={(props: React.HTMLAttributes<HTMLElement>) => (
+                        <Button
+                            className={"rounded-l-none gap-1.5 h-8"}
+                            size={"sm"}
+                            variant={"outline"}
+                            {...props}
+                        >
+                            {triggerLabel}
+                            <ChevronDown className={"h-3.5 w-3.5 opacity-60"}/>
+                        </Button>
+                    )}/>
+                <PopoverContent
+                    align={"start"}
+                    className={"w-auto p-0"}
+                    sideOffset={4}
+                >
+                    <div className={"flex items-stretch"}>
+                        {/* Left panel: Quick ranges */}
+                        <div
+                            className={
+                                "w-[180px] border-r border-border " +
+                            "px-3 py-2.5 flex flex-col gap-0.5"
+                            }
+                        >
+                            <div
+                                className={
+                                    "text-xs font-medium text-muted-foreground " +
+                                "px-2 py-1.5"
+                                }
+                            >
+                                Quick ranges
+                            </div>
+                            {QUICK_RANGES.map((range) => (
+                                <button
+                                    key={range.key}
+                                    className={`text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
+                                        draftActivePreset === range.key ?
+                                            "bg-primary/10 text-primary font-medium" :
+                                            "hover:bg-muted"
+                                    }`}
+                                    onClick={() => {
+                                        handleQuickRange(
+                                            range.key,
+                                            range.durationMs,
+                                        );
+                                    }}
+                                >
+                                    {range.label}
+                                </button>
+                            ))}
+                        </div>
 
-  return (
-    <div className="flex items-center gap-2">
-      <select
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-        value={selectedValue}
-        onChange={(e) => handleRelativeChange(e.target.value)}
-      >
-        {TIME_RANGE_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
+                        {/* Right panel: Absolute time range + Recently used + Apply */}
+                        <div className={"flex-1 px-3 py-2.5 flex flex-col gap-3"}>
+                            <div
+                                className={"text-xs font-medium text-muted-foreground"}
+                            >
+                                Absolute time range
+                            </div>
 
-      {showAbsolute && (
-        <div className="flex items-center gap-1">
-          <input
-            type="datetime-local"
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-            value={absoluteFrom}
-            onChange={(e) => setAbsoluteFrom(e.target.value)}
-          />
-          <span className="text-xs text-muted-foreground">to</span>
-          <input
-            type="datetime-local"
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-            value={absoluteTo}
-            onChange={(e) => setAbsoluteTo(e.target.value)}
-          />
-          <button
-            type="button"
-            className="h-8 px-2 text-sm rounded-md bg-primary text-primary-foreground"
-            onClick={applyAbsoluteRange}
-          >
-            Apply
-          </button>
-          <button
-            type="button"
-            className="h-8 px-2 text-sm rounded-md border"
-            onClick={() => setShowAbsolute(false)}
-          >
-            Cancel
-          </button>
+                            <div className={"flex flex-col gap-2"}>
+                                <label className={"flex flex-col gap-1"}>
+                                    <span
+                                        className={"text-xs text-muted-foreground"}
+                                    >
+                                        From
+                                    </span>
+                                    <input
+                                        type={"datetime-local"}
+                                        value={draftStart}
+                                        className={`rounded-md border px-3 py-1.5 text-sm ${
+                                            isRangeInvalid ?
+                                                "border-destructive bg-destructive/5" :
+                                                "border-input bg-background"
+                                        }`}
+                                        onChange={(e) => {
+                                            handleDraftChange(
+                                                "start",
+                                                e.target.value,
+                                            );
+                                        }}/>
+                                </label>
+                                <label className={"flex flex-col gap-1"}>
+                                    <span
+                                        className={"text-xs text-muted-foreground"}
+                                    >
+                                        To
+                                    </span>
+                                    <div className={"relative"}>
+                                        <input
+                                            ref={toInputRef}
+                                            type={"datetime-local"}
+                                            value={draftEnd}
+                                            className={
+                                                "rounded-md border border-input " +
+                                                "bg-background px-3 py-1.5 text-sm"
+                                            }
+                                            onChange={(e) => {
+                                                handleDraftChange(
+                                                    "end",
+                                                    e.target.value,
+                                                );
+                                                if (draftLive) {
+                                                    setDraftLive(false);
+                                                }
+                                            }}/>
+                                        {draftLive && (
+                                            <span
+                                                className={
+                                                    "absolute inset-px right-9 " +
+                                                    "flex items-center pl-3 " +
+                                                    "text-sm bg-background " +
+                                                    "cursor-pointer rounded-sm " +
+                                                    "select-none"
+                                                }
+                                                onClick={() => {
+                                                    toInputRef.current?.showPicker();
+                                                }}
+                                            >
+                                                now
+                                            </span>
+                                        )}
+                                    </div>
+                                </label>
+                            </div>
+
+                            {0 < recentRanges.length && (
+                                <div className={"flex flex-col gap-1"}>
+                                    <div
+                                        className={"text-xs font-medium text-muted-foreground"}
+                                    >
+                                        Recently used
+                                    </div>
+                                    <div
+                                        className={
+                                            "max-h-[120px] overflow-y-auto " +
+                                        "flex flex-col gap-0.5"
+                                        }
+                                    >
+                                        {recentRanges.map((entry) => {
+                                            const [
+                                                s = "", e = "",
+                                            ] = entry.split("|");
+
+                                            return (
+                                                <button
+                                                    key={entry}
+                                                    className={
+                                                        "text-left text-xs " +
+                                                        "px-2 py-1.5 " +
+                                                        "rounded-md hover:bg-muted " +
+                                                        "transition-colors truncate"
+                                                    }
+                                                    title={formatRangeSummary(
+                                                        s,
+                                                        e,
+                                                    )}
+                                                    onClick={() => {
+                                                        handleRecentRange(
+                                                            entry,
+                                                        );
+                                                    }}
+                                                >
+                                                    {formatRangeSummary(s, e)}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={"mt-auto pt-2 flex justify-end"}>
+                                <Button
+                                    disabled={!isDraftModified || isRangeInvalid}
+                                    size={"sm"}
+                                    onClick={handleApply}
+                                >
+                                    Apply
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </PopoverContent>
+            </Popover>
         </div>
-      )}
-
-      {!showAbsolute && (
-        <span className="text-xs text-muted-foreground">to now</span>
-      )}
-
-      <select
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm max-w-40"
-        value={tz}
-        onChange={(e) => setTimezone(e.target.value)}
-        title={`Timezone: ${tz}`}
-      >
-        {COMMON_TIMEZONES.map((t) => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select>
-
-      <select
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-        value={refreshInterval ?? ""}
-        onChange={(e) => setRefreshInterval(e.target.value || null)}
-      >
-        {REFRESH_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
+    );
+};

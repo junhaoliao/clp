@@ -54,6 +54,7 @@ describe("Panel plugin initialization", () => {
     const plugin = getPanelPlugin("markdown");
     expect(plugin).toBeDefined();
     expect(plugin!.meta.name).toBe("Markdown");
+    expect(plugin!.meta.requiresQuery).toBe(false);
   });
 
   it("should register gauge plugin", () => {
@@ -75,6 +76,14 @@ describe("Panel plugin initialization", () => {
     const plugin = getPanelPlugin("piechart");
     expect(plugin).toBeDefined();
     expect(plugin!.meta.name).toBe("Pie Chart");
+  });
+
+  it("should register row plugin with requiresQuery=false", () => {
+    initializePanelPlugins();
+    const plugin = getPanelPlugin("row");
+    expect(plugin).toBeDefined();
+    expect(plugin!.meta.name).toBe("Row");
+    expect(plugin!.meta.requiresQuery).toBe(false);
   });
 
   it("each plugin should have a component", () => {

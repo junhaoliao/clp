@@ -2,6 +2,7 @@ import {create} from "zustand";
 import {temporal} from "zundo";
 import type {Dashboard, DashboardPanel, DashboardTab, GridPos, PanelType} from "@webui/common/dashboard/types";
 import {autoCompact} from "../hooks/grid-utils";
+import {getPanelPlugin} from "../plugins/registry";
 
 interface DashboardLayoutState {
   dashboard: Dashboard | null;
@@ -77,6 +78,7 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
         if (!d) return;
         const maxY = d.panels.reduce((max, p) => Math.max(max, p.gridPos.y + p.gridPos.h), 0);
         const id = `panel-${Date.now()}`;
+        const requiresQuery = false !== getPanelPlugin(type)?.meta.requiresQuery;
         const dsType = "logs" === type ? "clp" : "mysql";
         const query = "clp" === dsType ?
           {queryString: "", datasets: []} :
@@ -87,7 +89,7 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
           title: type.charAt(0).toUpperCase() + type.slice(1),
           gridPos: {...DEFAULT_GRID_POS[type] ?? {x: 0, y: 0, w: 6, h: 4}, y: maxY},
           datasource: {type: dsType, uid: "default"},
-          queries: [{refId: "A", datasource: {type: dsType, uid: "default"}, query}],
+          queries: requiresQuery ? [{refId: "A", datasource: {type: dsType, uid: "default"}, query}] : [],
           options: {},
         };
         set({
