@@ -19,6 +19,7 @@ export const PanelTypeSchema = Type.Union([
   Type.Literal("gauge"),
   Type.Literal("heatmap"),
   Type.Literal("piechart"),
+  Type.Literal("row"),
 ]);
 
 /** Datasource type enum */

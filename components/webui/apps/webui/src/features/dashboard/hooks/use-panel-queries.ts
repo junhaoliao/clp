@@ -249,14 +249,11 @@ export function usePanelQueries (panel: DashboardPanel, opts?: UsePanelQueriesOp
             if ("string" === typeof q.query) {
                 return "" !== q.query;
             }
-            // CLP query objects: {queryString, datasets}
-            if ("object" === typeof q.query && null !== q.query) {
-                const obj = q.query as Record<string, unknown>;
-                const qs = "string" === typeof obj["queryString"] ? obj["queryString"] : "";
-                return "" !== qs;
+            // CLP queries: q.query is {queryString, datasets, ...}
+            if ("object" === typeof q.query && null !== q.query && "queryString" in q.query) {
+                return "" !== (q.query as {queryString: string}).queryString;
             }
-
-            return false;
+            return true;
         }),
         queryFn: () => enqueue(queryFn),
         queryKey: queryKey,

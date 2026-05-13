@@ -23,8 +23,17 @@ export function getApplicableRowLimit(sql: string): number {
     : QUERY_LIMITS.MAX_UNAGGREGATED_QUERY_ROWS;
 }
 
-/** Inject LIMIT into SQL if not already present */
+/** Check if SQL is a SELECT query (as opposed to SHOW, DESCRIBE, etc.) */
+function isSelectQuery(sql: string): boolean {
+  const normalized = sql.trim().toUpperCase();
+  return normalized.startsWith("SELECT") || normalized.startsWith("(");
+}
+
+/** Inject LIMIT into SQL if not already present; skips non-SELECT statements */
 export function injectLimit(sql: string, limit: number): string {
+  if (!isSelectQuery(sql)) {
+    return sql;
+  }
   const normalized = sql.toUpperCase().trim();
   if (/\bLIMIT\s+\d+/i.test(normalized)) {
     return sql;

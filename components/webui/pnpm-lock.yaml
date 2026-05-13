@@ -383,6 +383,9 @@ importers:
       '@sinclair/typebox':
         specifier: 'catalog:'
         version: 0.34.49
+      '@smithy/types':
+        specifier: ^3.0.0
+        version: 3.7.2
       '@webui/common':
         specifier: workspace:*
         version: link:../common
@@ -2893,6 +2896,10 @@ packages:
   '@smithy/smithy-client@4.13.0':
     resolution: {integrity: sha512-lysfoRCr7PdD9CsPp9VQuJYRGI5mWYb8FRkbdBSQttxpQmW7tZsFgmpBNKVcgvBsAgBCkYX/UQs0NmznuBcZQQ==}
     engines: {node: '>=18.0.0'}
+
+  '@smithy/types@3.7.2':
+    resolution: {integrity: sha512-bNwBYYmN8Eh9RyjS1p2gW6MIhSO2rl7X9QeLM8iTdcGRP+eDiIWDt66c9IysCc22gefKszZv+ubV9qZc7hdESg==}
+    engines: {node: '>=16.0.0'}
 
   '@smithy/types@4.14.1':
     resolution: {integrity: sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg==}
@@ -9841,6 +9848,10 @@ snapshots:
     dependencies:
       '@smithy/core': 3.24.0
       '@smithy/types': 4.14.1
+      tslib: 2.8.1
+
+  '@smithy/types@3.7.2':
+    dependencies:
       tslib: 2.8.1
 
   '@smithy/types@4.14.1':

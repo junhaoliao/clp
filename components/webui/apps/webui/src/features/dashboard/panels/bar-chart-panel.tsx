@@ -59,6 +59,11 @@ export const BarChartPanel = ({data, height, id, options, syncId}: PanelComponen
 
     const [xField] = frame.fields;
     const yFields = frame.fields.slice(1).filter((f) => "number" === f.type);
+
+    if (0 === yFields.length) {
+        return <EmptyState message={"No numeric fields to plot"}/>;
+    }
+
     const noAnimation = chartData.length > LARGE_DATASET_THRESHOLD;
 
     return (

@@ -29,6 +29,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.971.0",
     "@aws-sdk/s3-request-presigner": "^3.971.0",
+    "@smithy/types": "^3.0.0",
     "@fastify/autoload": "^6.3.1",
     "@fastify/env": "^5.0.3",
     "@fastify/error": "^4.2.0",

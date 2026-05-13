@@ -94,17 +94,19 @@ const dashboardLimiter = new RateLimiter(RATE_LIMIT_MAX_HITS, RATE_LIMIT_WINDOW_
  */
 export const honoApp = new Hono()
 
-// NFR-12: Spoofing prevention — in production, only a trusted gateway may set
-    // x-clp-* headers. Without a gateway marker, strip any x-clp-* headers from the
-    // request (client-side spoofing). With a gateway marker, the x-clp-role header is
-    // trusted and other x-clp-* headers are rejected as spoofed.
+// NFR-12: Reject X-CLP-* headers from untrusted sources (spoofing prevention)
+// In production: without a gateway, any x-clp-* header is spoofed → reject.
+// With a gateway, only x-clp-role is trusted; other x-clp-* headers are suspicious → reject.
+// Gateway marker is preserved here for NFR-11 to check, then deleted in NFR-11 after RBAC.
     .use("/api/*", async (c, next) => {
         if (isProduction()) {
             const hasGatewayHeader = Boolean(c.req.header(GATEWAY_HEADER));
             for (const [key] of c.req.raw.headers.entries()) {
                 if (key.startsWith(CLP_HEADER_PREFIX) && key !== GATEWAY_HEADER) {
                     if (!hasGatewayHeader) {
-                        c.req.raw.headers.delete(key);
+                        c.status(HTTP_FORBIDDEN);
+
+                        return c.json({error: `Rejected spoofed header: ${key}`});
                     } else if (key !== "x-clp-role") {
                         // Gateway present but non-role x-clp-* header is suspicious
                         c.status(HTTP_FORBIDDEN);
@@ -119,9 +121,9 @@ export const honoApp = new Hono()
     })
 
 // NFR-11: RBAC enforcement in production mode when a gateway is present.
-    // The gateway is responsible for setting x-clp-role based on authenticated user
-    // permissions. Without a gateway, requests are direct from trusted clients and
-    // all operations are permitted.
+// The gateway is responsible for setting x-clp-role based on authenticated user
+// permissions. Without a gateway, requests are direct from trusted clients and
+// all operations are permitted.
     .use("/api/*", async (c, next) => {
         if (!isProduction()) {
             return next();

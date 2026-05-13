@@ -23,7 +23,8 @@ export function HeatmapPanel({data, width, height, options}: PanelComponentProps
     );
   }
 
-  const maxVal = Math.max(...(valueField.values as number[]), 1);
+  const numericValues = valueField.values.filter((v): v is number => typeof v === "number");
+  const maxVal = numericValues.reduce((max, v) => Math.max(max, v), 0) || 1;
   const cellSize = (options["cellSize"] as number) ?? 12;
   const gap = 1;
 

@@ -55,7 +55,7 @@ export function StatPanel({data, options, width, height}: PanelComponentProps) {
         </div>
       )}
       {showSparkline && valueField.values.length > 1 && (
-        <Sparkline values={valueField.values as number[]} width={Math.min(width - 16, 200)} height={30} />
+        <Sparkline values={valueField.values.filter((v): v is number => typeof v === "number")} width={Math.min(width - 16, 200)} height={30} />
       )}
       {valueField.config?.displayName && (
         <span className="text-xs text-muted-foreground">{valueField.config.displayName}</span>
@@ -83,8 +83,8 @@ function computeTrend(values: unknown[]): {direction: "up" | "down" | "flat"; pe
 function Sparkline({values, width, height}: {values: number[]; width: number; height: number}) {
   if (values.length < 2) return null;
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = values.reduce((m, v) => Math.min(m, v), Infinity);
+  const max = values.reduce((m, v) => Math.max(m, v), -Infinity);
   const range = max - min || 1;
 
   const points = values.map((v, i) => {

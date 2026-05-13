@@ -52,6 +52,18 @@ describe("MySQL Datasource", () => {
     it("should remove trailing semicolon before adding LIMIT", () => {
       expect(injectLimit("SELECT * FROM logs;", 100)).toBe("SELECT * FROM logs LIMIT 101");
     });
+
+    it("should not inject LIMIT into SHOW statements", () => {
+      expect(injectLimit("SHOW TABLES", 100)).toBe("SHOW TABLES");
+    });
+
+    it("should not inject LIMIT into DESCRIBE statements", () => {
+      expect(injectLimit("DESCRIBE logs", 100)).toBe("DESCRIBE logs");
+    });
+
+    it("should not inject LIMIT into EXPLAIN statements", () => {
+      expect(injectLimit("EXPLAIN SELECT * FROM logs", 100)).toBe("EXPLAIN SELECT * FROM logs");
+    });
   });
 
   describe("validateSqlSafety", () => {
