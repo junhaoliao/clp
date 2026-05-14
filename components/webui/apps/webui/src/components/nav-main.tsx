@@ -1,6 +1,6 @@
 import {
+    Link,
     useLocation,
-    useNavigate,
 } from "react-router";
 
 import {type LucideIcon} from "lucide-react";
@@ -29,7 +29,6 @@ export const NavMain = ({
     }[];
 }) => {
     const {pathname} = useLocation();
-    const navigate = useNavigate();
 
     return (
         <SidebarGroup>
@@ -39,8 +38,8 @@ export const NavMain = ({
                     <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                             isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
+                            render={<Link to={item.to} />}
                             tooltip={item.title}
-                            onClick={() => navigate(item.to)}
                         >
                             <item.icon/>
                             <span>

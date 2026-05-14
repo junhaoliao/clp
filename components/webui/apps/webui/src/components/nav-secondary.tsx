@@ -1,6 +1,6 @@
 import {
+    Link,
     useLocation,
-    useNavigate,
 } from "react-router";
 
 import {type LucideIcon} from "lucide-react";
@@ -30,7 +30,6 @@ export const NavSecondary = ({
     }[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) => {
     const {pathname} = useLocation();
-    const navigate = useNavigate();
 
     return (
         <SidebarGroup {...props}>
@@ -41,7 +40,7 @@ export const NavSecondary = ({
                             <SidebarMenuButton
                                 isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
                                 size={"sm"}
-                                onClick={() => navigate(item.to)}
+                                render={<Link to={item.to} />}
                             >
                                 <item.icon/>
                                 <span>
