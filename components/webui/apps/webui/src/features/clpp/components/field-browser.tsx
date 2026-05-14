@@ -14,6 +14,7 @@ import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {Separator} from "@/components/ui/separator";
 import {WildcardOnNumericBadge} from "@/features/clpp/components/wildcard-on-numeric-badge";
+import type {SchemaTreeResponse} from "@/features/clpp/types";
 
 
 type SchemaTreeNode = {
@@ -24,14 +25,13 @@ type SchemaTreeNode = {
     children: SchemaTreeNode[];
 };
 
+const api = hc<AppType>("/");
 type FieldItem = {
     name: string;
     type: "string" | "int" | "float" | "object";
     count: number;
     isSharedNode: boolean;
 };
-
-const api = hc<AppType>("/");
 
 const TYPE_ICONS: Record<string, string> = {
     string: "Aa",
@@ -139,10 +139,7 @@ const FieldRow = ({isSelected, onToggleSelect, field}: {
                 </span>
             </div>
             <CollapsibleContent>
-                <div
-                    className={"ml-6 space-y-0.5 border-l " +
-                        "px-2 py-1 text-xs text-muted-foreground"}
-                >
+                <div className={"ml-6 border-l px-2 py-1 text-xs text-muted-foreground"}>
                     <p>
                         Type:
                         {field.type}
@@ -177,26 +174,35 @@ const FieldRow = ({isSelected, onToggleSelect, field}: {
  * @param root0
  * @param root0.selectedFields
  * @param root0.onToggleField
+ * @param root0.dataset
  * @return The field browser sidebar component.
  */
 const FieldBrowser = ({
+    dataset,
     selectedFields,
     onToggleField,
 }: {
+    dataset: string;
     selectedFields: string[];
     onToggleField: (name: string) => void;
 }) => {
     const [search, setSearch] = useState("");
 
     const {data: treeData} = useQuery({
-        queryKey: ["schema-tree"],
+        queryKey: ["schema-tree",
+            dataset],
         queryFn: async () => {
             const res = await api.api["schema-tree"].$get({
-                query: {archive_id: "latest"},
+                query: {dataset},
             });
 
-            return res.json();
+            if (!res.ok) {
+                throw new Error("Failed to fetch schema tree");
+            }
+
+            return res.json() as Promise<SchemaTreeResponse>;
         },
+        enabled: 0 < dataset.length,
     });
 
     const standardFields: FieldItem[] = [

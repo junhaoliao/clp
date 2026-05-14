@@ -65,7 +65,7 @@ const ClppSchemaFormItems = () => {
         setSelectedValue(value);
 
         if (LOG_CONVERTOR_OPTION.value === value) {
-            form.setFieldValue("schemaContent", undefined);
+            form.setFieldValue("schemaContent", void 0); // eslint-disable-line no-void
         } else if (CUSTOM_OPTION.value === value) {
             form.setFieldValue("schemaContent", "");
         } else {

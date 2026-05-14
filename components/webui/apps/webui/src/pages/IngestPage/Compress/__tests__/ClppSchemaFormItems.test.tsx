@@ -2,14 +2,13 @@ import {
     render,
     screen,
 } from "@testing-library/react";
+import {Form} from "antd";
 import {
     describe,
     expect,
     it,
     vi,
 } from "vitest";
-
-import {Form} from "antd";
 
 
 vi.mock("@tanstack/react-query", async () => {

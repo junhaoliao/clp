@@ -21,9 +21,10 @@ type TabValue = (typeof TAB_ITEMS)[number]["value"];
 
 interface ExploreTabsProps {
     children: React.ReactNode;
+    dataset: string;
 }
 
-const ExploreTabs = ({children}: ExploreTabsProps) => {
+const ExploreTabs = ({children, dataset}: ExploreTabsProps) => {
     const [activeTab, setActiveTab] = useState<TabValue>("logs");
     const {setActions} = useHeaderActions();
 
@@ -64,15 +65,15 @@ const ExploreTabs = ({children}: ExploreTabsProps) => {
                 </div>}
             {activeTab === "patterns" &&
                 <div className={"flex-1 min-h-0"}>
-                    <PatternsTab/>
+                    <PatternsTab dataset={dataset}/>
                 </div>}
             {activeTab === "schema" &&
                 <div className={"flex-1 min-h-0"}>
-                    <SchemaTab/>
+                    <SchemaTab dataset={dataset}/>
                 </div>}
             {activeTab === "stats" &&
                 <div className={"flex-1 min-h-0"}>
-                    <StatsTab/>
+                    <StatsTab dataset={dataset}/>
                 </div>}
         </div>
     );

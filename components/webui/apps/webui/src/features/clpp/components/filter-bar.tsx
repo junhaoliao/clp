@@ -35,17 +35,6 @@ const FILTER_TYPE_LABELS: Record<FilterType, string> = {
     NOT_EQUALS: "!=",
 };
 
-const FIELD_OPTIONS = [
-    "message.application_id",
-    "message.container_id",
-    "message.job_id",
-    "message.host",
-    "message.exit_code",
-    "timestamp",
-    "level",
-    "service",
-];
-
 /**
  * Select options for CLPP filter types.
  *
@@ -85,14 +74,17 @@ const FilterTypeOptions = () => (
  *
  * @param root0
  * @param root0.onAdd
+ * @param root0.fieldOptions
  * @return
  */
 const AddFilterPopover = ({
+    fieldOptions,
     onAdd,
 }: {
+    fieldOptions: string[];
     onAdd: (filter: Filter) => void;
 }) => {
-    const [newField, setNewField] = useState<string>(FIELD_OPTIONS[0] ?? "");
+    const [newField, setNewField] = useState<string>(fieldOptions[0] ?? "");
     const [newType, setNewType] = useState<FilterType>("EXISTS");
     const [newValue, setNewValue] = useState("");
 
@@ -136,7 +128,7 @@ const AddFilterPopover = ({
                                 <SelectValue/>
                             </SelectTrigger>
                             <SelectContent>
-                                {FIELD_OPTIONS.map((f) => (
+                                {fieldOptions.map((f) => (
                                     <SelectItem
                                         className={"text-xs"}
                                         key={f}
@@ -179,20 +171,6 @@ const AddFilterPopover = ({
                         </div>
                     )}
 
-                    {("EXISTS" === newType || "NEXISTS" === newType) && (
-                        <div
-                            className={"rounded-md border border-yellow-300 " +
-                                "bg-yellow-50 p-2"}
-                        >
-                            <p className={"text-xs text-yellow-800"}>
-                                Warning: EXISTS queries are not yet
-                                {" "}
-                                supported by the search backend.
-                                Results may be empty.
-                            </p>
-                        </div>
-                    )}
-
                     <Button
                         className={"w-full"}
                         size={"sm"}
@@ -213,13 +191,16 @@ const AddFilterPopover = ({
  * @param root0.filters
  * @param root0.onAddFilter
  * @param root0.onRemoveFilter
+ * @param root0.fieldOptions
  * @return
  */
 const FilterBar = ({
+    fieldOptions,
     filters,
     onAddFilter,
     onRemoveFilter,
 }: {
+    fieldOptions: string[];
     filters: Filter[];
     onAddFilter: (filter: Filter) => void;
     onRemoveFilter: (id: string) => void;
@@ -254,7 +235,9 @@ const FilterBar = ({
                 </Badge>
             ))}
 
-            <AddFilterPopover onAdd={onAddFilter}/>
+            <AddFilterPopover
+                fieldOptions={fieldOptions}
+                onAdd={onAddFilter}/>
         </div>
     );
 };
