@@ -31,7 +31,7 @@ function strOpt (val: unknown, fallback: string): string {
 const PanelTypeOptions = ({panel, updatePanel}: {panel: DashboardPanel; updatePanel: (id: string, updates: Partial<DashboardPanel>) => void}) => {
     if ("markdown" === panel.type) {
         return (
-            <div className="space-y-3">
+            <div className={"space-y-3"}>
                 <div>
                     <label className={"text-xs text-muted-foreground"}>Content</label>
                     <textarea
@@ -41,7 +41,7 @@ const PanelTypeOptions = ({panel, updatePanel}: {panel: DashboardPanel; updatePa
                             updatePanel(panel.id, {options: {...panel.options, content: e.target.value}});
                         }}/>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={"flex items-center gap-2"}>
                     <input
                         checked={true === panel.options["enableDataBinding"]}
                         id={"enableDataBinding"}
@@ -50,8 +50,9 @@ const PanelTypeOptions = ({panel, updatePanel}: {panel: DashboardPanel; updatePa
                             const updates: Partial<DashboardPanel> = {
                                 options: {...panel.options, enableDataBinding: e.target.checked},
                             };
+
                             if (e.target.checked && 0 === panel.queries.length) {
-                                const dsType = panel.datasource.type as "mysql" | "clp" | "infinity";
+                                const dsType = panel.datasource.type;
                                 updates.datasource = {...panel.datasource, type: dsType};
                                 updates.queries = [{refId: "A", datasource: {type: dsType, uid: panel.datasource.uid}, query: ""}];
                             }
@@ -251,8 +252,10 @@ export const PanelOptionsEditor = () => {
                                     "mysql" === newType && "object" === typeof q.query && null !== q.query ?
                                         (q.query as Record<string, unknown>)["queryString"] ?? "" :
                                         q.query;
+
                                 return {...q, datasource: {...q.datasource, type: newType}, query};
                             });
+
                             updatePanel(panel.id, {
                                 datasource: {...panel.datasource, type: newType},
                                 queries,
@@ -282,7 +285,7 @@ export const PanelOptionsEditor = () => {
                             updatePanel(panel.id, {timeFrom: e.target.value || undefined} as Partial<DashboardPanel>);
                         }}/>
                 </div>
-            </>)}
+                                                                                                       </>)}
 
             <GridPositionEditor
                 panel={panel}

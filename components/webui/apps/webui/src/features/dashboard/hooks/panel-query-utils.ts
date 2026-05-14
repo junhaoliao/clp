@@ -1,6 +1,11 @@
 import type {DashboardPanel} from "@webui/common/dashboard/types";
-import type {DataFrame, DataQueryResponse} from "@webui/datasource/types";
+import type {
+    DataFrame,
+    DataQueryResponse,
+} from "@webui/datasource/types";
+
 import {parameterizeVariables} from "./variable-interpolation";
+
 
 export {parseTimeRange} from "./parse-time-range";
 
@@ -30,11 +35,13 @@ export async function executePanelQuery (opts: ExecutePanelQueryOpts): Promise<D
             // CLP queries have {queryString, datasets} — interpolate variables in queryString
             if ("object" === typeof q.query && null !== q.query && "queryString" in q.query) {
                 const clpQuery = q.query as {queryString: string; datasets?: string[]; [key: string]: unknown};
-                return {...q, query: {
-                    ...clpQuery,
-                    queryString: opts.replaceVariables(clpQuery.queryString),
-                }};
+                return {...q,
+                    query: {
+                        ...clpQuery,
+                        queryString: opts.replaceVariables(clpQuery.queryString),
+                    }};
             }
+
             return {...q};
         }
 
@@ -79,12 +86,15 @@ export async function executePanelQuery (opts: ExecutePanelQueryOpts): Promise<D
 
 /**
  * Executes a CLP panel query via SSE streaming, accumulating partial DataFrames.
+ *
+ * @param queries
+ * @param opts
  */
 async function executeClpPanelQuery (
     queries: {refId: string; query: unknown; [key: string]: unknown}[],
     opts: ExecutePanelQueryOpts,
 ): Promise<DataQueryResponse> {
-    const response = await fetch(`/api/datasource/clp/query/stream`, {
+    const response = await fetch("/api/datasource/clp/query/stream", {
         body: JSON.stringify({
             from: opts.from,
             queries,
@@ -109,6 +119,8 @@ async function executeClpPanelQuery (
 /**
  * Consumes an SSE stream that emits DataQueryResponse events,
  * accumulating partial DataFrames into a merged response.
+ *
+ * @param response
  */
 async function consumeSSEDataQueryResponse (response: Response): Promise<DataQueryResponse> {
     const reader = response.body?.getReader();
@@ -170,13 +182,18 @@ async function consumeSSEDataQueryResponse (response: Response): Promise<DataQue
 
     return {
         data: Array.from(mergedFrames.values()),
-        ...(0 < errors.length ? {errors} : {}),
+        ...(0 < errors.length ?
+            {errors} :
+            {}),
     };
 }
 
 /**
  * Merges a partial DataFrame into the accumulated frame map.
  * New rows are appended to the existing frame's field values.
+ *
+ * @param accumulated
+ * @param partial
  */
 export function mergeDataFrame (accumulated: Map<string, DataFrame>, partial: DataFrame): void {
     const existing = accumulated.get(partial.name);
@@ -189,8 +206,11 @@ export function mergeDataFrame (accumulated: Map<string, DataFrame>, partial: Da
                 values: [...f.values],
             })),
             length: partial.length,
-            ...(partial.rowsTruncated ? {rowsTruncated: true} : {}),
+            ...(partial.rowsTruncated ?
+                {rowsTruncated: true} :
+                {}),
         });
+
         return;
     }
 

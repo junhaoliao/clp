@@ -2,6 +2,9 @@ import {Hono} from "hono";
 
 import {dashboardRoutes} from "./hono-routes/dashboards.js";
 import {datasourceRoutes} from "./hono-routes/datasource.js";
+import {logtypeStatsRoutes} from "./hono-routes/logtype-stats.js";
+import {schemaRoutes} from "./hono-routes/schemas.js";
+import {schemaTreeRoutes} from "./hono-routes/schema-tree.js";
 
 
 const BYTES_PER_KB = 1024;
@@ -107,7 +110,7 @@ export const honoApp = new Hono()
                         c.status(HTTP_FORBIDDEN);
 
                         return c.json({error: `Rejected spoofed header: ${key}`});
-                    } else if (key !== "x-clp-role") {
+                    } else if ("x-clp-role" !== key) {
                         // Gateway present but non-role x-clp-* header is suspicious
                         c.status(HTTP_FORBIDDEN);
 
@@ -203,23 +206,28 @@ export const honoApp = new Hono()
 
         return c.body(null);
     })
+
 // NFR: Response payload size limit — prevents sending arbitrarily large JSON responses
     .use("/api/*", async (c, next) => {
         await next();
         const contentType = c.res.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-            const body = c.res.clone().body;
+            const {body} = c.res.clone();
             if (body) {
                 const reader = body.getReader();
                 let totalBytes = 0;
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 while (true) {
                     const {done, value} = await reader.read();
-                    if (done) break;
+                    if (done) {
+                        break;
+                    }
                     totalBytes += value.length;
                     if (totalBytes > MAX_RESPONSE_SIZE) {
-                        reader.cancel().catch(() => {});
+                        reader.cancel().catch(() => {
+                        });
                         c.res = c.json({error: `Response payload exceeds ${MAX_RESPONSE_SIZE / BYTES_PER_MB}MB limit`}, 413);
+
                         return;
                     }
                 }
@@ -227,7 +235,10 @@ export const honoApp = new Hono()
         }
     })
     .route("/api/dashboards", dashboardRoutes)
-    .route("/api/datasource", datasourceRoutes);
+    .route("/api/datasource", datasourceRoutes)
+    .route("/api/logtype-stats", logtypeStatsRoutes)
+    .route("/api/schemas", schemaRoutes)
+    .route("/api/schema-tree", schemaTreeRoutes);
 
 /** Export AppType for client-side typed RPC via hc<AppType>() */
 export type AppType = typeof honoApp;

@@ -6,8 +6,8 @@ import {
 import type {DashboardPanel} from "@webui/common/dashboard/types";
 
 import {parseTimeRange} from "../hooks/parse-time-range";
-import {usePanelQueries} from "../hooks/use-panel-queries";
 import {truncateDataForDisplay} from "../hooks/truncate-display-data";
+import {usePanelQueries} from "../hooks/use-panel-queries";
 import {
     interpolateVariables,
     resolveVariables,

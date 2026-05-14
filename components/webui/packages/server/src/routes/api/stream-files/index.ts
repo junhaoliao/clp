@@ -2,8 +2,8 @@ import {FastifyPluginAsyncTypebox} from "@fastify/type-provider-typebox";
 import {EXTRACT_JOB_TYPES} from "@webui/common/query";
 import {ErrorSchema} from "@webui/common/schemas/error";
 import {
-    StreamFileExtractionSchema,
     type StreamFileExtraction,
+    StreamFileExtractionSchema,
 } from "@webui/common/schemas/stream-files";
 import {constants} from "http2";
 

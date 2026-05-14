@@ -1,91 +1,105 @@
-import {describe, it, expect, beforeEach, afterEach, vi} from "vitest";
-import {renderHook, act} from "@testing-library/react";
+import {
+    act,
+    renderHook,
+} from "@testing-library/react";
+import {
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi,
+} from "vitest";
+
 import {useLazyPanel} from "../use-lazy-panel";
 
+
 describe("useLazyPanel", () => {
-  let observerInstances: IntersectionObserver[] = [];
-  const originalIO = globalThis.IntersectionObserver;
+    let observerInstances: IntersectionObserver[] = [];
+    const originalIO = globalThis.IntersectionObserver;
 
-  beforeEach(() => {
-    observerInstances = [];
-    globalThis.IntersectionObserver = vi.fn().mockImplementation((callback) => {
-      const instance = {
-        observe: vi.fn(),
-        unobserve: vi.fn(),
-        disconnect: vi.fn(),
-        _callback: callback,
-      };
-      observerInstances.push(instance as unknown as IntersectionObserver);
-      return instance as unknown as IntersectionObserver;
-    }) as unknown as typeof IntersectionObserver;
-  });
+    beforeEach(() => {
+        observerInstances = [];
+        globalThis.IntersectionObserver = vi.fn().mockImplementation((callback) => {
+            const instance = {
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+                disconnect: vi.fn(),
+                _callback: callback,
+            };
 
-  afterEach(() => {
-    globalThis.IntersectionObserver = originalIO;
-  });
+            observerInstances.push(instance as unknown as IntersectionObserver);
 
-  it("should return isVisible=false initially", () => {
-    const {result} = renderHook(() => useLazyPanel());
-    expect(result.current.isVisible).toBe(false);
-  });
-
-  it("should set isVisible=true when element enters viewport", () => {
-    const {result} = renderHook(() => useLazyPanel());
-
-    const node = document.createElement("div");
-    act(() => {
-      result.current.ref(node);
+            return instance;
+        });
     });
 
-    // Simulate intersection
-    const observer = observerInstances[0] as unknown as {_callback: (entries: IntersectionObserverEntry[]) => void};
-    act(() => {
-      observer._callback([{isIntersecting: true} as IntersectionObserverEntry]);
+    afterEach(() => {
+        globalThis.IntersectionObserver = originalIO;
     });
 
-    expect(result.current.isVisible).toBe(true);
-  });
-
-  it("should set isVisible=false when element leaves viewport", () => {
-    const {result} = renderHook(() => useLazyPanel());
-
-    const node = document.createElement("div");
-    act(() => {
-      result.current.ref(node);
+    it("should return isVisible=false initially", () => {
+        const {result} = renderHook(() => useLazyPanel());
+        expect(result.current.isVisible).toBe(false);
     });
 
-    const observer = observerInstances[0] as unknown as {_callback: (entries: IntersectionObserverEntry[]) => void};
-    act(() => {
-      observer._callback([{isIntersecting: true} as IntersectionObserverEntry]);
-    });
-    expect(result.current.isVisible).toBe(true);
+    it("should set isVisible=true when element enters viewport", () => {
+        const {result} = renderHook(() => useLazyPanel());
 
-    act(() => {
-      observer._callback([{isIntersecting: false} as IntersectionObserverEntry]);
-    });
-    expect(result.current.isVisible).toBe(false);
-  });
+        const node = document.createElement("div");
+        act(() => {
+            result.current.ref(node);
+        });
 
-  it("should disconnect observer on cleanup", () => {
-    const {result, unmount} = renderHook(() => useLazyPanel());
+        // Simulate intersection
+        const observer = observerInstances[0] as unknown as {_callback: (entries: IntersectionObserverEntry[]) => void};
+        act(() => {
+            observer._callback([{isIntersecting: true} as IntersectionObserverEntry]);
+        });
 
-    const node = document.createElement("div");
-    act(() => {
-      result.current.ref(node);
+        expect(result.current.isVisible).toBe(true);
     });
 
-    const observer = observerInstances[0] as unknown as {disconnect: ReturnType<typeof vi.fn>};
-    unmount();
-    expect(observer.disconnect).toHaveBeenCalled();
-  });
+    it("should set isVisible=false when element leaves viewport", () => {
+        const {result} = renderHook(() => useLazyPanel());
 
-  it("should handle null ref without error", () => {
-    const {result} = renderHook(() => useLazyPanel());
+        const node = document.createElement("div");
+        act(() => {
+            result.current.ref(node);
+        });
 
-    act(() => {
-      result.current.ref(null);
+        const observer = observerInstances[0] as unknown as {_callback: (entries: IntersectionObserverEntry[]) => void};
+        act(() => {
+            observer._callback([{isIntersecting: true} as IntersectionObserverEntry]);
+        });
+        expect(result.current.isVisible).toBe(true);
+
+        act(() => {
+            observer._callback([{isIntersecting: false} as IntersectionObserverEntry]);
+        });
+        expect(result.current.isVisible).toBe(false);
     });
 
-    expect(result.current.isVisible).toBe(false);
-  });
+    it("should disconnect observer on cleanup", () => {
+        const {result, unmount} = renderHook(() => useLazyPanel());
+
+        const node = document.createElement("div");
+        act(() => {
+            result.current.ref(node);
+        });
+
+        const observer = observerInstances[0] as unknown as {disconnect: ReturnType<typeof vi.fn>};
+        unmount();
+        expect(observer.disconnect).toHaveBeenCalled();
+    });
+
+    it("should handle null ref without error", () => {
+        const {result} = renderHook(() => useLazyPanel());
+
+        act(() => {
+            result.current.ref(null);
+        });
+
+        expect(result.current.isVisible).toBe(false);
+    });
 });

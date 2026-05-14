@@ -1,84 +1,100 @@
 export type CircuitState = "closed" | "open" | "half-open";
 
 interface CircuitBreakerOptions {
-  failureThreshold: number;
-  resetTimeoutMs: number;
-  halfOpenMax: number;
+    failureThreshold: number;
+    resetTimeoutMs: number;
+    halfOpenMax: number;
 }
 
 const DEFAULT_OPTIONS: CircuitBreakerOptions = {
-  failureThreshold: 5,
-  resetTimeoutMs: 30_000,
-  halfOpenMax: 1,
+    failureThreshold: 5,
+    resetTimeoutMs: 30_000,
+    halfOpenMax: 1,
 };
 
 export class CircuitBreaker {
-  private state: CircuitState = "closed";
-  private failureCount = 0;
-  private successCount = 0;
-  private lastFailureTime = 0;
-  private halfOpenAttempts = 0;
-  private readonly opts: CircuitBreakerOptions;
+    private state: CircuitState = "closed";
 
-  constructor(opts?: Partial<CircuitBreakerOptions>) {
-    this.opts = {...DEFAULT_OPTIONS, ...opts};
-  }
+    private failureCount = 0;
 
-  getState(): CircuitState {
-    if (this.state === "open") {
-      if (Date.now() - this.lastFailureTime >= this.opts.resetTimeoutMs) {
-        this.state = "half-open";
-        this.halfOpenAttempts = 0;
-      }
+    private successCount = 0;
+
+    private lastFailureTime = 0;
+
+    private halfOpenAttempts = 0;
+
+    private readonly opts: CircuitBreakerOptions;
+
+    constructor (opts?: Partial<CircuitBreakerOptions>) {
+        this.opts = {...DEFAULT_OPTIONS, ...opts};
     }
-    return this.state;
-  }
 
-  canExecute(): boolean {
-    const state = this.getState();
-    if (state === "closed") return true;
-    if (state === "half-open") return this.halfOpenAttempts < this.opts.halfOpenMax;
-    return false;
-  }
+    getState (): CircuitState {
+        if ("open" === this.state) {
+            if (Date.now() - this.lastFailureTime >= this.opts.resetTimeoutMs) {
+                this.state = "half-open";
+                this.halfOpenAttempts = 0;
+            }
+        }
 
-  recordSuccess(): void {
-    if (this.state === "half-open") {
-      this.successCount++;
-      if (this.successCount >= this.opts.halfOpenMax) {
-        this.state = "closed";
-        this.failureCount = 0;
-        this.successCount = 0;
-      }
-    } else {
-      this.failureCount = 0;
+        return this.state;
     }
-  }
 
-  recordFailure(): void {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-    if (this.state === "half-open") {
-      this.state = "open";
-      this.halfOpenAttempts = 0;
-      this.successCount = 0;
-    } else if (this.failureCount >= this.opts.failureThreshold) {
-      this.state = "open";
+    canExecute (): boolean {
+        const state = this.getState();
+        if ("closed" === state) {
+            return true;
+        }
+        if ("half-open" === state) {
+            return this.halfOpenAttempts < this.opts.halfOpenMax;
+        }
+
+        return false;
     }
-  }
 
-  recordHalfOpenAttempt(): void {
-    this.halfOpenAttempts++;
-  }
+    recordSuccess (): void {
+        if ("half-open" === this.state) {
+            this.successCount++;
+            if (this.successCount >= this.opts.halfOpenMax) {
+                this.state = "closed";
+                this.failureCount = 0;
+                this.successCount = 0;
+            }
+        } else {
+            this.failureCount = 0;
+        }
+    }
+
+    recordFailure (): void {
+        this.failureCount++;
+        this.lastFailureTime = Date.now();
+        if ("half-open" === this.state) {
+            this.state = "open";
+            this.halfOpenAttempts = 0;
+            this.successCount = 0;
+        } else if (this.failureCount >= this.opts.failureThreshold) {
+            this.state = "open";
+        }
+    }
+
+    recordHalfOpenAttempt (): void {
+        this.halfOpenAttempts++;
+    }
 }
 
 /** Per-datasource circuit breaker registry */
 const circuitBreakers = new Map<string, CircuitBreaker>();
 
-export function getCircuitBreaker(datasourceId: string): CircuitBreaker {
-  let cb = circuitBreakers.get(datasourceId);
-  if (!cb) {
-    cb = new CircuitBreaker();
-    circuitBreakers.set(datasourceId, cb);
-  }
-  return cb;
+/**
+ *
+ * @param datasourceId
+ */
+export function getCircuitBreaker (datasourceId: string): CircuitBreaker {
+    let cb = circuitBreakers.get(datasourceId);
+    if (!cb) {
+        cb = new CircuitBreaker();
+        circuitBreakers.set(datasourceId, cb);
+    }
+
+    return cb;
 }

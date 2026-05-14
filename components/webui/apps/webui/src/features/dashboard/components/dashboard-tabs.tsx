@@ -2,6 +2,7 @@ import type {DashboardTab} from "@webui/common/dashboard/types";
 
 import {useDashboardLayoutStore} from "../stores/layout-store";
 
+
 interface DashboardTabsProps {
     isEditing: boolean;
 }
@@ -11,7 +12,7 @@ interface DashboardTabsProps {
  * @param root0
  * @param root0.isEditing
  */
-export function DashboardTabs ({isEditing}: DashboardTabsProps) {
+export const DashboardTabs = ({isEditing}: DashboardTabsProps) => {
     const dashboard = useDashboardLayoutStore((s) => s.dashboard);
     const activeTabId = useDashboardLayoutStore((s) => s.activeTabId);
     const setActiveTabId = useDashboardLayoutStore((s) => s.setActiveTabId);
@@ -57,8 +58,8 @@ export function DashboardTabs ({isEditing}: DashboardTabsProps) {
                 ))}
             {isEditing && (
                 <button
-                    type={"button"}
                     className={"px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground border-b-2 border-transparent"}
+                    type={"button"}
                     onClick={() => {
                         addTab(`Tab ${tabs.length + 1}`);
                     }}
@@ -68,4 +69,4 @@ export function DashboardTabs ({isEditing}: DashboardTabsProps) {
             )}
         </div>
     );
-}
+};

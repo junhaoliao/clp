@@ -28,6 +28,7 @@ import {
     SETTINGS_LOGS_INPUT_TYPE,
     SETTINGS_STORAGE_ENGINE,
 } from "../../../config";
+import ClppSchemaFormItems from "./ClppSchemaFormItems";
 import ClpSFormItems from "./ClpSFormItems";
 import {
     LOGS_TYPE_HELPER_TEXT,
@@ -44,6 +45,7 @@ import PathsSelectFormItem from "./PathsSelectFormItem";
 import S3InputFormItems from "./S3InputFormItems";
 import ScannerAdvancedFormItems from "./ScannerAdvancedFormItems";
 import SubmitFormItem from "./SubmitFormItem";
+
 
 
 type FormValues = {
@@ -157,6 +159,7 @@ const Compress = () => {
     const [form] = Form.useForm<FormValues>();
     const ingestMode = Form.useWatch("ingestMode", form);
     const unstructured = Form.useWatch<boolean>("unstructured", form);
+    
     const isScanner = isS3Input && INGEST_MODE_SCANNER === ingestMode;
     const queryClient = useQueryClient();
     const {
@@ -258,6 +261,7 @@ const Compress = () => {
                     <S3InputFormItems isScanner={isScanner}/> :
                     <PathsSelectFormItem/>}
                 {showClpSFields && <ClpSFormItems/>}
+                {showClpSFields && <ClppSchemaFormItems/>}
                 {isScanner && <ScannerAdvancedFormItems/>}
                 <SubmitFormItem isSubmitting={isSubmitting}/>
                 {renderFeedback(isSuccess, isError, data, error)}

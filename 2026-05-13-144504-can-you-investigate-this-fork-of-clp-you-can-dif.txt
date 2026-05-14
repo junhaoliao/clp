@@ -1,0 +1,785 @@
+ ▐▛███▜▌   Claude Code v2.1.140
+▝▜█████▛▘  GLM-5.1 · API Usage Billing
+  ▘▘ ▝▝    ~/workspace/clpp
+
+● Auto mode lets Claude handle permission prompts automatically — Claude
+   checks each tool call for risky actions and prompt injection before 
+  executing. Actions Claude identifies as safe are executed, while 
+  actions Claude identifies as risky are blocked and Claude may try a 
+  different approach. Ideal for long-running tasks. Sessions are 
+  slightly more expensive. Claude can make mistakes that allow harmful 
+  commands to run, it's recommended to only use in isolated 
+  environments. Shift+Tab to change mode.
+
+❯ can you investigate this fork of clp (you can diff with the common ancestor   
+  of y-scope/clp) and figure out exactly what's added on this fork's branch and 
+   what are the use cases. write to clps-design.md . the purpose is to          
+  investigate what UI support to be added to the components/webui               
+
+● I'll investigate the fork by finding the common ancestor with y-scope/clp and
+  analyzing the differences. Let me start by exploring the repo structure and
+  git history.
+
+  Listed 2 directories, ran 5 shell commands (ctrl+o to expand)
+
+● Good, the common ancestor is 01448089. Now let me launch parallel explore
+  agents to deeply investigate the fork's changes across different areas.
+
+● 3 Explore agents finished (ctrl+o to expand)
+   ├ Explore core engine changes · 0 tool uses
+   │ ⎿  Done
+   ├ Explore clp-s and API changes · 0 tool uses
+   │ ⎿  Done
+   └ Explore webui and package changes · 0 tool uses
+     ⎿  Done
+
+● Now I have a thorough understanding of the fork's changes. Let me check a
+  couple more things before writing the design document - the MCP server
+  component and the webui's current search interaction patterns.
+
+  Searched for 3 patterns, read 2 files, listed 2 directories, ran 2 shell commands (ctrl+o to expand)
+
+● Now let me check the search page and ingest page components more carefully for
+   the stats/metrics display patterns.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Good, I now have a comprehensive picture. Let me also quickly check what the
+  clp-mcp-server does and verify the stats.logtypes query mechanism.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now I have all the information I need. Let me write the comprehensive design
+  document.
+
+● Write(clps-design.md)
+  ⎿  Error writing file
+
+● Creating worktree
+  ⎿  Switched to worktree on branch worktree-unified-swimming-moon
+     /home/junhao/workspace/clpp/.claude/worktrees/unified-swimming-moon
+
+● Write(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Wrote 319 lines to
+     .claude/worktrees/unified-swimming-moon/clps-design.md
+      1 # CLPP (CLP++) Fork — Design & WebUI Integration Investigation
+      2 
+      3 ## Context
+      5 This document analyzes the `davidlion/clp` fork (branch `clpp`) a
+        gainst its common ancestor with `y-scope/clp` (commit `01448089`)
+         to understand what the fork adds and what WebUI support is neede
+        d. The goal is to inform UI design for `components/webui`.
+      6 
+      8 
+      9 ## 1. What the Fork Adds
+     … +499 lines (ctrl+o to expand)
+
+● Now let me copy it to the main working directory.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cleaning up worktree
+  ⎿  Error: Worktree has 1 uncommitted file. Removing will discard this work 
+     permanently. Confirm with the user, then re-invoke with discard_changes: 
+     true — or use action: "keep" to preserve the worktree.
+
+● Cleaning up worktree
+  ⎿  Removed worktree (branch worktree-unified-swimming-moon)
+     Returned to /home/junhao/workspace/clpp
+
+  Listed 1 directory (ctrl+o to expand)
+
+● ★ Insight ─────────────────────────────────────
+  The fork introduces a fundamentally different approach to handling
+  unstructured logs: instead of CLP-encoding strings with embedded variables
+  (the ClpString approach), it uses log-surgeon to parse messages into
+  structured schema tree nodes with typed variables. This enables:
+  1. Schema-aware search — queries are decomposed into structured leaf filters
+  rather than raw string matching
+  2. Per-logtype statistics — tracking how often each message pattern occurs,
+  enabling log distribution analysis
+  3. Hierarchical decomposition — ParentRule nodes capture nested structure
+  (e.g., a timestamp containing sub-fields)
+
+  The key architectural insight is that the CLPP system stores a typed log-type 
+  dictionary (simple string entries) alongside metadata arrays (stats +
+  parent-match positions), replacing the old LogTypeDictionaryWriter that
+  encoded variables inline. This separates the structural pattern from the
+  variable data, enabling more precise search at the cost of a more complex
+  schema tree.
+  ─────────────────────────────────────────────────
+
+  result: Wrote clps-design.md documenting the fork's additions (new clpp C++
+  library with query decomposition, logtype stats/metadata, 4 new schema tree
+  node types, experimental compression/search path, stats.logtypes special
+  query) and 7 prioritized WebUI features needed: experimental mode toggle (P0),
+   logtype stats dashboard + schema upload (P1), EXISTS queries + query
+  decomposition viz (P2), metadata browser + wildcard-on-numeric awareness (P3).
+
+✻ Cogitated for 3m 57s
+
+※ recap: Investigated the CLPP fork's additions vs upstream y-scope/clp and wrote `clps-design.md` documenting 7 prioritized WebUI features. No changes made to code — the doc is ready for your review. (disable recaps in /config)
+
+❯ show me an example query with sample logs. i suppose a schema file is         
+  required? show me samples                                                     
+
+● Let me find actual schema files and understand the log-surgeon schema format,
+  then trace through how queries work with sample logs.
+
+● 2 Explore agents finished (ctrl+o to expand)
+   ├ Find log-surgeon schema files · 0 tool uses
+   │ ⎿  Done
+   └ Find sample logs and test data · 0 tool uses
+     ⎿  Done
+
+❯ in the doc 
+● Let me read the actual schema files and the wildcard query design doc to build
+   concrete examples for the design document.
+
+  Read 3 files (ctrl+o to expand)
+
+● Now let me read the Hadoop test log to get real sample log messages.
+
+  Read 2 files (ctrl+o to expand)
+
+● Now I have everything needed. Let me update the design document with a
+  concrete examples section.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(clps-design.md)
+  ⎿  Error editing file
+
+● Creating worktree
+  ⎿  Switched to worktree on branch worktree-unified-swimming-moon
+     /home/junhao/workspace/clpp/.claude/worktrees/unified-swimming-moon
+
+  Read 1 file (ctrl+o to expand)
+
+● The worktree was created from the branch but the file wasn't committed. Let me
+   just read from the main repo and write to the worktree.
+
+  Read 1 file (ctrl+o to expand)
+
+● Good, I have the full content. Now I'll write the updated version with the
+  examples section inserted before section 6.
+
+● Write(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Wrote 612 lines to
+     .claude/worktrees/unified-swimming-moon/clps-design.md
+      1 # CLPP (CLP++) Fork — Design & WebUI Integration Investigation
+      2 
+      3 ## Context
+      5 This document analyzes the `davidlion/clp` fork (branch `clpp`) a
+        gainst its common ancestor with `y-scope/clp` (commit `01448089`)
+         to understand what the fork adds and what WebUI support is neede
+        d. The goal is to inform UI design for `components/webui`.
+      6 
+      8 
+      9 ## 1. What the Fork Adds
+     … +900 lines (ctrl+o to expand)
+
+● Now copy the updated version to the main directory.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cleaning up worktree
+  ⎿  Removed worktree (branch worktree-unified-swimming-moon)
+     Returned to /home/junhao/workspace/clpp
+
+● ★ Insight ─────────────────────────────────────
+  The log-surgeon schema is the linchpin of the CLPP system — it determines how
+  unstructured messages get decomposed. The rule names in the schema must align
+  with the cIntSet/cFloatSet hardcoded sets in JsonParser.cpp for integers to be
+   recognized as typed columns rather than generic VarString. This means the
+  schema file is not just an input to compression; it's also persisted inside
+  the archive (/ls_schema section) and reloaded at search time by
+  SchemaMatch::ensure_log_surgeon_parser_initialized() to decompose queries. The
+   schema is effectively part of the data model, not just a compression
+  parameter.
+  ─────────────────────────────────────────────────
+
+  Updated clps-design.md with a new Section 6: Worked Examples containing:
+
+  - 6.1 The default log-surgeon schema with rule-by-rule explanation
+  - 6.2 A Hive-specific schema showing how custom rule names (like blk_id,
+  memory, vcores) map to cIntSet entries for proper typed column creation
+  - 6.3 Three real Hadoop log messages traced through CLPP compression, showing
+  the logtype strings and schema tree nodes produced
+  - 6.4 Query decomposition example: how *container* memory:* gets split into
+  multiple interpretations with static text + leaf column filters
+  - 6.5 EXISTS query example with message.blk_id: EXISTS
+  - 6.6 Wildcard-on-numeric matching: how * -729* matches integer columns
+  - 6.7 stats.logtypes output with sample JSONL
+  - 6.8 A simpler self-contained example with a minimal schema
+  - 6.9 The canonical motivating example from the upstream wildcard query design
+   doc
+
+✻ Crunched for 4m 37s
+
+❯ message.blk_id: EXISTS AND message.blk_id: "blk_1073742594*"                  
+  qq: here this EXIST condition isn't necessary for the later right?            
+
+● You're right — in that example, the EXISTS is redundant. If you're already
+  filtering message.blk_id: "blk_1073742594*", then by definition only messages
+  that have a blk_id field can match. The EXISTS adds nothing.
+
+  EXISTS would matter on its own or in an OR:
+
+  - message.blk_id: EXISTS alone — "give me all messages that have a blk_id
+  field, regardless of value"
+  - message.blk_id: EXISTS OR message.error: "timeout*" — "messages with a
+  blk_id OR an error starting with timeout"
+
+  But EXISTS AND <value_filter> on the same column is always redundant since the
+   value filter implies existence.
+
+  I'll fix that in the doc.
+
+● Creating worktree
+  ⎿  Switched to worktree on branch worktree-unified-swimming-moon
+     /home/junhao/workspace/clpp/.claude/worktrees/unified-swimming-moon
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  File not found
+
+● The worktree doesn't have the file since I only copied it to the main
+  directory. Let me write the full file and copy it.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(clps-design.md)
+  ⎿  Error editing file
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  File must be read first
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 12 lines, removed 2 lines
+      462  2. All schemas are registered as matching (since EXISTS just c
+           hecks field presence).
+      463  3. The column `message.blk_id` is registered in the descriptor
+           -to-schema mapping.
+      464  
+      465 -**Use case**: Find all logs that reference a specific HDFS blo
+          -ck:                                                           
+      465 +**Use case**: Find logs referencing a specific HDFS block by v
+          +alue:                                                         
+      466  ```
+      467 -message.blk_id: EXISTS AND message.blk_id: "blk_1073742594*"  
+      467 +message.blk_id: "blk_1073742594*"                             
+      468  ```
+      469  
+      470 +Or find all messages that have a `blk_id` field regardless of 
+          +value (where EXISTS matters on its own):                      
+      471 +```                                                           
+      472 +message.blk_id: EXISTS                                        
+      473 +```                                                           
+      474 +                                                              
+      475 +Or combine field existence with an OR to broaden a search:    
+      476 +```                                                           
+      477 +message.blk_id: EXISTS OR message.error: "timeout*"           
+      478 +```                                                           
+      479 +                                                              
+      480  ### 6.6 Wildcard-on-Numeric Matching
+      481  
+      482  **Query: `* -729*`**
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cleaning up worktree
+  ⎿  Removed worktree (branch worktree-unified-swimming-moon)
+     Returned to /home/junhao/workspace/clpp
+
+● Fixed. The redundant EXISTS AND example has been replaced with three distinct
+  use cases that show when EXISTS actually matters:
+
+  1. message.blk_id: "blk_1073742594*" — value filter alone (EXISTS is implied)
+  2. message.blk_id: EXISTS — existence-only, no value constraint
+  3. message.blk_id: EXISTS OR message.error: "timeout*" — existence as part of
+  a broader OR expression
+
+✻ Brewed for 1m 31s
+
+❯ do all those tree nodes have their own names? LogMessage                      
+   +-- LogType (no data column -- structural only)                              
+   +-- LogTypeID (key = "0" -- logtype dictionary ID)                           
+   +-- Integer (key = "int", value = -300064699)                                
+   +-- Integer (key = "int", value = -300064699)                                
+   +-- Integer (key = "int", value = -300064699)                                
+   +-- Integer (key = "int", value = -300064699)                                
+   +-- Integer (key = "int", value = -300064699) otherwise how are each node /  
+  column specified for any matches?                                             
+
+● Great question — let me trace how the schema tree actually identifies and
+  distinguishes these nodes.
+
+  Read 2 files (ctrl+o to expand)
+
+● Now let me check how columns are actually addressed in search — the column
+  descriptor structure.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now let me check how SchemaMatch resolves columns — the key piece is how it
+  maps from descriptor tokens to schema node IDs.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now let me look at how schemas map to columns — the Schema class and how it
+  tracks which columns belong to which logtypes.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now I understand the full picture. Let me also check how add_node deduplicates
+   — the key to answering your question.
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+● Now I have the full picture. Here's the answer:
+
+  You've hit on the key subtlety. Those 5 Integer (key = "int") nodes are not 
+  separate schema tree nodes — they're the same node reused 5 times within a
+  single schema. Let me explain how:
+
+  ★ Insight ─────────────────────────────────────
+  The schema tree deduplicates by (parent_id, key_name, type) triple. Look at
+  SchemaTree::add_node() (SchemaTree.cpp:48-54):
+
+  auto node_it = m_node_map.find({parent_node_id, key, type});
+  if (node_it != m_node_map.end()) {
+      auto node_id = node_it->second;
+      m_nodes[node_id].increase_count();  // ← reuses the SAME node
+      return node_id;
+  }
+
+  So if two Integer children with key "int" share the same parent (LogMessage),
+  add_node returns the same schema tree node ID both times. The tree has one
+  Integer("int") node under LogMessage, not five.
+
+  But the Schema (the per-record type) allows repeated node IDs in its unordered
+   region. So the schema for this message contains the same Integer("int") node
+  ID five times — once for each variable occurrence.
+  ─────────────────────────────────────────────────
+
+  Here's what the data model actually looks like:
+
+  Schema Tree (global, shared across all records):
+  Node 0: LogMessage (key = "")
+  Node 1: LogType (key = "")
+  Node 2: LogTypeID (key = "0")     ← logtype dict ID
+  Node 3: Integer (key = "int")     ← ONE node, count=5
+
+  Schema for Message A (per-record type, the unordered column list):
+  [Node 0, Node 1, Node 2, Node 3, Node 3, Node 3, Node 3, Node 3]
+                         ^^^^^^^^  repeated 5 times — one per variable
+
+  So how are the 5 values distinguished during search?
+
+  They aren't — not by column name alone. A query like message.int: -300064699
+  would match Message A if any of its 5 integer positions equals -300064699. The
+   schema doesn't give each variable position a unique column identity.
+
+  This is a known limitation of using the generic int rule name. With a
+  Hive-specific schema where different integer variables get different rule 
+  names (like blk_id, memory, vcores), each would become its own schema tree
+  node, and search could target them individually:
+
+  Node 0: LogMessage (key = "")
+  Node 1: LogType (key = "")
+  Node 2: LogTypeID (key = "2")
+  Node 3: VarString (key = "blk_id")    ← unique node
+  Node 4: Integer (key = "memory")     ← unique node
+  Node 5: Integer (key = "vcores")     ← unique node
+
+  Now message.memory: -729246220 is unambiguous.
+
+  The doc's tree diagram was misleading — it implied 5 separate nodes when
+  there's really just 1 with count=5. Want me to fix the doc to accurately
+  reflect this?
+
+✻ Cooked for 1m 6s
+
+❯ yeah fix it. btw, can you point me to the explaination of "the generic int    
+  rule name" if you have written any in the doc? like when the generic rule is  
+  used? i thought we should always use schemas? also how key names are decided  
+  if there's such generic rule? don't we enforce uniqueness?                    
+
+● Good questions. Let me first check what happens when --experimental is used
+  without a schema path, and how key names are actually determined.
+
+  Searched for 2 patterns, read 2 files (ctrl+o to expand)
+
+● Now let me check what happens when --experimental is on but no schema path is
+  given — does the parser get initialized?
+
+  Searched for 3 patterns, read 1 file (ctrl+o to expand)
+
+● So m_log_surgeon_parser is a unique_ptr — it's null by default and only
+  initialized if log_surgeon_schema_path is provided. If --experimental is on
+  but no schema path, the parser is null, and parse_log_message() would crash on
+   m_log_surgeon_parser->next_event().
+
+  Now let me check the validate_experimental — it only checks the reverse
+  (schema without experimental), not experimental without schema.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now let me check how the rule_name becomes the key in the schema tree,
+  specifically in parse_log_message.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now I have the full picture. The key line is 1615:
+  match->ffi_pointers.rule_name.as_cpp_view() — the rule name from log-surgeon
+  becomes the key name in the schema tree.
+
+  Now let me update the doc with corrections.
+
+● Creating worktree
+  ⎿  Switched to worktree on branch worktree-unified-swimming-moon
+     /home/junhao/workspace/clpp/.claude/worktrees/unified-swimming-moon
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Now I'll replace the entire section 6.3 with corrected content and add a new
+  section explaining key naming and deduplication.
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 59 lines, removed 20 lines
+      351  
+      352  This ensures that when log-surgeon encounters `blk_1073746642_
+           1770` in a log message, it captures it with the rule name `blk
+           _id`, which CLPP recognizes as an integer type.
+      353  
+      354 -### 6.3 Sample Log Messages and Their CLPP Decomposition      
+      354 +### 6.3 How Schema Tree Key Names Work (and the Deduplication 
+          +Trap)                                                         
+      355  
+      356 +This is a critical design detail that affects search precision
+          +.                                                             
+      357 +                                                              
+      358 +**Key names come from log-surgeon rule names.** When `parse_lo
+          +g_message()` creates a schema tree node, the key is set to the
+          + log-surgeon match's `rule_name` (JsonParser.cpp:1615):       
+      359 +                                                              
+      360 +```cpp                                                        
+      361 +m_archive_writer->add_node(                                   
+      362 +    parent_node_id,                                           
+      363 +    NodeType::Integer,                                        
+      364 +    match->ffi_pointers.rule_name.as_cpp_view()  // ← this IS 
+          +the key name                                                  
+      365 +);                                                            
+      366 +```                                                           
+      367 +                                                              
+      368 +So with the default schema where `int:-?\d+` is the only integ
+          +er rule, every integer match gets key name `"int"`. With a Hiv
+          +e-specific schema that has `blk_id:blk_\d+_\d+`, a match on `b
+          +lk_1073742594_1770` gets key name `"blk_id"`.                 
+      369 +                                                              
+      370 +**Schema tree nodes are deduplicated by the triple `(parent_id
+          +, key_name, type)`.** Look at `SchemaTree::add_node()` (Schema
+          +Tree.cpp:48-54):                                              
+      371 +                                                              
+      372 +```cpp                                                        
+      373 +auto node_it = m_node_map.find({parent_node_id, key, type});  
+      374 +if (node_it != m_node_map.end()) {                            
+      375 +    auto node_id = node_it->second;                           
+      376 +    m_nodes[node_id].increase_count();  // ← reuses the SAME n
+          +ode                                                           
+      377 +    return node_id;                                           
+      378 +}                                                             
+      379 +```                                                           
+      380 +                                                              
+      381 +Two `Integer` children with key `"int"` under the same `LogMes
+          +sage` parent → **same schema tree node**, returned with an inc
+          +remented count. Two children with keys `"memory"` and `"vcores
+          +"` → **different** schema tree nodes.                         
+      382 +                                                              
+      383 +**BUT** the per-record **Schema** (the column list for a speci
+          +fic log record type) allows repeated node IDs in its unordered
+          + region. So if a message has 5 integer variables all with key 
+          +`"int"`, the schema contains the same `Integer("int")` node ID
+          + 5 times — once per variable occurrence.                      
+      384 +                                                              
+      385 +**Search implication:** A query like `message.int: -300064699`
+          + matches if **any** of the 5 integer positions equals `-300064
+          +699`. You cannot distinguish which positional occurrence match
+          +ed. With unique rule names (e.g., `message.memory`, `message.v
+          +cores`), each variable gets its own column and can be searched
+          + independently.                                               
+      386 +                                                              
+      387 +**Schema path is required for CLPP.** The `--experimental` fla
+          +g alone doesn't work — `--schema-path` must also be provided. 
+          +If `--experimental` is on but no schema path is given, `m_log_
+          +surgeon_parser` stays null and `parse_log_message()` will cras
+          +h on dereference. There's no validation that prevents this (th
+          +e `validate_experimental()` function only checks the reverse: 
+          +that `--schema-path` isn't used without `--experimental`). Thi
+          +s is likely a bug or an incomplete implementation.            
+      388 +                                                              
+      389 +### 6.4 Sample Log Messages and Their CLPP Decomposition      
+      390 +                                                              
+      391  Consider these Hadoop log messages (from the test data at `com
+           ponents/core/tests/test_network_reader_src/random.log`):
+      392  
+      393  **Message A:**
+     ...
+      420  org.apache.hadoop.mapred.MapTask: (RESET) equator %message.int
+           % kv %message.int%(%message.int%) kvi %message.int%(%message.i
+           nt%)
+      421  ```
+      422  
+      388 -And creates these **schema tree nodes** under a `LogMessage` r
+          -oot:                                                          
+      423 +**Schema tree** (global, shared across all records) for Messag
+          +e A with the **default** schema:                              
+      424  
+      425  ```
+      391 -LogMessage                                                    
+      392 - +-- LogType (no data column -- structural only)              
+      393 - +-- LogTypeID (key = "0" -- logtype dictionary ID)           
+      394 - +-- Integer (key = "int", value = -300064699)                
+      395 - +-- Integer (key = "int", value = -300064699)                
+      396 - +-- Integer (key = "int", value = -300064699)                
+      397 - +-- Integer (key = "int", value = -300064699)                
+      398 - +-- Integer (key = "int", value = -300064699)                
+      426 +Node 0: LogMessage (key = "")                                 
+      427 +Node 1: LogType    (key = "log_type")                         
+      428 +Node 2: LogTypeID  (key = "0")           ← logtype dict ID as 
+          +string                                                        
+      429 +Node 3: Integer    (key = "int", count=5) ← ONE node for ALL 5
+          + integer positions                                            
+      430  ```
+      431  
+      401 -> **Note:** With the default schema, all integers get the gene
+          -ric `int` rule name, so they'd all share the column key `messa
+          -ge.int`. With the Hive-specific schema above where `blk_id:blk
+          -_\d+_\d+` is defined, a token like `blk_1073742594_1770` gets 
+          -the rule name `blk_id`, creating a node with key `blk_id` unde
+          -r the `LogMessage`, producing a `message.blk_id` qualified nam
+          -e.                                                            
+      432 +**Schema** (per-record column list) for Message A:            
+      433  
+      403 -For **Message C**, using the Hive-specific schema with `blk_id
+          -:blk_\d+_\d+`:                                                
+      434 +```                                                           
+      435 +[Node 0, Node 1, Node 2, Node 3, Node 3, Node 3, Node 3, Node 
+          +3]                                                            
+      436 +                       ^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          +^                                                             
+      437 +                       once     Node 3 repeated 5 times (one p
+          +er variable)                                                  
+      438 +```                                                           
+      439  
+      440 +This means `message.int: -300064699` would match if **any** of
+          + the 5 integer positions equals that value — the positions are
+          + not independently addressable.                               
+      441 +                                                              
+      442 +For **Message C** with a **Hive-specific** schema that defines
+          + `blk_id:blk_\d+_\d+`:                                        
+      443 +                                                              
+      444  ```
+      406 -LogMessage                                                    
+      407 - +-- LogType                                                  
+      408 - +-- LogTypeID (key = "2")                                    
+      409 - +-- VarString (key = "blk_id", value = "blk_1073742594_1770")
+          -   <- from schema rule                                        
+      410 - +-- Integer (key = "memory", value = -729246220)             
+          -     <- from cIntSet                                          
+      411 - +-- Integer (key = "vcores", value = -729246220)             
+          -     <- from cIntSet                                          
+      412 - +-- VarString (key = "blk_id", value = "blk_1073742594_1770")
+          -    <- same rule, same column                                 
+      413 - +-- Float  (key = "capacity", value = 3549628.34)            
+          -     <- NOT yet handled (TODO)                                
+      445 +Node 0: LogMessage (key = "")                                 
+      446 +Node 1: LogType    (key = "log_type")                         
+      447 +Node 2: LogTypeID  (key = "2")                                
+      448 +Node 3: VarString  (key = "blk_id", count=2)   ← appears twice
+          + in the message                                               
+      449 +Node 4: Integer    (key = "memory", count=1)    ← unique colum
+          +n                                                             
+      450 +Node 5: Integer    (key = "vcores", count=1)    ← unique colum
+          +n                                                             
+      451  ```
+      452  
+      453 +Now `message.memory: -729246220` is unambiguous — it targets a
+          + specific column. `message.blk_id` still has 2 occurrences sha
+          +ring one node, but that's less problematic since both hold the
+          + same kind of value (HDFS block IDs).                         
+      454 +                                                              
+      455  The **logtype string** for Message C would be:
+      456  ```
+      457  org.apache.hadoop.yarn.server.resourcemanager.scheduler.capaci
+           ty.LeafQueue: Reserved container  application=%message.blk_id%
+            resource=<memory:%message.memory%, vCores:%message.vcores%> q
+           ueue=%message.blk_id%: capacity=%message.float%, ...
+
+● Now update the section numbers for the remaining sections (6.4→6.5, 6.5→6.6,
+  etc.) since I inserted 6.3 as the key-naming section and made the old 6.3
+  become 6.4.
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)  ⎿  Added 1 line, removed 1 line
+      457  org.apache.hadoop.yarn.server.resourcemanager.scheduler.capaci
+           ty.LeafQueue: Reserved container  application=%message.blk_id%
+            resource=<memory:%message.memory%, vCores:%message.vcores%> q
+           ueue=%message.blk_id%: capacity=%message.float%, ...
+      458  ```
+      459  
+      460 -### 6.4 How Search Works: Query Decomposition                 
+      460 +### 6.5 How Search Works: Query Decomposition                 
+      461  
+      462  This is where CLPP fundamentally differs from upstream CLP. Co
+           nsider searching for:
+      463  
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 1 line, removed 1 line
+      492  
+      493  **The result**: only schemas whose logtypes structurally match
+            the query are searched, and within those schemas, only the re
+           levant variable columns are filtered. This is far more precise
+            than the old `ClpString` wildcard match.
+      494  
+      495 -### 6.5 EXISTS Queries                                        
+      495 +### 6.6 EXISTS Queries                                        
+      496  
+      497  The query `message.blk_id: EXISTS` asks "show me all log messa
+           ges that have a `blk_id` field."
+      498  
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 1 line, removed 1 line
+      516  message.blk_id: EXISTS OR message.error: "timeout*"
+      517  ```
+      518  
+      519 -### 6.6 Wildcard-on-Numeric Matching                          
+      519 +### 6.7 Wildcard-on-Numeric Matching                          
+      520  
+      521  **Query: `* -729*`**
+      522  
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 1 line, removed 1 line
+      528  
+      529  This is enabled by the `NarrowTypes` change that keeps `Intege
+           rT` and `FloatT` in the matching types even for wildcard strin
+           g literals.
+      530  
+      531 -### 6.7 `stats.logtypes` Output                               
+      531 +### 6.8 `stats.logtypes` Output                               
+      532  
+      533  Running `clp-s --experimental -s "stats.logtypes" <archive_pat
+           h>` outputs:
+      534  
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 1 line, removed 1 line
+      545  
+      546  This data is the basis for the **LogType Statistics Dashboard*
+           * proposed in section 4.1.
+      547  
+      548 -### 6.8 A Simpler End-to-End Example                          
+      548 +### 6.9 A Simpler End-to-End Example                          
+      549  
+      550  For a minimal, self-contained example:
+      551  
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 1 line, removed 1 line
+      590  
+      591  Each interpretation produces a different set of matching logty
+           pes and leaf column filters.
+      592  
+      593 -### 6.9 The Motivating Example from the Wildcard Query Design 
+          -Doc                                                           
+      593 +### 6.10 The Motivating Example from the Wildcard Query Design
+          + Doc                                                          
+      594  
+      595  The upstream design doc at `docs/src/dev-docs/design-parsing-w
+           ildcard-queries.md` provides this canonical example:
+      596  
+
+● Now also fix the simpler example in section 6.9 which had the same misleading
+  tree representation.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Update(.claude/worktrees/unified-swimming-moon/clps-design.md)
+  ⎿  Added 13 lines
+      581  %message.service% %message.status% Connection from %message.ha
+           sNumber% failed on port %message.int% after %message.int% retr
+           ies
+      582  ```
+      583  
+      584 +**Schema tree** for this record:                              
+      585 +```                                                           
+      586 +Node 0: LogMessage (key = "")                                 
+      587 +Node 1: LogType    (key = "log_type")                         
+      588 +Node 2: LogTypeID  (key = "0")                                
+      589 +Node 3: VarString  (key = "service", count=1)    ← unique colu
+          +mn                                                            
+      590 +Node 4: VarString  (key = "status", count=1)     ← unique colu
+          +mn                                                            
+      591 +Node 5: VarString  (key = "hasNumber", count=1)  ← unique colu
+          +mn                                                            
+      592 +Node 6: Integer    (key = "int", count=2)         ← shared by 
+          +both integer positions!                                       
+      593 +```                                                           
+      594 +                                                              
+      595 +Note: both `8080` and `3` matched the `int` rule, so they shar
+          +e Node 6. A query for `message.int: 8080` would match if **eit
+          +her** integer position equals 8080. If you need to distinguish
+          + port numbers from retry counts, you'd need a schema with sepa
+          +rate rule names like `portNum:\d{1,5}` and `retries:\d+`.     
+      596 +                                                              
+      597  **Query: `*ERROR* port*`**
+      598  
+      599  Decomposed into interpretations:
+
+● Now copy back and clean up.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Cleaning up worktree
+  ⎿  Removed worktree (branch worktree-unified-swimming-moon)
+     Returned to /home/junhao/workspace/clpp
+
+● ★ Insight ─────────────────────────────────────
+  The schema tree's deduplication by (parent_id, key_name, type) creates an
+  important tension in CLPP: the schema file's rule names directly determine 
+  search precision. The default schemas.txt uses generic names like int and
+  float, so all integers in a message collapse into one column. A custom schema
+  with specific rule names (like blk_id, memory, port) creates distinct,
+  independently searchable columns. This is why the Hive-specific schema exists
+  — it's not just about better parsing, it's about enabling precise per-field
+  search.
+
+  There's also a bug: --experimental without --schema-path would crash because
+  m_log_surgeon_parser stays null but parse_log_message() dereferences it
+  unconditionally.
+  ─────────────────────────────────────────────────
+
+  Updated the doc with:
+
+  1. New section 6.3: "How Schema Tree Key Names Work (and the Deduplication
+  Trap)" — explains that key names come from log-surgeon rule names, the
+  (parent_id, key_name, type) dedup triple, and the search precision implication
+   of sharing nodes.
+  2. Fixed Message A tree: Was 5 separate Integer (key = "int") nodes → now
+  correctly shows 1 Integer (key = "int", count=5) node, with an explanation of
+  how the Schema repeats the node ID.
+  3. Fixed Message C tree: Same correction — shows node IDs and counts instead
+  of listing duplicates.
+  4. Fixed simpler example: Now shows the shared Integer("int", count=2) node
+  and explains the implication.
+  5. Added bug note: --experimental without --schema-path would crash —
+  validate_experimental() only checks the reverse direction.
+
+✻ Cooked for 2m 56s

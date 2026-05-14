@@ -5,7 +5,9 @@ import {constants} from "http2";
 import settings from "../../../../settings.json" with {type: "json"};
 import {
     CompressionMetadataQueryRow,
+    CompressionMetadataSimpleQueryRow,
     getCompressionMetadataQuery,
+    getCompressionMetadataSimpleQuery,
     getIngestionJobsQuery,
     IngestionJobQueryRow,
 } from "./sql.js";
@@ -32,22 +34,43 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
             },
         },
         async () => {
-            const [compressionRows] =
-                await fastify.mysql.query<CompressionMetadataQueryRow[]>(
-                    getCompressionMetadataQuery()
-                );
-
-            const compressionJobs = mapCompressionMetadataRows(compressionRows);
-
             const hasLogIngestor = null !== (settings.LogIngestorHost as string | null);
+
+            let compressionJobs;
+            try {
+                if (hasLogIngestor) {
+                    const [compressionRows] =
+                        await fastify.mysql.query<CompressionMetadataQueryRow[]>(
+                            getCompressionMetadataQuery()
+                        );
+                    compressionJobs = mapCompressionMetadataRows(compressionRows);
+                } else {
+                    const [compressionRows] =
+                        await fastify.mysql.query<CompressionMetadataSimpleQueryRow[]>(
+                            getCompressionMetadataSimpleQuery()
+                        );
+                    compressionJobs = mapCompressionMetadataRows(compressionRows);
+                }
+            } catch {
+                const [compressionRows] =
+                    await fastify.mysql.query<CompressionMetadataSimpleQueryRow[]>(
+                        getCompressionMetadataSimpleQuery()
+                    );
+                compressionJobs = mapCompressionMetadataRows(compressionRows);
+            }
+
             if (false === hasLogIngestor) {
                 return {compressionJobs: compressionJobs, ingestionJobs: []};
             }
 
-            const [ingestionRows] =
-                await fastify.mysql.query<IngestionJobQueryRow[]>(
+            let ingestionRows: IngestionJobQueryRow[] = [];
+            try {
+                [ingestionRows] = await fastify.mysql.query<IngestionJobQueryRow[]>(
                     getIngestionJobsQuery()
                 );
+            } catch {
+                // ingestion_job table may not exist if log-ingestor hasn't run
+            }
 
             return {
                 compressionJobs: compressionJobs,

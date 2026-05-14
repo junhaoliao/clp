@@ -1,4 +1,7 @@
-import {render, screen} from "@testing-library/react";
+import {
+    render,
+    screen,
+} from "@testing-library/react";
 import {
     describe,
     expect,
@@ -12,7 +15,7 @@ import {PanelChrome} from "../panel-chrome";
 describe("PanelChrome", () => {
     it("should render loading state", () => {
         render(
-            <PanelChrome state="loading">
+            <PanelChrome state={"loading"}>
                 <div>content</div>
             </PanelChrome>,
         );
@@ -22,7 +25,10 @@ describe("PanelChrome", () => {
 
     it("should render error state", () => {
         render(
-            <PanelChrome state="error" errorMessage="Query failed">
+            <PanelChrome
+                errorMessage={"Query failed"}
+                state={"error"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -32,7 +38,7 @@ describe("PanelChrome", () => {
 
     it("should render empty state", () => {
         render(
-            <PanelChrome state="empty">
+            <PanelChrome state={"empty"}>
                 <div>content</div>
             </PanelChrome>,
         );
@@ -42,7 +48,7 @@ describe("PanelChrome", () => {
 
     it("should render children in data state", () => {
         render(
-            <PanelChrome state="data">
+            <PanelChrome state={"data"}>
                 <div>chart-content</div>
             </PanelChrome>,
         );
@@ -51,7 +57,10 @@ describe("PanelChrome", () => {
 
     it("should show rowsTruncated warning in data state", () => {
         render(
-            <PanelChrome state="data" rowsTruncated>
+            <PanelChrome
+                rowsTruncated={true}
+                state={"data"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -60,7 +69,10 @@ describe("PanelChrome", () => {
 
     it("should not show rowsTruncated warning when rowsTruncated is false", () => {
         render(
-            <PanelChrome state="data" rowsTruncated={false}>
+            <PanelChrome
+                rowsTruncated={false}
+                state={"data"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -69,7 +81,10 @@ describe("PanelChrome", () => {
 
     it("should show slow query indicator in loading state", () => {
         render(
-            <PanelChrome state="loading" isSlowQuery>
+            <PanelChrome
+                isSlowQuery={true}
+                state={"loading"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -78,7 +93,10 @@ describe("PanelChrome", () => {
 
     it("should not show slow query indicator when isSlowQuery is false", () => {
         render(
-            <PanelChrome state="loading" isSlowQuery={false}>
+            <PanelChrome
+                isSlowQuery={false}
+                state={"loading"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -88,7 +106,11 @@ describe("PanelChrome", () => {
     it("should show retry button when onRetry is provided in error state", () => {
         const onRetry = vi.fn();
         render(
-            <PanelChrome state="error" errorMessage="fail" onRetry={onRetry}>
+            <PanelChrome
+                errorMessage={"fail"}
+                state={"error"}
+                onRetry={onRetry}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -97,7 +119,10 @@ describe("PanelChrome", () => {
 
     it("should not show retry button when onRetry is absent in error state", () => {
         render(
-            <PanelChrome state="error" errorMessage="fail">
+            <PanelChrome
+                errorMessage={"fail"}
+                state={"error"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
@@ -108,64 +133,89 @@ describe("PanelChrome", () => {
 describe("PanelChrome — isRefetching / LinearProgressBar", () => {
     it("should show linear progress bar when isRefetching and state is data", () => {
         const {container} = render(
-            <PanelChrome state="data" isRefetching>
+            <PanelChrome
+                isRefetching={true}
+                state={"data"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeTruthy();
         expect(screen.getByText("content")).toBeTruthy();
     });
 
     it("should not show progress bar when isRefetching is false", () => {
         const {container} = render(
-            <PanelChrome state="data" isRefetching={false}>
+            <PanelChrome
+                isRefetching={false}
+                state={"data"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeNull();
     });
 
     it("should not show progress bar when isRefetching is undefined", () => {
         const {container} = render(
-            <PanelChrome state="data">
+            <PanelChrome state={"data"}>
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeNull();
     });
 
     it("should not show progress bar when isRefetching but state is loading (skeleton takes precedence)", () => {
         const {container} = render(
-            <PanelChrome state="loading" isRefetching>
+            <PanelChrome
+                isRefetching={true}
+                state={"loading"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeNull();
         expect(screen.getByLabelText("Loading panel data")).toBeTruthy();
     });
 
     it("should not show progress bar when isRefetching but state is error", () => {
         const {container} = render(
-            <PanelChrome state="error" isRefetching errorMessage="fail">
+            <PanelChrome
+                errorMessage={"fail"}
+                isRefetching={true}
+                state={"error"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeNull();
     });
 
     it("should not show progress bar when isRefetching but state is empty", () => {
         const {container} = render(
-            <PanelChrome state="empty" isRefetching>
+            <PanelChrome
+                isRefetching={true}
+                state={"empty"}
+            >
                 <div>content</div>
             </PanelChrome>,
         );
+
         expect(container.querySelector(".animate-indeterminate-progress")).toBeNull();
     });
 
     it("should keep content visible while progress bar is shown during refetch", () => {
         render(
-            <PanelChrome state="data" isRefetching>
-                <div data-testid="panel-content">my-chart</div>
+            <PanelChrome
+                isRefetching={true}
+                state={"data"}
+            >
+                <div data-testid={"panel-content"}>my-chart</div>
             </PanelChrome>,
         );
         expect(screen.getByTestId("panel-content")).toBeTruthy();

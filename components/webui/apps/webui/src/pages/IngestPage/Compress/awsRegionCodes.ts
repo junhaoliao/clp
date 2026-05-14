@@ -8,7 +8,7 @@ import partitions from "@aws-sdk/util-endpoints/dist-es/lib/aws/partitions.json"
  * Global pseudo-regions (e.g. `aws-global`, `aws-cn-global`) are excluded.
  */
 const AWS_REGION_CODES: string[] = Object.keys(
-    partitions.partitions.find((p) => "aws" === p.id)?.regions ?? {},
+    partitions.partitions.find((p: {id: string}) => "aws" === p.id)?.regions ?? {},
 );
 
 export {AWS_REGION_CODES};

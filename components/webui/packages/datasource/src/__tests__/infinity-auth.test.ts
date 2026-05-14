@@ -3,7 +3,9 @@ import {
     expect,
     it,
 } from "vitest";
+
 import {buildAuthHeaders} from "../infinity/auth.js";
+
 
 describe("buildAuthHeaders", () => {
     it("should return empty headers for no auth", () => {
@@ -30,6 +32,7 @@ describe("buildAuthHeaders", () => {
             type: "apikey",
             value: "my-secret-key",
         });
+
         expect(headers).toEqual({"X-API-Key": "my-secret-key"});
     });
 
@@ -51,7 +54,7 @@ describe("Auth header integration", () => {
         };
         const merged = {...existingHeaders, ...authHeaders};
         expect(merged).toEqual({
-            Accept: "application/json",
+            "Accept": "application/json",
             "X-API-Key": "my-key",
         });
     });

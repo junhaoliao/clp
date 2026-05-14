@@ -175,25 +175,26 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
         },
         async (request, reply) => {
             try {
+                const body = request.body as CompressionJobCreation;
                 if (
-                    CompressionJobInputType.S3 === request.body.inputType &&
-                    request.body.scanner
+                    CompressionJobInputType.S3 === body.inputType &&
+                    body.scanner
                 ) {
                     return await handleScannerSubmission(
-                        request.body,
+                        body,
                         request.log,
                     );
                 }
 
                 const jobConfig: ClpIoConfig =
-                    (CompressionJobInputType.S3 === request.body.inputType) ?
+                    (CompressionJobInputType.S3 === body.inputType) ?
                         buildS3JobConfig(
-                            request.body,
+                            body,
                             request.log,
                             fastify.config.CLP_LOGS_INPUT_AWS_ACCESS_KEY_ID,
                             fastify.config.CLP_LOGS_INPUT_AWS_SECRET_ACCESS_KEY,
                         ) :
-                        buildFsJobConfig(request.body, request.log);
+                        buildFsJobConfig(body, request.log);
 
                 const jobId = await CompressionJobDbManager.submitJob(jobConfig);
                 reply.code(constants.HTTP_STATUS_CREATED);

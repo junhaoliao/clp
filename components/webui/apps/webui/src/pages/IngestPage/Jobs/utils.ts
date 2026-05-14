@@ -6,14 +6,12 @@ import type {
 import {
     type ClpIoConfig,
     type ClpIoFsInputConfig,
-    type ClpIoS3InputConfig,
     CompressionJobInputType,
 } from "@webui/common/schemas/compression";
 import dayjs from "dayjs";
 
 import {SETTINGS_STORAGE_ENGINE} from "../../../config";
 import {
-    CompressionJobStatus,
     JobData,
     JobRowType,
 } from "./typings";
@@ -61,7 +59,7 @@ const extractPathsFromInput = (clpIoConfig: ClpIoConfig): string[] => {
     }
 
     if (CompressionJobInputType.S3 === input.type) {
-        const {bucket, key_prefix: keyPrefix, keys} = input as ClpIoS3InputConfig;
+        const {bucket, key_prefix: keyPrefix, keys} = input;
         const base = `s3://${bucket}/`;
         if (null !== keys && 0 < keys.length) {
             return keys.map((key) => `${base}${key}`);
@@ -146,7 +144,7 @@ const mapCompressionJobToJobData = ({
 
     return {
         compressedSize: compressedSizeText,
-        compressionStatus: status as CompressionJobStatus,
+        compressionStatus: status,
         dataIngested: uncompressedSizeText,
         dataset: dataset,
         jobId: String(id),

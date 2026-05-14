@@ -18,7 +18,7 @@ const getLoggerOptions = () => {
     // Only if the program is running in an interactive terminal.
     if (process.stdout.isTTY) {
         return {
-            level: process.env["LOG_LEVEL"] ?? "info",
+            level: process.env['LOG_LEVEL'] ?? "info",
             transport: {
                 target: "pino-pretty",
                 options: {
@@ -28,7 +28,7 @@ const getLoggerOptions = () => {
         };
     }
 
-    return {level: process.env["LOG_LEVEL"] ?? "info"};
+    return {level: process.env['LOG_LEVEL'] ?? "info"};
 };
 
 const app = fastify({

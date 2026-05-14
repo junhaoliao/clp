@@ -15,14 +15,25 @@ function createMockQueryStream () {
     const listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 
     return {
+        /**
+         *
+         * @param event
+         * @param handler
+         */
         on (event: string, handler: (...args: unknown[]) => void) {
             if (!listeners[event]) {
                 listeners[event] = [];
             }
-            listeners[event]!.push(handler);
+            listeners[event].push(handler);
 
             return this;
         },
+
+        /**
+         *
+         * @param event
+         * @param args
+         */
         emit (event: string, ...args: unknown[]) {
             const handlers = listeners[event] ?? [];
             for (const handler of handlers) {
@@ -66,12 +77,13 @@ describe("MySQL streaming batch accumulator", () => {
             }
         };
 
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; 30 > i; i++) {
             batch.push({id: i});
             if (BATCH_FLUSH_COUNT === batch.length) {
                 flush();
             }
         }
+
         // End of stream — flush remaining
         flush();
 

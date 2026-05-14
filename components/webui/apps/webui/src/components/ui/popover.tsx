@@ -1,4 +1,3 @@
-
 import * as React from "react";
 
 import {Popover} from "@base-ui/react/popover";
@@ -32,7 +31,7 @@ const PopoverContent = ({
         <Popover.Portal>
             <Popover.Positioner
                 align={align}
-                className="z-50"
+                className={"z-50"}
                 sideOffset={sideOffset}
                 {...props}
             >

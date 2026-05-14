@@ -6,6 +6,7 @@ import {initializePanelPlugins} from "./features/dashboard/plugins/init";
 
 import "./index.css";
 
+
 initializePanelPlugins();
 
 

@@ -4,7 +4,6 @@ import {
 } from "@fastify/type-provider-typebox";
 import {
     SqlSchema,
-    type SqlRequest,
 } from "@webui/common/schemas/archive-metadata";
 import {constants} from "http2";
 
@@ -27,7 +26,7 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
             },
         },
         async (req, reply) => {
-            const {queryString} = req.body as SqlRequest;
+            const {queryString} = req.body;
             const [result] = await fastify.mysql.query(queryString);
             reply.code(constants.HTTP_STATUS_OK);
 

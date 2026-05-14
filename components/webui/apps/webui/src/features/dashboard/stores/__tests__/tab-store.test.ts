@@ -1,10 +1,12 @@
+import type {Dashboard} from "@webui/common/dashboard/types";
 import {
     describe,
     expect,
     it,
 } from "vitest";
+
 import {useDashboardLayoutStore} from "../layout-store";
-import type {Dashboard} from "@webui/common/dashboard/types";
+
 
 const MOCK_DASHBOARD: Dashboard = {
     createdAt: "",
@@ -53,7 +55,8 @@ describe("dashboard tab actions", () => {
         const store = useDashboardLayoutStore.getState();
         store.setDashboard({
             ...MOCK_DASHBOARD,
-            tabs: [{id: "t1", order: 1, title: "Tab 1"}, {id: "t2", order: 2, title: "Tab 2"}],
+            tabs: [{id: "t1", order: 1, title: "Tab 1"},
+                {id: "t2", order: 2, title: "Tab 2"}],
         });
 
         store.setActiveTabId("t2");
@@ -65,7 +68,8 @@ describe("dashboard tab actions", () => {
         const store = useDashboardLayoutStore.getState();
         store.setDashboard({
             ...MOCK_DASHBOARD,
-            tabs: [{id: "t1", order: 1, title: "Tab 1"}, {id: "t2", order: 2, title: "Tab 2"}],
+            tabs: [{id: "t1", order: 1, title: "Tab 1"},
+                {id: "t2", order: 2, title: "Tab 2"}],
         });
 
         expect(useDashboardLayoutStore.getState().activeTabId).toBe("t1");

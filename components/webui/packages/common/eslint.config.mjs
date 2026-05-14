@@ -8,6 +8,7 @@ const EslintConfig = [
         ignores: [
             "dist/",
             "node_modules/",
+            "vitest.config.ts",
         ],
     },
     CommonConfig,
@@ -18,7 +19,6 @@ const EslintConfig = [
             "new-cap": [
                 "error",
                 {
-                    // TypeBox imports
                     capIsNewExceptionPattern: "^(Type|Value)\\.",
                 },
             ],

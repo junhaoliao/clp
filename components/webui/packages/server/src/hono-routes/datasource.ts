@@ -1,6 +1,11 @@
 import {tbValidator} from "@hono/typebox-validator";
 import type {TSchema} from "@sinclair/typebox";
-import {CreateDatasourceSchema, type CreateDatasourceRequest, UpdateDatasourceSchema, type UpdateDatasourceRequest} from "@webui/common/dashboard/schemas";
+import {
+    type CreateDatasourceRequest,
+    CreateDatasourceSchema,
+    type UpdateDatasourceRequest,
+    UpdateDatasourceSchema,
+} from "@webui/common/dashboard/schemas";
 import type {DatasourceInstance} from "@webui/common/dashboard/types";
 import {getCircuitBreaker} from "@webui/datasource/circuit-breaker";
 import {executeInfinityQuery} from "@webui/datasource/infinity";
@@ -15,11 +20,11 @@ import {Hono} from "hono";
 import {streamSSE} from "hono/streaming";
 import {nanoid} from "nanoid";
 
-import {executeClpQueryStreaming} from "./clp-query-executor.js";
+import settings from "../../settings.json" with {type: "json"};
 import type {DatasourceStorage} from "../storage/datasource-storage.js";
 import {InMemoryDatasourceStorage} from "../storage/datasource-storage.js";
 import {toMySQLDatetime} from "../storage/datetime-utils.js";
-import settings from "../../settings.json" with {type: "json"};
+import {executeClpQueryStreaming} from "./clp-query-executor.js";
 
 
 /** Datasource storage (swappable: in-memory for dev, MySQL for production) */
@@ -116,6 +121,7 @@ export const datasourceRoutes = new Hono()
         const abortHandler = () => {
             controller.abort();
         };
+
         c.req.raw.signal.addEventListener("abort", abortHandler);
 
         if ("half-open" === cb.getState()) {
@@ -207,6 +213,7 @@ export const datasourceRoutes = new Hono()
             const rows = await executeMySQLQuery(
                 `SELECT name FROM ${tableName} ORDER BY name`,
             );
+
             // eslint-disable-next-line dot-notation
             return c.json(rows.map((r) => r["name"] as string));
         } catch {
@@ -245,7 +252,7 @@ async function executeDatasourceQuery (
                     const limitedSql = injectLimit(sql, limit);
                     // eslint-disable-next-line dot-notation
                     const params = Array.isArray(query["params"]) ?
-                        query["params"] as unknown[] :
+                        query['params'] as unknown[] :
                         undefined;
                     const rows = await executeMySQLQuery(limitedSql, undefined, params);
                     const frame = rowsToDataFrame(rows, query.refId, limit);
@@ -259,10 +266,10 @@ async function executeDatasourceQuery (
                     await executeClpQueryStreaming(
                         {
                             queryString: String(query.query),
-                            datasets: Array.isArray(query["datasets"]) ?
-                                query["datasets"] as string[] :
+                            datasets: Array.isArray(query['datasets']) ?
+                                query['datasets'] as string[] :
                                 [],
-                            ignoreCase: Boolean(query["ignoreCase"]),
+                            ignoreCase: Boolean(query['ignoreCase']),
                             timeRange: body.range,
                             queryType: "search",
                             refId: query.refId,
@@ -338,7 +345,7 @@ async function executeDatasourceQueryStreaming (
                     const limitedSql = injectLimit(sql, limit);
                     // eslint-disable-next-line dot-notation
                     const params = Array.isArray(query["params"]) ?
-                        query["params"] as unknown[] :
+                        query['params'] as unknown[] :
                         undefined;
                     let totalRows = 0;
                     await executeMySQLQueryStream(limitedSql, async (rows) => {
@@ -346,6 +353,7 @@ async function executeDatasourceQueryStreaming (
                         const frame = rowsToDataFrame(rows, query.refId, limit);
                         await onPartial({data: [frame]});
                     }, undefined, params);
+
                     // Final aggregated frame for the complete result
                     queryData = [{name: query.refId, fields: [], length: totalRows}];
                     break;
@@ -354,10 +362,10 @@ async function executeDatasourceQueryStreaming (
                     const result = await executeClpQueryStreaming(
                         {
                             queryString: String(query.query),
-                            datasets: Array.isArray(query["datasets"]) ?
-                                query["datasets"] as string[] :
+                            datasets: Array.isArray(query['datasets']) ?
+                                query['datasets'] as string[] :
                                 [],
-                            ignoreCase: Boolean(query["ignoreCase"]),
+                            ignoreCase: Boolean(query['ignoreCase']),
                             timeRange: body.range,
                             queryType: "search",
                             refId: query.refId,
@@ -366,6 +374,7 @@ async function executeDatasourceQueryStreaming (
                             onPartial,
                         },
                     );
+
                     queryData = result.data;
                     break;
                 }
@@ -436,6 +445,7 @@ async function executeMySQLQuery (
         const [rows] = params ?
             await connection.query(sql, params) :
             await connection.query(sql);
+
         await connection.query("COMMIT");
 
         return Array.isArray(rows) ?
@@ -488,12 +498,20 @@ async function executeMySQLQueryStream (
         // Set read-only mode for safety
         await new Promise<void>((resolve, reject) => {
             connection.query("SET TRANSACTION READ ONLY", (err: unknown) => {
-                if (err) { reject(err); } else { resolve(); }
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
             });
         });
         await new Promise<void>((resolve, reject) => {
             connection.query("START TRANSACTION", (err: unknown) => {
-                if (err) { reject(err); } else { resolve(); }
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
             });
         });
 
@@ -535,12 +553,17 @@ async function executeMySQLQueryStream (
 
         await new Promise<void>((resolve, reject) => {
             connection.query("COMMIT", (err: unknown) => {
-                if (err) { reject(err); } else { resolve(); }
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
             });
         });
     } catch (error) {
         try {
-            connection.query("ROLLBACK", () => {});
+            connection.query("ROLLBACK", () => {
+            });
         } catch {/* ignore rollback error */}
         if (error instanceof Error && error.message.includes("Connection destroyed")) {
             throw new Error(`MySQL query timed out after ${timeoutMs}ms`);

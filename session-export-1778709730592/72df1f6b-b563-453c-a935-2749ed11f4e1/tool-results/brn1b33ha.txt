@@ -1,0 +1,419 @@
+[clpp-ui d2e17c59] feat(webui): Add dashboard system, S3 compression, and CLP dataset selector
+ 420 files changed, 31778 insertions(+), 17077 deletions(-)
+ create mode 100644 PR_DESCRIPTION.md
+ rename components/webui/{client => apps/webui}/.gitignore (100%)
+ create mode 100644 components/webui/apps/webui/components.json
+ rename components/webui/{client => apps/webui}/eslint.config.mjs (100%)
+ rename components/webui/{client => apps/webui}/index.html (100%)
+ create mode 100644 components/webui/apps/webui/package.json
+ rename components/webui/{client => apps/webui}/public/clp-logo.png (100%)
+ rename components/webui/{client => apps/webui}/public/favicon.svg (100%)
+ rename components/webui/{client => apps/webui}/public/settings.json (100%)
+ rename components/webui/{client => apps/webui}/src/App.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/api/compress-metadata/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/compress/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/os/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/presto-search/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/search/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/socket/MongoSocketCollection.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/socket/MongoSocketCursor.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/socket/SocketSingleton.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/socket/useCursor.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/api/sql/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/api/stream-files/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/DashboardCard/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/DashboardCard/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/InputLabel/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/InputLabel/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/Layout/MainLayout.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/Layout/MainLayout.tsx (87%)
+ rename components/webui/{client => apps/webui}/src/components/QueryBox/InputWithCaseSensitive/CaseSenstiveToggle.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/QueryBox/InputWithCaseSensitive/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/QueryBox/InputWithCaseSensitive/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/QueryBox/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/QueryBox/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/datetime/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/datetime/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/ResultsTimeline/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/SqlEditor/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/components/SqlEditor/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/SqlEditor/monaco-loader.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/SqlInput/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/SqlInput/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/components/Stat/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/VirtualTable/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/components/VirtualTable/typings.tsx (100%)
+ create mode 100644 components/webui/apps/webui/src/components/ui/button.tsx
+ create mode 100644 components/webui/apps/webui/src/components/ui/card.tsx
+ create mode 100644 components/webui/apps/webui/src/components/ui/popover.tsx
+ create mode 100644 components/webui/apps/webui/src/components/ui/skeleton.tsx
+ create mode 100644 components/webui/apps/webui/src/components/ui/toggle.tsx
+ rename components/webui/{client => apps/webui}/src/config/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/config/queryClient.ts (100%)
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/api/__tests__/export-import.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/api/dashboard-api.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/api/export-import.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/api/rpc-client.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/__tests__/dashboard-grid.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/__tests__/panel-chrome.test.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/__tests__/variable-combobox.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/add-panel-dialog.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/dashboard-grid-panel.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/dashboard-grid.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/dashboard-settings.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/dashboard-tabs.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/full-screen-panel.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/panel-chrome.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/panel-content.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/panel-options-editor.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/query-editor.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/resizable-sidebar.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/resize-handle.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/time-range-picker-constants.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/time-range-picker-utils.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/time-range-picker.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/use-time-range-picker-state.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/variable-bar.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/variable-combobox.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/components/variable-editor.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/grid-utils.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/merge-dataframe.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/panel-event-bus.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/parameterize-variables.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/parse-time-range.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/query-data-interpolation.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/truncate-display-data.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-auto-refresh.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-cascading-variables.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-dashboard-query-pool.test.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-debounced-variable.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-lazy-panel.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-panel-error-summary.test.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/use-panel-queries.test.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/variable-interpolation.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/__tests__/variable-url-params.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/grid-utils.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/panel-event-bus.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/panel-query-utils.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/parse-time-range.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/query-data-interpolation.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/truncate-display-data.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-auto-refresh.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-cascading-variables.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-dashboard-query-pool.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-debounced-variable.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-lazy-panel.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-panel-error-summary.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-panel-events.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/use-panel-queries.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/hooks/variable-interpolation.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/__tests__/chart-sync.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/bar-chart-panel.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/builtin.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/charts-shared.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/charts.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/gauge.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/heatmap.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/logs.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/markdown.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/pie-chart-panel.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/row.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/stat.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/table.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/panels/time-series-panel.tsx
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/__tests__/init.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/__tests__/migration.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/__tests__/registry.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/init.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/migration.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/plugins/registry.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/__tests__/layout-store.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/__tests__/list-store.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/__tests__/tab-store.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/__tests__/time-store.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/__tests__/variable-store.test.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/layout-store.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/list-store.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/time-store.ts
+ create mode 100644 components/webui/apps/webui/src/features/dashboard/stores/variable-store.ts
+ create mode 100644 components/webui/apps/webui/src/index.css
+ create mode 100644 components/webui/apps/webui/src/lib/utils.ts
+ rename components/webui/{client => apps/webui}/src/main.tsx (78%)
+ create mode 100644 components/webui/apps/webui/src/pages/DashboardListPage/index.tsx
+ create mode 100644 components/webui/apps/webui/src/pages/DashboardPage/index.tsx
+ create mode 100644 components/webui/apps/webui/src/pages/IngestNewPage/index.tsx
+ create mode 100644 components/webui/apps/webui/src/pages/IngestNewPage/sql.ts
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/ClpSFormItems.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/PathsSelectFormItem/SwitcherIcon.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/PathsSelectFormItem/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/PathsSelectFormItem/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/PathsSelectFormItem/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/SubmitFormItem.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Compress/validation.ts (84%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/Files.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/Messages.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/TimeRange.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Details/sql.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Jobs/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Jobs/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Jobs/typings.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Jobs/units.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/Jobs/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/SpaceSavings/CompressedSize.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/SpaceSavings/UncompressedSize.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/SpaceSavings/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/SpaceSavings/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/SpaceSavings/sql.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/IngestPage/sqlConfig.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/LogViewerLoadingPage/Loading.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/LogViewerLoadingPage/Loading.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/LogViewerLoadingPage/QueryStatus.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/ProgressBar/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/ProgressBar/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Dataset/DatasetSelect.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Dataset/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Dataset/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Dataset/sql.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/NativeControls.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/QueryInput/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/SearchButton/CancelButton.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/SearchButton/SubmitButton/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/SearchButton/SubmitButton/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/SearchButton/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/search-requests.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Native/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Freeform/FreeformControls.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Freeform/SqlQueryInput/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Freeform/SqlQueryInput/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Freeform/presto-search-requests.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/From.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/OrderBy.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/Select.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/Where.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/GuidedControls/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/Guided/presto-guided-search-requests.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlInterfaceSelector/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlInterfaceSelector/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/CancelButton/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/CancelButton/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/RunButton/FreeformRunButton.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/RunButton/GuidedRunButton.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/RunButton/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/RunButton/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/Presto/SqlSearchButton/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/OpenQueryDrawerButton.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/QueryDrawer.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/QueryDrawer.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/QuerySpeed/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/QuerySpeed/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/Results.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/QueryStatus/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/Presto/TimeRangeFooter/TimestampKeySelect/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/Presto/TimeRangeFooter/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/Presto/TimeRangeFooter/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/TimeDateInput.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/TimeRangePanel/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/TimeRangePanel/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/sql.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/TimeRangeInput/utils.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchControls/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/Message/LogViewerLink.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/Message/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/Message/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/Message/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/SearchResultsVirtualTable/ActionsHeader.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/SearchResultsVirtualTable/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/SearchResultsVirtualTable/typings.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/SearchResultsVirtualTable/useSearchResults.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Native/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Presto/PrestoResultsVirtualTable/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Presto/PrestoResultsVirtualTable/usePrestoSearchResults.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/Presto/PrestoResultsVirtualTable/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTable/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/Native/NativeResultsTimeline.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/Native/useAggregationResults.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/Presto/PrestoResultsTimeline.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/Presto/usePrestoAggregationResults.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchResults/SearchResultsTimeline/utils.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/Presto/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/Presto/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/Presto/useTimestampKeyInit/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/Presto/useTimestampKeyInit/sql.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/typings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/usePseudoProgress.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/useResultsMetadata.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/SearchState/useUpdateStateWithMetadata.ts (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/index.module.css (100%)
+ rename components/webui/{client => apps/webui}/src/pages/SearchPage/index.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/router.tsx (69%)
+ rename components/webui/{client => apps/webui}/src/settings.ts (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/Sql.g4 (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/SqlBase.g4 (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/generated/SqlLexer.ts (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/generated/SqlParser.ts (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/index.ts (100%)
+ rename components/webui/{client => apps/webui}/src/sql-parser/typings.ts (100%)
+ create mode 100644 components/webui/apps/webui/src/test/setup.ts
+ rename components/webui/{client => apps/webui}/src/theme.tsx (100%)
+ rename components/webui/{client => apps/webui}/src/typings/config.ts (100%)
+ rename components/webui/{client => apps/webui}/src/typings/datetime.ts (100%)
+ rename components/webui/{client => apps/webui}/src/typings/query.ts (100%)
+ rename components/webui/{client => apps/webui}/src/utils/download.ts (100%)
+ rename components/webui/{client => apps/webui}/src/vite-env.d.ts (100%)
+ rename components/webui/{client => apps/webui}/tsconfig.json (100%)
+ rename components/webui/{client => apps/webui}/tsconfig/tsconfig.app.json (69%)
+ rename components/webui/{client => apps/webui}/tsconfig/tsconfig.base.json (88%)
+ rename components/webui/{client => apps/webui}/tsconfig/tsconfig.node.json (100%)
+ create mode 100644 components/webui/apps/webui/vite.config.ts
+ create mode 100644 components/webui/apps/webui/vitest.config.ts
+ delete mode 100644 components/webui/client/package.json
+ delete mode 100644 components/webui/client/src/index.css
+ delete mode 100644 components/webui/client/vite.config.ts
+ delete mode 100644 components/webui/common/package.json
+ delete mode 100644 components/webui/package-lock.json
+ rewrite components/webui/package.json (73%)
+ rename components/webui/{ => packages}/common/eslint.config.mjs (100%)
+ create mode 100644 components/webui/packages/common/package.json
+ create mode 100644 components/webui/packages/common/src/__tests__/common.test.ts
+ rename components/webui/{ => packages}/common/src/config.ts (100%)
+ create mode 100644 components/webui/packages/common/src/dashboard/schemas.ts
+ create mode 100644 components/webui/packages/common/src/dashboard/types.ts
+ rename components/webui/{ => packages}/common/src/metadata.ts (100%)
+ rename components/webui/{ => packages}/common/src/presto.ts (100%)
+ rename components/webui/{ => packages}/common/src/query.ts (100%)
+ create mode 100644 components/webui/packages/common/src/rpc.ts
+ rename components/webui/{ => packages}/common/src/schemas/archive-metadata.ts (57%)
+ rename components/webui/{ => packages}/common/src/schemas/common.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/compress-metadata.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/compression.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/error.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/os.ts (89%)
+ rename components/webui/{ => packages}/common/src/schemas/presto-search.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/search.ts (100%)
+ rename components/webui/{ => packages}/common/src/schemas/stream-files.ts (77%)
+ rename components/webui/{ => packages}/common/src/socket.ts (100%)
+ rename components/webui/{ => packages}/common/src/utility-types.ts (100%)
+ create mode 100644 components/webui/packages/common/tsconfig.json
+ create mode 100644 components/webui/packages/common/vitest.config.ts
+ create mode 100644 components/webui/packages/datasource/package.json
+ create mode 100644 components/webui/packages/datasource/src/__tests__/circuit-breaker.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/clp.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/infinity-auth.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/infinity-pagination.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/infinity.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/mysql.test.ts
+ create mode 100644 components/webui/packages/datasource/src/__tests__/xml-parser.test.ts
+ create mode 100644 components/webui/packages/datasource/src/circuit-breaker.ts
+ create mode 100644 components/webui/packages/datasource/src/clp/index.ts
+ create mode 100644 components/webui/packages/datasource/src/index.ts
+ create mode 100644 components/webui/packages/datasource/src/infinity/auth.ts
+ create mode 100644 components/webui/packages/datasource/src/infinity/index.ts
+ create mode 100644 components/webui/packages/datasource/src/infinity/pagination.ts
+ create mode 100644 components/webui/packages/datasource/src/infinity/xml-parser.ts
+ create mode 100644 components/webui/packages/datasource/src/mysql/index.ts
+ create mode 100644 components/webui/packages/datasource/src/types.ts
+ create mode 100644 components/webui/packages/datasource/tsconfig.json
+ create mode 100644 components/webui/packages/datasource/vitest.config.ts
+ rename components/webui/{ => packages}/server/.env (91%)
+ rename components/webui/{ => packages}/server/.gitignore (100%)
+ rename components/webui/{ => packages}/server/eslint.config.mjs (100%)
+ rename components/webui/{ => packages}/server/package.json (51%)
+ rename components/webui/{ => packages}/server/settings.json (95%)
+ rename components/webui/{ => packages}/server/src/app.ts (98%)
+ create mode 100644 components/webui/packages/server/src/db/001_create_dashboard_tables.sql
+ create mode 100644 components/webui/packages/server/src/hono-app.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/dashboards.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/datasource.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/disconnect-detection.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/mysql-streaming.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/rate-limit.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/rbac.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/request-timeout.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/response-size.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/__tests__/sse-streaming.test.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/clp-query-executor.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/clp-query-service.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/dashboards.ts
+ create mode 100644 components/webui/packages/server/src/hono-routes/datasource.ts
+ rename components/webui/{ => packages}/server/src/main.ts (92%)
+ rename components/webui/{ => packages}/server/src/plugins/app/CompressionJobDbManager/index.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/Presto.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/QueryJobDbManager/index.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/QueryJobDbManager/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/S3Manager/index.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/S3Manager/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/StreamFileManager.ts (100%)
+ create mode 100644 components/webui/packages/server/src/plugins/app/hono-delegation.ts
+ rename components/webui/{ => packages}/server/src/plugins/app/socket/MongoSocketIoServer/MongoWatcherCollection.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/socket/MongoSocketIoServer/index.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/socket/MongoSocketIoServer/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/app/socket/MongoSocketIoServer/utils.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/external/env.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/external/mongo.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/external/mysql.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/external/rateLimit.ts (100%)
+ rename components/webui/{ => packages}/server/src/plugins/external/sensible.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/archive-metadata/index.ts (83%)
+ rename components/webui/{ => packages}/server/src/routes/api/compress-metadata/index.ts (88%)
+ rename components/webui/{ => packages}/server/src/routes/api/compress-metadata/sql.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/compress-metadata/utils.ts (95%)
+ rename components/webui/{ => packages}/server/src/routes/api/compress/index.ts (94%)
+ rename components/webui/{ => packages}/server/src/routes/api/compress/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/example/index.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/os/index.ts (94%)
+ rename components/webui/{ => packages}/server/src/routes/api/presto-search/index.ts (95%)
+ rename components/webui/{ => packages}/server/src/routes/api/presto-search/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/presto-search/utils.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/search/index.ts (96%)
+ rename components/webui/{ => packages}/server/src/routes/api/search/typings.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/search/utils.ts (100%)
+ rename components/webui/{ => packages}/server/src/routes/api/stream-files/index.ts (93%)
+ rename components/webui/{ => packages}/server/src/routes/static.ts (100%)
+ create mode 100644 components/webui/packages/server/src/storage/__tests__/dashboard-storage.test.ts
+ create mode 100644 components/webui/packages/server/src/storage/__tests__/datasource-storage.test.ts
+ create mode 100644 components/webui/packages/server/src/storage/__tests__/provisioning.test.ts
+ create mode 100644 components/webui/packages/server/src/storage/dashboard-storage.ts
+ create mode 100644 components/webui/packages/server/src/storage/datasource-storage.ts
+ create mode 100644 components/webui/packages/server/src/storage/datetime-utils.ts
+ create mode 100644 components/webui/packages/server/src/storage/provisioning.ts
+ rename components/webui/{ => packages}/server/src/typings/compression.ts (100%)
+ rename components/webui/{ => packages}/server/src/typings/query.ts (100%)
+ rename components/webui/{ => packages}/server/src/typings/stream-files.ts (100%)
+ create mode 100644 components/webui/packages/server/tsconfig.json
+ create mode 100644 components/webui/packages/server/vitest.config.ts
+ create mode 100644 components/webui/packages/ui/package.json
+ create mode 100644 components/webui/packages/ui/src/__tests__/ui.test.ts
+ create mode 100644 components/webui/packages/ui/tsconfig.json
+ create mode 100644 components/webui/packages/ui/vitest.config.ts
+ create mode 100644 components/webui/packages/utils/package.json
+ create mode 100644 components/webui/packages/utils/src/__tests__/utils.test.ts
+ create mode 100644 components/webui/packages/utils/src/cn.ts
+ create mode 100644 components/webui/packages/utils/src/index.ts
+ create mode 100644 components/webui/packages/utils/tsconfig.json
+ create mode 100644 components/webui/packages/utils/vitest.config.ts
+ create mode 100644 components/webui/pnpm-lock.yaml
+ create mode 100644 components/webui/pnpm-workspace.yaml
+ delete mode 100644 components/webui/server/src/test/example.test.ts
+ delete mode 100644 components/webui/server/src/test/tap.ts
+ delete mode 100644 components/webui/server/tsconfig.json
+ rename components/webui/{common/tsconfig.json => tsconfig.base.json} (86%)
+ create mode 100644 components/webui/turbo.json
+ create mode 100644 dashboard-design.md

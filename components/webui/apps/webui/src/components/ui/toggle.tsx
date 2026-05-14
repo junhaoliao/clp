@@ -1,4 +1,3 @@
-
 import * as React from "react";
 
 import {Toggle} from "@base-ui/react/toggle";
