@@ -5,7 +5,6 @@ import {
 import type {ReactNode} from "react";
 import {
     Outlet,
-    Link,
     useLocation,
 } from "react-router";
 
@@ -86,10 +85,8 @@ const LayoutContent = () => {
                                         {0 < index && <BreadcrumbSeparator/>}
                                         <BreadcrumbItem className={1 === breadcrumbItems.length ? undefined : "hidden md:block"}>
                                             {item.path ?
-                                                <BreadcrumbLink asChild>
-                                                    <Link to={item.path}>
-                                                        {item.label}
-                                                    </Link>
+                                                <BreadcrumbLink href={item.path}>
+                                                    {item.label}
                                                 </BreadcrumbLink> :
                                                 <BreadcrumbPage>
                                                     {item.label}
