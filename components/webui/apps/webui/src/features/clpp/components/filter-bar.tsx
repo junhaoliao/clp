@@ -130,7 +130,7 @@ const AddFilterPopover = ({
                         <p className={"text-xs font-medium"}>Field</p>
                         <Select
                             defaultValue={newField}
-                            onValueChange={setNewField}
+                            onValueChange={(value: unknown) => setNewField(value as string)}
                         >
                             <SelectTrigger className={"h-8 text-xs"}>
                                 <SelectValue/>
