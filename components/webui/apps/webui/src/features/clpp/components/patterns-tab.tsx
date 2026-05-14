@@ -19,18 +19,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-
-
-type LogtypeStatsResponse = {
-    logtypes: LogtypeEntry[];
-    sharedNodeWarnings: Array<{message: string}>;
-    totalCount: number;
-};
-
-type VariableInfo = {
-    index: number;
-    type: "string" | "int" | "float";
-};
+import type {
+    LogtypeEntry,
+    LogtypeStatsResponse,
+} from "@/features/clpp/types";
 
 
 const api = hc<AppType>("/");
@@ -39,13 +31,6 @@ const VARIABLE_TYPE_COLORS: Record<string, string> = {
     int: "bg-blue-100 text-blue-800",
     float: "bg-purple-100 text-purple-800",
     string: "bg-green-100 text-green-800",
-};
-
-type LogtypeEntry = {
-    logtype: string;
-    count: number;
-    template: string;
-    variables: VariableInfo[];
 };
 
 /**
@@ -95,49 +80,31 @@ const LogtypeDetailRow = ({lt}: {lt: LogtypeEntry}) => (
 );
 
 /**
- * Renders shared node warning banner.
+ * Renders the Patterns tab showing logtype stats from the schema.
  *
  * @param root0
- * @param root0.warnings
+ * @param root0.dataset
  * @return
  */
-const SharedNodeWarningsBanner = ({warnings}: {warnings: Array<{message: string}>}) => {
-    if (0 === warnings.length) {
-        return null;
-    }
-
-    return (
-        <div className={"rounded-md border border-yellow-300 bg-yellow-50 p-3"}>
-            <p className={"text-sm font-medium text-yellow-800"}>Shared Node Warnings</p>
-            <ul className={"mt-1 list-inside list-disc text-sm text-yellow-700"}>
-                {warnings.map((w, i) => (
-                    <li key={i}>
-                        {w.message}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
-
-/**
- * Renders the Patterns tab showing logtype stats and shared node warnings.
- *
- * @return
- */
-const PatternsTab = () => {
+const PatternsTab = ({dataset}: {dataset: string}) => {
     const [search, setSearch] = useState("");
     const [expandedLogtype, setExpandedLogtype] = useState<string | null>(null);
 
     const {data, isLoading, error} = useQuery<LogtypeStatsResponse>({
-        queryKey: ["logtype-stats"],
+        queryKey: ["logtype-stats",
+            dataset],
         queryFn: async () => {
             const res = await api.api["logtype-stats"].$get({
-                query: {archive_id: "latest"},
+                query: {dataset},
             });
 
-            return res.json();
+            if (!res.ok) {
+                throw new Error("Failed to fetch logtype stats");
+            }
+
+            return res.json() as unknown as Promise<LogtypeStatsResponse>;
         },
+        enabled: 0 < dataset.length,
     });
 
     if (isLoading) {
@@ -168,8 +135,6 @@ const PatternsTab = () => {
 
     return (
         <div className={"flex flex-col gap-4"}>
-            <SharedNodeWarningsBanner warnings={data.sharedNodeWarnings}/>
-
             <Input
                 placeholder={"Search logtypes..."}
                 value={search}

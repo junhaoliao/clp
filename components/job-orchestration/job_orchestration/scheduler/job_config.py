@@ -74,6 +74,7 @@ class OutputConfig(BaseModel):
 class ClpIoConfig(BaseModel):
     input: FsInputConfig | S3InputConfig | S3ObjectMetadataInputConfig
     output: OutputConfig
+    schema_content: str | None = None
 
 
 class AggregationConfig(BaseModel):
@@ -121,3 +122,7 @@ class SearchJobConfig(QueryJobConfig):
             raise ValueError("Port must be in the range [1, 65535]")
 
         return value
+
+
+class LogtypeStatsJobConfig(QueryJobConfig):
+    dataset: str | None = None

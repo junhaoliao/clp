@@ -1,0 +1,9 @@
+.editor {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+}

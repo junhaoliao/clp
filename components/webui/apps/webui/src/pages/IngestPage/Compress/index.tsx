@@ -47,7 +47,6 @@ import ScannerAdvancedFormItems from "./ScannerAdvancedFormItems";
 import SubmitFormItem from "./SubmitFormItem";
 
 
-
 type FormValues = {
     bucket?: string;
     bufferChannelCapacity?: number;
@@ -58,6 +57,7 @@ type FormValues = {
     paths?: string[];
     regionCode?: string;
     s3Paths?: string[];
+    schemaContent?: string;
     scanningIntervalSec?: number;
     timestampKey?: string;
     unstructured?: boolean;
@@ -159,7 +159,7 @@ const Compress = () => {
     const [form] = Form.useForm<FormValues>();
     const ingestMode = Form.useWatch("ingestMode", form);
     const unstructured = Form.useWatch<boolean>("unstructured", form);
-    
+
     const isScanner = isS3Input && INGEST_MODE_SCANNER === ingestMode;
     const queryClient = useQueryClient();
     const {
@@ -261,7 +261,7 @@ const Compress = () => {
                     <S3InputFormItems isScanner={isScanner}/> :
                     <PathsSelectFormItem/>}
                 {showClpSFields && <ClpSFormItems/>}
-                {showClpSFields && <ClppSchemaFormItems/>}
+                {showClpSFields && unstructured && <ClppSchemaFormItems/>}
                 {isScanner && <ScannerAdvancedFormItems/>}
                 <SubmitFormItem isSubmitting={isSubmitting}/>
                 {renderFeedback(isSuccess, isError, data, error)}

@@ -14,9 +14,10 @@ import {StatsTab} from "@/features/clpp/components/stats-tab";
  *
  * @param root0
  * @param root0.children
+ * @param root0.dataset
  * @return The explore tabs component with CLPP tabs.
  */
-const ExploreTabs = ({children}: {children: React.ReactNode}) => {
+const ExploreTabs = ({children, dataset}: {children: React.ReactNode; dataset: string}) => {
     return (
         <Tabs defaultValue={"logs"}>
             <TabsList>
@@ -29,13 +30,13 @@ const ExploreTabs = ({children}: {children: React.ReactNode}) => {
                 {children}
             </TabsContent>
             <TabsContent value={"patterns"}>
-                <PatternsTab/>
+                <PatternsTab dataset={dataset}/>
             </TabsContent>
             <TabsContent value={"schema"}>
-                <SchemaTab/>
+                <SchemaTab dataset={dataset}/>
             </TabsContent>
             <TabsContent value={"stats"}>
-                <StatsTab/>
+                <StatsTab dataset={dataset}/>
             </TabsContent>
         </Tabs>
     );

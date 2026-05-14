@@ -43,7 +43,6 @@ const S3InputFormItems = ({isScanner = false}: {isScanner?: boolean}) => {
                         tooltip={REGION_TOOLTIP_TEXT}
                     >
                         <AutoComplete
-                            filterOption={true}
                             options={REGION_OPTIONS}
                             placeholder={REGION_PLACEHOLDER_TEXT}/>
                     </Form.Item>

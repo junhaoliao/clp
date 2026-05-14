@@ -10,14 +10,13 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {Separator} from "@/components/ui/separator";
 
 
 /**
  * Query interpretation panel showing how a search query is decomposed.
  *
- * Stub: The C++ search backend crashes with --experimental, so this
- * panel shows a warning and placeholder content.
+ * Requires the C++ search backend to support experimental decomposed
+ * queries. Falls back to a placeholder when unavailable.
  *
  * @param root0
  * @param root0.query
@@ -42,14 +41,6 @@ const QueryInterpretationPanel = ({query}: {query?: string}) => {
                 </CardHeader>
                 <CollapsibleContent>
                     <CardContent className={"pt-0"}>
-                        <div className={"rounded-md border border-yellow-300 bg-yellow-50 p-3"}>
-                            <p className={"text-xs text-yellow-800"}>
-                                Query interpretation is not yet available. The search backend
-                                crashes when experimental mode is enabled (std::out_of_range).
-                                This feature will work once the C++ search path is fixed.
-                            </p>
-                        </div>
-                        <Separator className={"my-3"}/>
                         <div className={"space-y-2 text-xs text-muted-foreground"}>
                             <p>
                                 <span className={"font-medium"}>Query:</span>
@@ -61,12 +52,12 @@ const QueryInterpretationPanel = ({query}: {query?: string}) => {
                             <p>
                                 <span className={"font-medium"}>Decomposed sub-queries:</span>
                                 {" "}
-                                Not available
+                                Pending backend support
                             </p>
                             <p>
                                 <span className={"font-medium"}>Matched schemas:</span>
                                 {" "}
-                                Not available
+                                Pending backend support
                             </p>
                         </div>
                     </CardContent>

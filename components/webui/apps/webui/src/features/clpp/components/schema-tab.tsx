@@ -13,6 +13,10 @@ import {
 import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {SchemaDeduplicationWarning} from "@/features/clpp/components/schema-deduplication-warning";
+import type {
+    LogtypeStatsResponse,
+    SchemaTreeResponse,
+} from "@/features/clpp/types";
 
 
 type SchemaTreeNode = {
@@ -116,31 +120,45 @@ const SchemaTreeNodeItem = ({
 /**
  * Renders the Schema tab showing the schema tree from an archive.
  *
+ * @param root0
+ * @param root0.dataset
  * @return The schema tab component with search and tree view.
  */
-const SchemaTab = () => {
+const SchemaTab = ({dataset}: {dataset: string}) => {
     const [search, setSearch] = useState("");
 
     const {data, isLoading, error} = useQuery({
-        queryKey: ["schema-tree"],
+        queryKey: ["schema-tree",
+            dataset],
         queryFn: async () => {
             const res = await api.api["schema-tree"].$get({
-                query: {archive_id: "latest"},
+                query: {dataset},
             });
 
-            return res.json();
+            if (!res.ok) {
+                throw new Error("Failed to fetch schema tree");
+            }
+
+            return res.json() as Promise<SchemaTreeResponse>;
         },
+        enabled: 0 < dataset.length,
     });
 
     const {data: logtypeData} = useQuery({
-        queryKey: ["logtype-stats"],
+        queryKey: ["logtype-stats",
+            dataset],
         queryFn: async () => {
             const res = await api.api["logtype-stats"].$get({
-                query: {archive_id: "latest"},
+                query: {dataset},
             });
 
-            return res.json();
+            if (!res.ok) {
+                throw new Error("Failed to fetch logtype stats");
+            }
+
+            return res.json() as unknown as Promise<LogtypeStatsResponse>;
         },
+        enabled: 0 < dataset.length,
     });
 
     if (isLoading) {
@@ -177,10 +195,10 @@ const SchemaTab = () => {
                 }}/>
 
             <div className={"text-sm text-muted-foreground"}>
-                Schema tree for archive:
+                Schema tree for dataset:
                 {" "}
                 <code>
-                    {data.archiveId}
+                    {data.dataset}
                 </code>
             </div>
 

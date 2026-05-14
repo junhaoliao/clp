@@ -5,6 +5,7 @@ enum QUERY_JOB_TYPE {
     SEARCH_OR_AGGREGATION = 0,
     EXTRACT_IR,
     EXTRACT_JSON,
+    LOGTYPE_STATS,
 }
 
 /**

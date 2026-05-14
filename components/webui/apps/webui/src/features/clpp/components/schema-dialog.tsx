@@ -1,4 +1,9 @@
 import {
+    useCallback,
+    useState,
+} from "react";
+
+import {
     useMutation,
     useQueryClient,
 } from "@tanstack/react-query";
@@ -15,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {Textarea} from "@/components/ui/textarea";
+import SchemaMonacoEditor from "@/features/clpp/components/schema-monaco-editor";
 
 
 type SchemaRecord = {
@@ -43,6 +48,10 @@ const SchemaDialog = ({mode, schema}: {
     const queryClient = useQueryClient();
     const isEdit = "edit" === mode;
 
+    const [content, setContent] = useState(isEdit ?
+        (schema?.content ?? "") :
+        "");
+
     const mutation = useMutation({
         mutationFn: async (data: {name: string; content: string}) => {
             if (isEdit && schema) {
@@ -59,14 +68,15 @@ const SchemaDialog = ({mode, schema}: {
         },
     });
 
-    const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    const handleSubmit = useCallback((e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         mutation.mutate({
             name: formData.get("name") as string,
-            content: formData.get("content") as string,
+            content: content,
         });
-    };
+    }, [mutation,
+        content]);
 
     return (
         <Dialog>
@@ -101,16 +111,11 @@ const SchemaDialog = ({mode, schema}: {
                                 ""}/>
                     </div>
                     <div className={"space-y-2"}>
-                        <Label htmlFor={"content"}>Schema Content</Label>
-                        <Textarea
-                            className={"min-h-48 font-mono text-sm"}
-                            id={"content"}
-                            name={"content"}
-                            placeholder={"// Log-surgeon schema rules\ntimestamp :timestamp\nlevel :level"}
-                            required={true}
-                            defaultValue={isEdit ?
-                                schema?.content :
-                                ""}/>
+                        <Label>Schema Content</Label>
+                        <SchemaMonacoEditor
+                            height={"200px"}
+                            value={content}
+                            onChange={setContent}/>
                     </div>
                     <div className={"flex justify-end"}>
                         <Button

@@ -49,6 +49,7 @@ from pydantic import ValidationError
 from job_orchestration.executor.query.celery import app
 from job_orchestration.executor.query.extract_stream_task import extract_stream
 from job_orchestration.executor.query.fs_search_task import search
+from job_orchestration.executor.query.logtype_stats_task import logtype_stats
 from job_orchestration.garbage_collector.constants import MIN_TO_SECONDS, SECOND_TO_MILLISECOND
 from job_orchestration.scheduler.constants import (
     QueryJobStatus,
@@ -59,6 +60,7 @@ from job_orchestration.scheduler.constants import (
 from job_orchestration.scheduler.job_config import (
     ExtractIrJobConfig,
     ExtractJsonJobConfig,
+    LogtypeStatsJobConfig,
     SearchJobConfig,
 )
 from job_orchestration.scheduler.query.reducer_handler import (
@@ -71,6 +73,7 @@ from job_orchestration.scheduler.scheduler_data import (
     ExtractIrJob,
     ExtractJsonJob,
     InternalJobState,
+    LogtypeStatsJob,
     QueryJob,
     QueryTaskResult,
     SearchJob,
@@ -617,6 +620,19 @@ def get_task_group_for_job(
             )
             for i in range(len(archives))
         )
+    if QueryJobType.LOGTYPE_STATS == job_type:
+        return celery.group(
+            logtype_stats.s(
+                job_id=job.id,
+                archive_id=archives[i]["archive_id"],
+                task_id=task_ids[i],
+                job_config_blob=job.get_cached_config_blob(),
+                clp_metadata_db_conn_params=clp_metadata_db_conn_params,
+                results_cache_uri=results_cache_uri,
+                dataset=archives[i].get("dataset"),
+            )
+            for i in range(len(archives))
+        )
     error_msg = f"Unexpected job type: {job_type}"
     logger.error(error_msg)
     raise NotImplementedError(error_msg)
@@ -773,6 +789,18 @@ def handle_pending_query_jobs(
                     results_cache_uri=results_cache_uri,
                     stream_collection_name=stream_collection_name,
                     clp_metadata_db_conn_params=clp_metadata_db_conn_params,
+                )
+            elif QueryJobType.LOGTYPE_STATS == job_type:
+                _handle_new_logtype_stats_job(
+                    db_conn=db_conn,
+                    db_cursor=db_cursor,
+                    job_id=job_id,
+                    job_config=job_config,
+                    table_prefix=table_prefix,
+                    max_datasets_per_query=max_datasets_per_query,
+                    existing_datasets=existing_datasets,
+                    clp_metadata_db_conn_params=clp_metadata_db_conn_params,
+                    results_cache_uri=results_cache_uri,
                 )
             else:
                 # NOTE: We're skipping the job for this iteration, but its status will remain
@@ -1020,6 +1048,52 @@ async def handle_finished_stream_extraction_job(
     del active_jobs[job_id]
 
 
+async def handle_finished_logtype_stats_job(
+    db_conn, job: LogtypeStatsJob, task_results: list[Any]
+) -> None:
+    global active_jobs
+
+    job_id = job.id
+    new_job_status = QueryJobStatus.SUCCEEDED
+
+    for task_result_obj in task_results:
+        task_result = QueryTaskResult.model_validate(task_result_obj)
+        task_id = task_result.task_id
+        task_status = task_result.status
+        if not task_status == QueryTaskStatus.SUCCEEDED:
+            new_job_status = QueryJobStatus.FAILED
+            logger.error(
+                "Logtype stats task job-%s-task-%s failed. Check %s for details.",
+                job_id,
+                task_id,
+                task_result.error_log_path,
+            )
+        else:
+            job.num_archives_queried += 1
+            logger.info(
+                "Logtype stats task job-%s-task-%s succeeded in %s second(s).",
+                job_id,
+                task_id,
+                task_result.duration,
+            )
+
+    if set_job_or_task_status(
+        db_conn,
+        QUERY_JOBS_TABLE_NAME,
+        job_id,
+        new_job_status,
+        QueryJobStatus.RUNNING,
+        num_tasks_completed=job.num_archives_queried,
+        duration=(datetime.datetime.now() - job.start_time).total_seconds(),
+    ):
+        if new_job_status == QueryJobStatus.SUCCEEDED:
+            logger.info("Completed logtype stats job %s.", job_id)
+        else:
+            logger.info("Completed logtype stats job %s with failing tasks.", job_id)
+
+    del active_jobs[job_id]
+
+
 async def check_job_status_and_update_db(db_conn_pool, results_cache_uri):
     global active_jobs
 
@@ -1059,6 +1133,9 @@ async def check_job_status_and_update_db(db_conn_pool, results_cache_uri):
                 )
             elif job_type in (QueryJobType.EXTRACT_JSON, QueryJobType.EXTRACT_IR):
                 await handle_finished_stream_extraction_job(db_conn, job, returned_results)
+            elif QueryJobType.LOGTYPE_STATS == job_type:
+                logtype_stats_job: LogtypeStatsJob = job
+                await handle_finished_logtype_stats_job(db_conn, logtype_stats_job, returned_results)
             else:
                 logger.error(f"Unexpected job type: {job_type}, skipping job {job_id}")
 
@@ -1370,6 +1447,87 @@ def _handle_new_search_job(
     else:
         pending_search_jobs.append(new_search_job)
     active_jobs[job_id] = new_search_job
+
+
+def _handle_new_logtype_stats_job(
+    db_conn,
+    db_cursor,
+    job_id: str,
+    job_config: dict,
+    table_prefix: str,
+    max_datasets_per_query: int | None,
+    existing_datasets: set[str],
+    clp_metadata_db_conn_params: dict[str, any],
+    results_cache_uri: str,
+) -> None:
+    global active_jobs
+
+    if job_id in active_jobs:
+        return
+
+    logtype_stats_config = LogtypeStatsJobConfig.model_validate(job_config)
+    dataset = logtype_stats_config.dataset
+    datasets = [dataset] if dataset is not None else None
+
+    if datasets is not None:
+        if dataset not in existing_datasets:
+            existing_datasets.update(fetch_existing_datasets(db_cursor, table_prefix))
+            if dataset not in existing_datasets:
+                logger.error("Dataset %s doesn't exist for logtype stats job %s.", dataset, job_id)
+                if not set_job_or_task_status(
+                    db_conn,
+                    QUERY_JOBS_TABLE_NAME,
+                    job_id,
+                    QueryJobStatus.FAILED,
+                    QueryJobStatus.PENDING,
+                    start_time=datetime.datetime.now(),
+                    duration=0,
+                ):
+                    logger.error("Failed to set job %s as failed.", job_id)
+                return
+
+    # Resolve archives without time filters (we want all archives)
+    dummy_search_config = SearchJobConfig(query_string="", max_num_results=0)
+    if datasets is None:
+        archives = _get_archives_for_search_without_datasets(db_conn, table_prefix, dummy_search_config, None)
+    else:
+        archives = get_archives_for_search(
+            db_conn, table_prefix, dummy_search_config, None, datasets
+        )
+
+    if len(archives) == 0:
+        if set_job_or_task_status(
+            db_conn,
+            QUERY_JOBS_TABLE_NAME,
+            job_id,
+            QueryJobStatus.SUCCEEDED,
+            QueryJobStatus.PENDING,
+            start_time=datetime.datetime.now(),
+            num_tasks=0,
+            duration=0,
+        ):
+            logger.info("No matching archives for logtype stats job %s, marking as succeeded.", job_id)
+        return
+
+    new_job = LogtypeStatsJob(
+        id=job_id,
+        logtype_stats_config=logtype_stats_config,
+        state=InternalJobState.WAITING_FOR_DISPATCH,
+        num_archives_to_query=len(archives),
+        num_archives_queried=0,
+        remaining_archives=archives,
+    )
+    active_jobs[job_id] = new_job
+
+    dispatch_job_and_update_db(
+        db_conn,
+        new_job,
+        archives,
+        clp_metadata_db_conn_params,
+        results_cache_uri,
+        len(archives),
+    )
+    logger.info("Dispatched logtype stats job %s with %d archives.", job_id, len(archives))
 
 
 def _handle_new_extraction_job(

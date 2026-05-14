@@ -1,52 +1,102 @@
 import {
-    Col,
+    useCallback,
+    useState,
+} from "react";
+
+import {useQuery} from "@tanstack/react-query";
+import type {AppType} from "@webui/server/hono-app";
+import {
     Form,
-    Input,
-    Row,
-    Switch,
+    Select,
 } from "antd";
+import {hc} from "hono/client";
+
+import SchemaMonacoEditor from "@/features/clpp/components/schema-monaco-editor";
 
 
-const EXPERIMENTAL_TOOLTIP =
-    "Enable CLPP experimental features: schema decomposition, logtype statistics, " +
-    "and schema tree visualization. This passes --experimental to clp-s.";
+type SchemaRecord = {
+    id: string;
+    name: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+};
 
-const SCHEMA_PATH_TOOLTIP =
-    "Path to a log-surgeon schema file. This passes --schema-path to clp-s.";
+type SchemaOption = {
+    label: string;
+    value: string;
+};
 
-const SCHEMA_PATH_PLACEHOLDER = "/path/to/schema.txt";
+const LOG_CONVERTOR_OPTION: SchemaOption = {label: "Log Convertor", value: "__log_convertor__"};
+const CUSTOM_OPTION: SchemaOption = {label: "Custom", value: "__custom__"};
 
+const api = hc<AppType>("/");
+
+const UNSTRUCTURED_LOGS_PROCESSOR_TOOLTIP =
+    "Choose how unstructured (text) logs are processed. " +
+    "\"Log Convertor\" converts text to structured KV-IR first, then clp-s compresses it. " +
+    "A saved schema or a custom schema tells clp-s how to parse the text directly.";
 
 /**
- * Renders CLPP-specific form items (experimental mode + schema path) for
- * compression job submission. Uses Ant Design to match the existing IngestPage style.
- *
- * @return
+ * Renders a single "Unstructured logs processor" form item: a Select dropdown
+ * to pick a processing mode (Log Convertor, a saved schema, or Custom), and a
+ * Monaco editor that only appears when "Custom" is selected.
  */
 const ClppSchemaFormItems = () => {
+    const form = Form.useFormInstance();
+    const [selectedValue, setSelectedValue] = useState<string>(LOG_CONVERTOR_OPTION.value);
+
+    const {data: schemas = []} = useQuery({
+        queryKey: ["schemas"],
+        queryFn: async () => {
+            const res = await api.api.schemas.$get();
+            return res.json() as Promise<SchemaRecord[]>;
+        },
+    });
+
+    const options: SchemaOption[] = [
+        LOG_CONVERTOR_OPTION,
+        CUSTOM_OPTION,
+        ...schemas.map((s) => ({label: s.name, value: s.id})),
+    ];
+
+    const handleChange = useCallback((value: string) => {
+        setSelectedValue(value);
+
+        if (LOG_CONVERTOR_OPTION.value === value) {
+            form.setFieldValue("schemaContent", void 0); // eslint-disable-line no-void
+        } else if (CUSTOM_OPTION.value === value) {
+            form.setFieldValue("schemaContent", "");
+        } else {
+            const schema = schemas.find((s) => s.id === value);
+            if (schema) {
+                form.setFieldValue("schemaContent", schema.content);
+            }
+        }
+    }, [schemas,
+        form]);
+
+    const showEditor = CUSTOM_OPTION.value === selectedValue;
+
     return (
-        <Row gutter={8}>
-            <Col span={5}>
+        <>
+            <Form.Item
+                label={"Unstructured logs processor"}
+                tooltip={UNSTRUCTURED_LOGS_PROCESSOR_TOOLTIP}
+            >
+                <Select
+                    options={options}
+                    value={selectedValue}
+                    onChange={handleChange}/>
+            </Form.Item>
+            {showEditor && (
                 <Form.Item
-                    label={"Experimental"}
-                    name={"experimental"}
-                    tooltip={EXPERIMENTAL_TOOLTIP}
-                    valuePropName={"checked"}
+                    name={"schemaContent"}
                 >
-                    <Switch/>
+                    <SchemaMonacoEditor height={"160px"}/>
                 </Form.Item>
-            </Col>
-            <Col span={19}>
-                <Form.Item
-                    label={"Schema Path"}
-                    name={"schemaPath"}
-                    tooltip={SCHEMA_PATH_TOOLTIP}
-                >
-                    <Input
-                        placeholder={SCHEMA_PATH_PLACEHOLDER}/>
-                </Form.Item>
-            </Col>
-        </Row>
+            )}
+        </>
     );
 };
 
