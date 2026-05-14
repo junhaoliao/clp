@@ -74,6 +74,7 @@ class OutputConfig(BaseModel):
 class ClpIoConfig(BaseModel):
     input: FsInputConfig | S3InputConfig | S3ObjectMetadataInputConfig
     output: OutputConfig
+    schema_content: str | None = None
 
 
 class AggregationConfig(BaseModel):

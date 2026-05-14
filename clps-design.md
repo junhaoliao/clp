@@ -128,15 +128,14 @@ Added static counters tracked during search execution:
 
 These components have **zero diffs** from upstream:
 
-- `components/webui/` — The webui is entirely unchanged.
-- `components/api-server/` — No new API endpoints.
+- `components/api-server/` — No new API endpoints in the upstream fork. (The WebUI now has its own schema and compression endpoints — see section 8.3.)
 - `components/job-orchestration/` — No query orchestration changes.
 - `components/package-template/` — No packaging template changes.
 - `components/clp-package-utils/` — No utility changes.
 - `components/log-ingestor/` — No ingestion changes.
 - `components/clp-mcp-server/` — No MCP server changes.
 
-This means: **all new CLPP capabilities exist only at the C++ CLI level. There is no WebUI, API, or orchestration layer integration yet.**
+This means: **all new CLPP capabilities exist only at the C++ CLI level. The WebUI integration for CLPP (schema content editor, saved schema selector, compression form with `schemaContent`) is built on top of the existing `components/webui/` — see sections 8.3–8.4 for the updated architecture.**
 
 ---
 
@@ -243,7 +242,7 @@ Two `Integer` children with key `"int"` under the same `LogMessage` parent → *
 
 **Search implication:** A query like `message.int: -300064699` matches if **any** of the 5 integer positions equals `-300064699`. You cannot distinguish which positional occurrence matched. With unique rule names (e.g., `message.memory`, `message.vcores`), each variable gets its own column and can be searched independently.
 
-**Schema path is required for CLPP.** The `--experimental` flag alone doesn't work — `--schema-path` must also be provided. If `--experimental` is on but no schema path is given, `m_log_surgeon_parser` stays null and `parse_log_message()` will crash on dereference. There's no validation that prevents this (the `validate_experimental()` function only checks the reverse: that `--schema-path` isn't used without `--experimental`). This is likely a bug or an incomplete implementation.
+**Schema path is required for CLPP.** The `--experimental` flag alone doesn't work — `--schema-path` must also be provided. If `--experimental` is on but no schema path is given, `m_log_surgeon_parser` stays null and `parse_log_message()` will crash on dereference. There's no validation that prevents this (the `validate_experimental()` function only checks the reverse: that `--schema-path` isn't used without `--experimental`). This is likely a bug or an incomplete implementation. **In the WebUI**, this complexity is abstracted away: the frontend sends `schemaContent: string | null`, and when `schema_content` is present in `ClpIoConfig`, the Python worker automatically writes it to a temp file and passes both `--experimental` and `--schema-path <temp>` to `clp-s`.
 
 ### 3.4 Sample Log Messages and Their CLPP Decomposition
 
@@ -776,7 +775,7 @@ Based on user impact and dependency order:
 |----------|---------|-----------|
 | **P0** | Experimental mode toggle | Foundation — everything else depends on this |
 | **P1** | LogType Statistics Dashboard | Highest user value — gives immediate insight into log data distribution |
-| **P1** | Log Surgeon Schema Upload | Required to create CLPP-encoded archives from the UI |
+| **P1** | Log Surgeon Schema Content Editor | Required to create CLPP-encoded archives from the UI; uses SchemaMonacoEditor |
 | **P2** | EXISTS Query Support | Extends search capabilities significantly |
 | **P2** | Query Decomposition Visualization | Debugging/education value for the new search model |
 | **P3** | LogType Metadata Browser | Lower priority — mostly useful for debugging schemas |
@@ -816,7 +815,10 @@ Based on user impact and dependency order:
 - `components/webui/common/src/config.ts` — add experimental mode config
 - `components/webui/client/src/pages/IngestPage/index.tsx` — add logtype stats tab
 - `components/webui/client/src/pages/SearchPage/SearchControls/Native/NativeControls.tsx` — EXISTS query support
-- `components/webui/client/src/pages/IngestPage/Compress/index.tsx` — schema path field
+- `components/webui/apps/webui/src/features/clpp/components/schema-monaco-editor/` — shared SchemaMonacoEditor component (used in compression form and Settings SchemaDialog)
+- `components/webui/apps/webui/src/features/clpp/components/clpp-schema-form-items.tsx` — ClppSchemaFormItems (saved schema Combobox + SchemaMonacoEditor)
+- `components/webui/apps/webui/src/components/ui/combobox.tsx` — Combobox UI component wrapping `@base-ui/react/combobox` (same pattern as Select)
+- `components/webui/apps/webui/src/components/ui/` — other UI primitives (button, card, popover, skeleton, toggle)
 - `components/webui/server/src/routes/api/search/index.ts` — decompose endpoint
 - New files needed: logtype-stats API route, logtype-stats UI components, query decomposition panel
 
@@ -826,7 +828,8 @@ Based on user impact and dependency order:
 - `ResultsTimeline` (Chart.js) — pattern for bar chart of top logtypes
 - `SearchState/useSearchStore` — Zustand pattern for search state
 - `api/sql/index.ts` — pattern for SQL passthrough queries
-- `IngestPage/Compress/PathsSelectFormItem` — pattern for file path selection (reuse for schema path)
+- `SqlEditor` component — pattern for Monaco editor with local monaco-loader (used by SchemaMonacoEditor)
+- `@/components/ui/select.tsx` — pattern for wrapping `@base-ui/react` primitives (used by Combobox)
 
 ---
 
@@ -1554,20 +1557,30 @@ Output:
 |                                                                         |
 | +--CLPP Schema Configuration [NEW]-----+  [?]                         |
 | |                                       |                               |
-| | Experimental Mode: [ON/OFF]           |                               |
+| | Saved Schema:                         |                               |
+| | [Default (Hadoop) v]   or [Custom]   |                               |
 | |                                       |                               |
-| | [If Experimental ON]                  |                               |
-| | Schema File:                          |                               |
-| | [/tmp/hadoop-schema.txt] [Browse]     |                               |
-| |                                       |                               |
-| | Or use saved schema:                  |                               |
-| | [Default (Hadoop) v]                  |                               |
-| |                                       |                               |
-| | Schema Preview:                       |                               |
+| | [If "Custom" selected:]               |                               |
+| | Schema Content:                       |                               |
 | | +-------------------------------+     |                               |
-| | | delimiters: \t\r\n !"#%&...   |     |                               |
-| | | int:-?\d+                     |     |                               |
-| | | float:-?\d+\.\d+             |     |                               |
+| | | (Monaco Editor — edit schema |     |                               |
+| | |  text inline via              |     |                               |
+| | |  SchemaMonacoEditor)         |     |                               |
+| | | delimiters: \t\r\n !"#%&...  |     |                               |
+| | | int:-?\d+                    |     |                               |
+| | | float:-?\d+\.\d+            |     |                               |
+| | +-------------------------------+     |                               |
+| |                                       |                               |
+| | [If saved schema selected:]           |                               |
+| | Schema Content:                       |                               |
+| | +-------------------------------+     |                               |
+| | | (Monaco Editor — pre-filled  |     |                               |
+| | |  with saved schema content,  |     |                               |
+| | |  editable via                 |     |                               |
+| | |  SchemaMonacoEditor)         |     |                               |
+| | | delimiters: \t\r\n !"#%&...  |     |                               |
+| | | int:-?\d+                    |     |                               |
+| | | float:-?\d+\.\d+            |     |                               |
 | | +-------------------------------+     |                               |
 | +---------------------------------------+                               |
 |                                                                         |
@@ -1584,18 +1597,28 @@ Output:
 +-------------------------------------------------------------------------+
 ```
 
-**Real data mapping:** The `--schema-path` and `--experimental` flags map directly to `clp-s c` options. The schema preview shows the actual content of the schema file used during compression. The input must be JSON/JSONL (raw text files produce `FileType::LogText` → "Direct ingestion of unstructured logtext is not supported" error).
+**Key design changes from the original form:**
+
+1. **Schema Path replaced by Schema Content:** The compression form no longer accepts a "Schema Path" file path input. Instead, it has a Monaco Editor (the `SchemaMonacoEditor` component) for authoring log-surgeon schema text inline. The field is called "Schema Content" and maps to the `schemaContent` field in the job creation API body.
+
+2. **Saved Schema Selector (Combobox):** A Combobox dropdown (built on `@base-ui/react/Combobox`, NOT cmdk) allows selecting from a library of saved schemas (fetched from `/api/schemas`) or choosing "Custom" to write schema text from scratch. Selecting a saved schema pre-fills the Monaco editor with that schema's content. The Combobox component lives at `@/components/ui/combobox.tsx` and wraps `@base-ui/react/combobox` following the same pattern as the existing Select component.
+
+3. **No `--experimental` flag in the WebUI:** The `--experimental` flag is never exposed or sent by the WebUI. The WebUI simply sends `schemaContent: string | null` in the compression job creation body. When `schema_content` is present in the `ClpIoConfig`, the Python worker automatically writes it to a temp file and appends `--experimental --schema-path <temp>` to the `clp-s` command. This abstracts away the `--experimental` flag from the user — providing schema content is sufficient.
+
+4. **Shared SchemaMonacoEditor component:** A reusable Monaco editor component at `features/clpp/components/schema-monaco-editor/` is used in both the compression form (via `ClppSchemaFormItems`) and the Settings SchemaDialog. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
 
 **API changes:**
 ```
 POST /api/compress
-Body addition: { ..., experimental: true, schemaPath: "/tmp/hadoop-schema.txt" }
+Body addition: { ..., schemaContent: string | null }
 ```
+
+The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`. The worker then: if `schema_content` is present, writes it to a temp file and passes `--experimental --schema-path <temp>` to `clp-s`.
 
 
 #### Prototyping Commands
 
-**Command 1: Compress with `--experimental` and `--schema-path`**
+**Command 1: Compress with `--experimental` and `--schema-path`** (CLI equivalent of what the worker does internally)
 ```bash
 clp-s c --experimental \
   --schema-path /home/junhao/samples/clps/hive-24hr-0426.txt \
@@ -1662,7 +1685,7 @@ terminate called after throwing an instance of 'clp_s::ErrorCodeFailed'
 |                                                                         |
 | [+ New Schema]  [Import from file]                                      |
 |                                                                         |
-| +--Schema Editor-----------------------------------------------+       |
+| +--Schema Editor (SchemaDialog)-----------------------------------------------+       |
 | | Name: [hadoop-detailed]                                       |       |
 | |                                                                |      |
 | | delimiters: \t\r\n !"#%&'()*,:;<>?@[]^_`{}|~                 |      |
@@ -1689,6 +1712,10 @@ terminate called after throwing an instance of 'clp_s::ErrorCodeFailed'
 | +---------------------------------------------------------------+       |
 +-------------------------------------------------------------------------+
 ```
+
+**Shared SchemaMonacoEditor component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is a reusable Monaco editor component used in both the Settings SchemaDialog (above) and the compression form's `ClppSchemaFormItems`. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component. This ensures a consistent schema editing experience across the application.
+
+**Saved schema selector (Combobox):** The compression form uses a Combobox dropdown (at `@/components/ui/combobox.tsx`, wrapping `@base-ui/react/Combobox`) to select from saved schemas fetched via `/api/schemas`, or to choose "Custom" for writing schema text from scratch. This replaces the previously attempted cmdk-based Command component.
 
 **Real data mapping:** The "In cIntSet?" column makes the hardcoded `cIntSet` in `JsonParser.cpp` configurable. Currently `cIntSet` contains: `int, blk_id, containerSeq, portNum, memory, vcores, pid, blockID, exitStatus`. With the editor, users can add `fetcher_id`, `job_id`, `attempt_id`, `byte_count` to the set, producing unique `Integer` nodes per variable instead of the shared `Integer("int")` trap.
 
@@ -1733,18 +1760,23 @@ The Schema Editor UI would make these hardcoded sets configurable, allowing user
 |   - Query Interpretation panel hidden                                  |
 |   - CLPP filters unavailable in filter bar                            |
 |   - Search uses standard ClpString wildcard (no decomposition)         |
+|   - Compression jobs send schemaContent: null (no --experimental flag)  |
 |                                                                         |
 | When ON:                                                                |
 |   - All CLPP features visible                                           |
-|   - Compression passes --experimental --schema-path to clp-s             |
+|   - Compression form shows saved schema selector + SchemaMonacoEditor  |
+|   - Compression jobs send schemaContent: <schema text>                  |
+|   - Worker automatically passes --experimental --schema-path <temp>     |
 |   - Search uses CLPP decomposition path (prototype — may crash)        |
 +-------------------------------------------------------------------------+
 ```
 
+**Note: The WebUI never sends the `--experimental` flag.** The `--experimental` flag is never exposed or sent by the WebUI. Instead, the WebUI sends `schemaContent: string | null` in the compression job creation body. The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`. When `schema_content` is present, the Python worker automatically writes it to a temp file and appends `--experimental --schema-path <temp>` to the `clp-s` command. This abstraction simplifies the user experience: providing schema content is sufficient to enable CLPP mode.
+
 
 #### Prototyping Commands
 
-No specific binary command — this is a UI toggle. The effect is demonstrated by the presence/absence of `--experimental` in every `clp-s` command above. Without `--experimental`, CLPP archive sections (logtype_stats, logtype_metadata, schema_tree, ls_schema) are not written, and the typed variable dictionary is not used.
+No specific binary command — this is a UI toggle. The effect is demonstrated by the presence/absence of `--experimental` in every `clp-s` command above. Without `--experimental`, CLPP archive sections (logtype_stats, logtype_metadata, schema_tree, ls_schema) are not written, and the typed variable dictionary is not used. In the WebUI, the toggle controls whether `schemaContent` is sent as a non-null value; the worker handles the `--experimental` flag automatically.
 
 ---
 
@@ -2247,8 +2279,8 @@ Output (with logtype template and variable values):
 | Priority | Feature | Section | Dependencies | Notes |
 |----------|---------|---------|-------------|-------|
 | **P0** | Experimental Mode Toggle | 8.4 | None | Gates everything |
-| **P0** | Compression Form: Schema File | 8.3.1 | P0 toggle | Required to create CLPP archives |
-| **P0** | Schema Library + Editor | 8.3.2 | P0 schema file | Makes schema practical; exposes cIntSet |
+| **P0** | Compression Form: Schema Content | 8.3.1 | P0 toggle | Required to create CLPP archives; uses Monaco editor |
+| **P0** | Schema Library + Editor | 8.3.2 | P0 schema content | Makes schema practical; exposes cIntSet |
 | **P1** | Explore Page Patterns Tab | 8.2.2 | P0 + API | Highest user value |
 | **P1** | Explore Page Schema Tab | 8.2.3 | P0 + API | Debugging + education |
 | **P1** | Logtype Fields in Sidebar | 8.2.6 | P0 toggle | Enables CLPP filtering |
@@ -2278,7 +2310,7 @@ Output (with logtype template and variable values):
 | `/api/search/decompose` | GET | Query decomposition interpretations + metrics | P2 |
 | `/api/logtype-diff` | GET | Cross-archive logtype comparison | P3 |
 | `/api/schemas` | CRUD | Schema library management | P0 |
-| `/api/compress` | POST | Add `experimental` + `schemaPath` fields | P0 |
+| `/api/compress` | POST | Add `schemaContent` field (replaces `experimental` + `schemaPath`) | P0 |
 
 ---
 
@@ -2292,7 +2324,13 @@ Output (with logtype template and variable values):
 
 **Leveraging the 2-clp dashboard system:** The dashboard's plugin registry, 12-column grid, MySQL persistence, and Hono API are direct drop-in. CLPP panels (`logtype-stats`, `schema-tree`) register as new plugins. Existing panel types (stat, bar chart, table) can already visualize CLPP data via the new API endpoints.
 
-**Leveraging PR #2169:** The S3 compression form fields are additive — CLPP schema config sits below them as a collapsible group. The `CompressionJobCreationSchema` union type needs `experimental` and `schemaPath` optional fields.
+**Leveraging PR #2169:** The S3 compression form fields are additive — CLPP schema config sits below them as a collapsible group. The `CompressionJobCreationSchema` union type needs a `schemaContent` optional string field (replacing the previously proposed `experimental: boolean` + `schemaPath: string` fields). The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`.
+
+**No `--experimental` flag in the WebUI:** The `--experimental` flag is never exposed or sent by the WebUI. The WebUI simply sends `schemaContent: string | null`. When `schema_content` is present in the `ClpIoConfig`, the Python worker automatically writes it to a temp file and appends `--experimental --schema-path <temp>` to the `clp-s` command. This abstracts away the `--experimental` flag from the user — providing schema content is sufficient to enable CLPP mode.
+
+**Combobox UI component:** The saved schema selector in the compression form uses a new `@/components/ui/combobox.tsx` that wraps `@base-ui/react/combobox`, following the same pattern as the existing Select component. This replaces the previously attempted cmdk-based Command component.
+
+**SchemaMonacoEditor is a shared component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is reused in both the compression form (`ClppSchemaFormItems`) and the Settings `SchemaDialog`. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
 
 **Raw text ingestion is blocked.** `clp-s` rejects `FileType::LogText` with "Direct ingestion of unstructured logtext is not supported." The input must be JSON/JSONL. A pre-processing step (wrapping raw text in `{"message": "..."}` JSONL) is needed for the compression form, or the `JsonParser` needs to handle `LogText` files when `--experimental` is on.
 

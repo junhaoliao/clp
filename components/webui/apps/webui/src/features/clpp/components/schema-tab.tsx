@@ -72,12 +72,10 @@ const SchemaTreeNodeItem = ({
                 >
                     {hasChildren ?
                         (
-                            <CollapsibleTrigger asChild={true}>
-                                <button className={"w-4 text-muted-foreground hover:text-foreground"}>
-                                    {isOpen ?
-                                        "▼" :
-                                        "▶"}
-                                </button>
+                            <CollapsibleTrigger render={<button className="w-4 text-muted-foreground hover:text-foreground" />}>
+                                {isOpen ?
+                                    "▼" :
+                                    "▶"}
                             </CollapsibleTrigger>
                         ) :
                         (

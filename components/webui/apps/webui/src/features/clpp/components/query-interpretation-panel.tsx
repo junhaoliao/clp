@@ -28,8 +28,7 @@ const QueryInterpretationPanel = ({query}: {query?: string}) => {
         <Card>
             <Collapsible>
                 <CardHeader className={"cursor-pointer py-2"}>
-                    <CollapsibleTrigger asChild={true}>
-                        <div className={"flex items-center justify-between"}>
+                    <CollapsibleTrigger render={<div className="flex items-center justify-between" />}>
                             <CardTitle className={"text-sm"}>Query Interpretation</CardTitle>
                             <Badge
                                 className={"text-[10px]"}
@@ -37,7 +36,6 @@ const QueryInterpretationPanel = ({query}: {query?: string}) => {
                             >
                                 CLPP
                             </Badge>
-                        </div>
                     </CollapsibleTrigger>
                 </CardHeader>
                 <CollapsibleContent>

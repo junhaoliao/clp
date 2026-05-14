@@ -58,6 +58,7 @@ type FormValues = {
     paths?: string[];
     regionCode?: string;
     s3Paths?: string[];
+    schemaContent?: string;
     scanningIntervalSec?: number;
     timestampKey?: string;
     unstructured?: boolean;
@@ -261,7 +262,7 @@ const Compress = () => {
                     <S3InputFormItems isScanner={isScanner}/> :
                     <PathsSelectFormItem/>}
                 {showClpSFields && <ClpSFormItems/>}
-                {showClpSFields && <ClppSchemaFormItems/>}
+                {showClpSFields && unstructured && <ClppSchemaFormItems/>}
                 {isScanner && <ScannerAdvancedFormItems/>}
                 <SubmitFormItem isSubmitting={isSubmitting}/>
                 {renderFeedback(isSuccess, isError, data, error)}

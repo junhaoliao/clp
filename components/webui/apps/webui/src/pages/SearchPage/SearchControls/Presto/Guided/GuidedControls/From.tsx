@@ -13,12 +13,7 @@ const From = () => {
     return (
         <div className={guidedGrid["gridItem"]}>
             <InputLabel width={LABEL_WIDTH}>FROM</InputLabel>
-            <DatasetSelect
-                isMultiSelect={false}
-                className={
-                    `${guidedGrid["noLeftBorderRadiusSelect"]} ${
-                        guidedGrid["widthSelect"]}`
-                }/>
+            <DatasetSelect isMultiSelect={false}/>
         </div>
     );
 };

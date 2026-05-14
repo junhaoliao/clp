@@ -1,16 +1,12 @@
 import * as React from "react";
 
 import {XIcon} from "lucide-react";
-import {Dialog as DialogPrimitive} from "radix-ui";
+import {Dialog as DialogPrimitive} from "@base-ui/react/dialog";
 
 import {Button} from "@/components/ui/button";
 import {cn} from "@/lib/utils";
 
 
-/**
- *
- * @param root0
- */
 const Dialog = ({
     ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) => {
@@ -21,24 +17,24 @@ const Dialog = ({
     );
 };
 
-/**
- *
- * @param root0
- */
 const DialogTrigger = ({
+    asChild,
+    children,
     ...props
-}: React.ComponentProps<typeof DialogPrimitive.Trigger>) => {
+}: React.ComponentProps<typeof DialogPrimitive.Trigger> & {
+    asChild?: boolean;
+}) => {
     return (
         <DialogPrimitive.Trigger
             data-slot={"dialog-trigger"}
-            {...props}/>
+            render={asChild && React.isValidElement(children) ? children : undefined}
+            {...props}
+        >
+            {asChild ? undefined : children}
+        </DialogPrimitive.Trigger>
     );
 };
 
-/**
- *
- * @param root0
- */
 const DialogPortal = ({
     ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) => {
@@ -49,10 +45,6 @@ const DialogPortal = ({
     );
 };
 
-/**
- *
- * @param root0
- */
 const DialogClose = ({
     ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) => {
@@ -63,48 +55,36 @@ const DialogClose = ({
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- */
 const DialogOverlay = ({
     className,
     ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) => {
+}: React.ComponentProps<typeof DialogPrimitive.Backdrop>) => {
     return (
-        <DialogPrimitive.Overlay
+        <DialogPrimitive.Backdrop
             data-slot={"dialog-overlay"}
             className={cn(
-                "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                "fixed inset-0 z-50 bg-black/50 data-[popup=closed]:animate-out data-[popup=closed]:fade-out-0 data-[popup=open]:animate-in data-[popup=open]:fade-in-0",
                 className
             )}
             {...props}/>
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- * @param root0.children
- * @param root0.showCloseButton
- */
 const DialogContent = ({
     className,
     children,
     showCloseButton = true,
     ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+}: React.ComponentProps<typeof DialogPrimitive.Popup> & {
     showCloseButton?: boolean;
 }) => {
     return (
         <DialogPortal data-slot={"dialog-portal"}>
             <DialogOverlay/>
-            <DialogPrimitive.Content
+            <DialogPrimitive.Popup
                 data-slot={"dialog-content"}
                 className={cn(
-                    "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+                    "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[popup=closed]:animate-out data-[popup=closed]:fade-out-0 data-[popup=closed]:zoom-out-95 data-[popup=open]:animate-in data-[popup=open]:fade-in-0 data-[popup=open]:zoom-in-95 sm:max-w-lg",
                     className
                 )}
                 {...props}
@@ -112,23 +92,18 @@ const DialogContent = ({
                 {children}
                 {showCloseButton && (
                     <DialogPrimitive.Close
-                        className={"absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"}
+                        className={"absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[popup=open]:bg-accent data-[popup=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"}
                         data-slot={"dialog-close"}
                     >
                         <XIcon/>
                         <span className={"sr-only"}>Close</span>
                     </DialogPrimitive.Close>
                 )}
-            </DialogPrimitive.Content>
+            </DialogPrimitive.Popup>
         </DialogPortal>
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- */
 const DialogHeader = ({className, ...props}: React.ComponentProps<"div">) => {
     return (
         <div
@@ -138,13 +113,6 @@ const DialogHeader = ({className, ...props}: React.ComponentProps<"div">) => {
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- * @param root0.showCloseButton
- * @param root0.children
- */
 const DialogFooter = ({
     className,
     showCloseButton = false,
@@ -164,19 +132,14 @@ const DialogFooter = ({
         >
             {children}
             {showCloseButton && (
-                <DialogPrimitive.Close asChild={true}>
-                    <Button variant={"outline"}>Close</Button>
+                <DialogPrimitive.Close render={<Button variant={"outline"} />}>
+                    Close
                 </DialogPrimitive.Close>
             )}
         </div>
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- */
 const DialogTitle = ({
     className,
     ...props
@@ -189,11 +152,6 @@ const DialogTitle = ({
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- */
 const DialogDescription = ({
     className,
     ...props

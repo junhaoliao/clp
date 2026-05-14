@@ -1,7 +1,8 @@
 import {
+    useCallback,
     useEffect,
-    useState,
 } from "react";
+import {useSearchParams} from "react-router";
 
 import type {DashboardVariable} from "@webui/common/dashboard/types";
 
@@ -24,12 +25,12 @@ interface VariableBarProps {
 export const VariableBar = ({variables}: VariableBarProps) => {
     const setVariableValue = useDashboardVariableStore((s) => s.setVariableValue);
     const variableValues = useDashboardVariableStore((s) => s.variableValues);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Read variable values from URL params on mount
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
         for (const v of variables) {
-            const urlValue = params.get(`var-${v.name}`);
+            const urlValue = searchParams.get(`var-${v.name}`);
             if (null !== urlValue) {
                 if (v.multi) {
                     setVariableValue(v.name, urlValue.split(","));
@@ -41,13 +42,13 @@ export const VariableBar = ({variables}: VariableBarProps) => {
     }, []);
 
     // Write variable values to URL params on change
-    useEffect(() => {
-        const url = new URL(window.location.href);
+    const syncToUrl = useCallback(() => {
+        const next = new URLSearchParams(searchParams);
 
         // Remove all existing var- params first
-        for (const key of [...url.searchParams.keys()]) {
+        for (const key of [...next.keys()]) {
             if (key.startsWith("var-")) {
-                url.searchParams.delete(key);
+                next.delete(key);
             }
         }
         for (const v of variables) {
@@ -57,12 +58,18 @@ export const VariableBar = ({variables}: VariableBarProps) => {
                     value.join(",") :
                     String(value);
 
-                url.searchParams.set(`var-${v.name}`, serialized);
+                next.set(`var-${v.name}`, serialized);
             }
         }
-        window.history.replaceState(null, "", url.pathname + url.search);
+        setSearchParams(next, {replace: true});
     }, [variableValues,
-        variables]);
+        variables,
+        searchParams,
+        setSearchParams]);
+
+    useEffect(() => {
+        syncToUrl();
+    }, [syncToUrl]);
 
     if (0 === variables.length) {
         return null;

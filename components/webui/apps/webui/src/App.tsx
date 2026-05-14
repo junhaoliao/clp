@@ -4,6 +4,7 @@ import {QueryClientProvider} from "@tanstack/react-query";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {ConfigProvider} from "antd";
 
+import {ThemeProvider} from "./components/theme-provider";
 import queryClient from "./config/queryClient";
 import router from "./router";
 import THEME_CONFIG from "./theme";
@@ -17,11 +18,16 @@ import THEME_CONFIG from "./theme";
 const App = () => {
     return (
         <QueryClientProvider client={queryClient}>
-            <ConfigProvider
-                theme={THEME_CONFIG}
+            <ThemeProvider
+                defaultTheme={"system"}
+                storageKey={"clpp-ui-theme"}
             >
-                <RouterProvider router={router}/>
-            </ConfigProvider>
+                <ConfigProvider
+                    theme={THEME_CONFIG}
+                >
+                    <RouterProvider router={router}/>
+                </ConfigProvider>
+            </ThemeProvider>
             <ReactQueryDevtools initialIsOpen={false}/>
         </QueryClientProvider>
     );

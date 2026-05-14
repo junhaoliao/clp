@@ -370,6 +370,7 @@ def run_clp(
         enable_s3_write = True
 
     dataset = clp_config.input.dataset
+    schema_temp_path = None
     if StorageEngine.CLP == clp_storage_engine:
         compression_cmd, compression_env = _make_clp_command_and_env(
             clp_home=clp_home,
@@ -385,6 +386,12 @@ def run_clp(
             clp_config=clp_config,
             use_single_file_archive=enable_s3_write,
         )
+        if clp_config.schema_content is not None:
+            compression_cmd.append("--experimental")
+            schema_temp_path = tmp_dir / f"{instance_id_str}-schema.txt"
+            schema_temp_path.write_text(clp_config.schema_content)
+            compression_cmd.append("--schema-path")
+            compression_cmd.append(str(schema_temp_path))
     else:
         logger.error(f"Unsupported storage engine {clp_storage_engine}")
         return False, {"error_message": f"Unsupported storage engine {clp_storage_engine}"}
@@ -427,6 +434,8 @@ def run_clp(
                     "Failed to clean up temporary directory: %s",
                     converted_inputs_dir,
                 )
+        if schema_temp_path is not None:
+            schema_temp_path.unlink(missing_ok=True)
 
     # Open stderr log file
     stderr_log_path = logs_dir / f"{instance_id_str}-stderr.log"

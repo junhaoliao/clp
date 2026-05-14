@@ -60,7 +60,7 @@ const ExplorePage = () => {
                 <FieldBrowser
                     selectedFields={selectedFields}
                     onToggleField={toggleField}/>
-                <div className={"flex-1"}>
+                <div className={"flex flex-1 flex-col min-h-0"}>
                     <FilterBar
                         filters={filters}
                         onAddFilter={addFilter}

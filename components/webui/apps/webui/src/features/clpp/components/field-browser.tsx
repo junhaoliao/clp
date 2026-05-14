@@ -103,12 +103,10 @@ const FieldRow = ({isSelected, onToggleSelect, field}: {
             onOpenChange={setIsOpen}
         >
             <div className={"flex items-center gap-1.5 rounded-sm px-2 py-1 hover:bg-muted/50"}>
-                <CollapsibleTrigger asChild={true}>
-                    <button className={"w-3 text-[10px] text-muted-foreground hover:text-foreground"}>
-                        {isOpen ?
-                            "▼" :
-                            "▶"}
-                    </button>
+                <CollapsibleTrigger render={<button className="w-3 text-[10px] text-muted-foreground hover:text-foreground" />}>
+                    {isOpen ?
+                        "▼" :
+                        "▶"}
                 </CollapsibleTrigger>
                 <span className={`text-xs font-medium ${TYPE_COLORS[field.type] ?? ""}`}>
                     {TYPE_ICONS[field.type] ?? "?"}

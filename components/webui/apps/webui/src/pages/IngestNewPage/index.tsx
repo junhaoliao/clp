@@ -6,6 +6,7 @@ import {RefreshCw} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {DashboardGrid} from "@/features/dashboard/components/dashboard-grid";
 import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store";
+import {useHeaderActions} from "@/hooks/use-header-actions";
 import {SETTINGS_STORAGE_ENGINE} from "../../config";
 import Compress from "../IngestPage/Compress";
 import Jobs from "../IngestPage/Jobs";
@@ -30,6 +31,7 @@ const IngestNewPage = () => {
     const reset = useDashboardLayoutStore((s) => s.reset);
     const dashboard = useDashboardLayoutStore((s) => s.dashboard);
     const queryClient = useQueryClient();
+    const {setActions} = useHeaderActions();
 
     const isClpS = CLP_STORAGE_ENGINES.CLP_S === SETTINGS_STORAGE_ENGINE;
 
@@ -56,6 +58,26 @@ const IngestNewPage = () => {
         };
     }, [panelsReady, datasetNames, isClpS, setDashboard, reset]);
 
+    useEffect(() => {
+        setActions(
+            <Button
+                size={"sm"}
+                variant={"outline"}
+                onClick={() => {
+                    queryClient.invalidateQueries({queryKey: ["panelQuery"]});
+                }}
+            >
+                <RefreshCw className={"size-4"}/>
+                {" "}
+                Refresh
+            </Button>,
+        );
+
+        return () => {
+            setActions(null);
+        };
+    }, [setActions, queryClient]);
+
     if (!dashboard) {
         return (
             <div className={"flex items-center justify-center h-full text-muted-foreground"}>
@@ -66,21 +88,6 @@ const IngestNewPage = () => {
 
     return (
         <div className={"flex flex-col h-full overflow-auto"}>
-            <div className={"flex items-center justify-between border-b px-4 py-2 bg-background sticky top-0 z-10"}>
-                <h1 className={"text-lg font-semibold"}>Ingest Overview</h1>
-                <Button
-                    size={"sm"}
-                    variant={"outline"}
-                    onClick={() => {
-                        queryClient.invalidateQueries({queryKey: ["panelQuery"]});
-                    }}
-                >
-                    <RefreshCw className={"size-4"}/>
-                    {" "}
-                    Refresh
-                </Button>
-            </div>
-
             <div className={"bg-muted/30"}>
                 <DashboardGrid
                     isEditing={false}
