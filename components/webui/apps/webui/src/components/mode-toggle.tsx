@@ -1,7 +1,7 @@
 import {
-    Monitor,
     Moon,
     Sun,
+    SunMoon,
 } from "lucide-react";
 
 import {useTheme} from "@/components/theme-provider";
@@ -9,7 +9,8 @@ import {SidebarMenuButton} from "@/components/ui/sidebar";
 
 
 /**
- * Toggles between system theme and the opposite (fixed) theme.
+ * Cycles through theme states:
+ * system → opposite of system (fixed) → same as system (fixed) → system.
  *
  * @return
  */
@@ -26,15 +27,26 @@ export const ModeToggle = () => {
                 "light" :
                 "dark");
         } else {
-            setTheme("system");
+            const systemIsDark = window.matchMedia(
+                "(prefers-color-scheme: dark)"
+            ).matches;
+            const systemTheme = systemIsDark ?
+                "dark" :
+                "light";
+
+            if (theme !== systemTheme) {
+                setTheme(systemTheme);
+            } else {
+                setTheme("system");
+            }
         }
     };
 
     const label: string = (() => {
         if ("light" === theme) {
-            return "Light (fixed)";
+            return "Light";
         } else if ("dark" === theme) {
-            return "Dark (fixed)";
+            return "Dark";
         }
 
         return "System";
@@ -46,7 +58,7 @@ export const ModeToggle = () => {
             tooltip={label}
             onClick={toggleTheme}
         >
-            {"system" === theme && <Monitor/>}
+            {"system" === theme && <SunMoon/>}
             {"light" === theme && <Sun/>}
             {"dark" === theme && <Moon/>}
             <span>

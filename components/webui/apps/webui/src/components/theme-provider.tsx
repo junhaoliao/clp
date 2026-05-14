@@ -15,13 +15,15 @@ type ThemeProviderProps = {
 };
 
 type ThemeProviderState = {
-    theme: Theme;
+    resolvedTheme: "dark" | "light";
     setTheme: (newTheme: Theme) => void;
+    theme: Theme;
 };
 
 const SENTINEL: ThemeProviderState = {
-    theme: "system",
+    resolvedTheme: "light",
     setTheme: () => null,
+    theme: "system",
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(SENTINEL);
@@ -58,6 +60,18 @@ export const ThemeProvider = ({
         }
     );
 
+    const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(
+        () => {
+            if ("system" === theme) {
+                return window.matchMedia("(prefers-color-scheme: dark)").matches ?
+                    "dark" :
+                    "light";
+            }
+
+            return theme;
+        }
+    );
+
     useEffect(() => {
         const root = window.document.documentElement;
 
@@ -67,11 +81,12 @@ export const ThemeProvider = ({
             const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
             const applySystemTheme = () => {
                 root.classList.remove("light", "dark");
-                root.classList.add(
-                    mediaQuery.matches ?
-                        "dark" :
-                        "light"
-                );
+                const resolved = mediaQuery.matches ?
+                    "dark" :
+                    "light";
+
+                root.classList.add(resolved);
+                setResolvedTheme(resolved);
             };
 
             applySystemTheme();
@@ -83,12 +98,14 @@ export const ThemeProvider = ({
         }
 
         root.classList.add(theme);
+        setResolvedTheme(theme);
 
         return () => {
         };
     }, [theme]);
 
     const value: ThemeProviderState = {
+        resolvedTheme: resolvedTheme,
         setTheme: (newTheme: Theme) => {
             localStorage.setItem(storageKey, newTheme);
             setTheme(newTheme);
