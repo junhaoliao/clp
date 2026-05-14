@@ -15,6 +15,7 @@ from job_orchestration.scheduler.constants import (
 from job_orchestration.scheduler.job_config import (
     ExtractIrJobConfig,
     ExtractJsonJobConfig,
+    LogtypeStatsJobConfig,
     QueryJobConfig,
     SearchJobConfig,
 )
@@ -95,6 +96,19 @@ class SearchJob(QueryJob):
 
     def get_config(self) -> QueryJobConfig:
         return self.search_config
+
+
+class LogtypeStatsJob(QueryJob):
+    logtype_stats_config: LogtypeStatsJobConfig
+    num_archives_to_query: int
+    num_archives_queried: int
+    remaining_archives: list[dict[str, Any]]
+
+    def get_type(self) -> QueryJobType:
+        return QueryJobType.LOGTYPE_STATS
+
+    def get_config(self) -> QueryJobConfig:
+        return self.logtype_stats_config
 
 
 class QueryTaskResult(BaseModel):

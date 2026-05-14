@@ -80,3 +80,4 @@ class QueryJobType(StatusIntEnum):
     SEARCH_OR_AGGREGATION = 0
     EXTRACT_IR = auto()
     EXTRACT_JSON = auto()
+    LOGTYPE_STATS = auto()

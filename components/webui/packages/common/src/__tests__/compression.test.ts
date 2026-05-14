@@ -1,10 +1,9 @@
+import {Value} from "@sinclair/typebox/value";
 import {
     describe,
     expect,
     it,
 } from "vitest";
-
-import {Value} from "@sinclair/typebox/value";
 
 import {
     ClpIoConfigSchema,
@@ -19,6 +18,7 @@ describe("CompressionJobCreationSchema", () => {
             paths: ["/var/log/test.log"],
             schemaContent: ":timestamp:string\n:level:string",
         };
+
         expect(Value.Check(CompressionJobCreationSchema, body)).toBe(true);
     });
 
@@ -27,6 +27,7 @@ describe("CompressionJobCreationSchema", () => {
             inputType: "fs",
             paths: ["/var/log/test.log"],
         };
+
         expect(Value.Check(CompressionJobCreationSchema, body)).toBe(true);
     });
 
@@ -38,6 +39,7 @@ describe("CompressionJobCreationSchema", () => {
             scanner: false,
             schemaContent: ":timestamp:string",
         };
+
         expect(Value.Check(CompressionJobCreationSchema, body)).toBe(true);
     });
 
@@ -47,9 +49,18 @@ describe("CompressionJobCreationSchema", () => {
             paths: ["/var/log/test.log"],
             schemaContent: 123,
         };
+
         expect(Value.Check(CompressionJobCreationSchema, body)).toBe(false);
     });
 });
+
+const DEFAULT_OUTPUT = {
+    compression_level: 3,
+    target_archive_size: 268435456,
+    target_dictionaries_size: 536870912,
+    target_encoded_file_size: 268435456,
+    target_segment_size: 268435456,
+};
 
 describe("ClpIoConfigSchema", () => {
     it("should accept config with null schema_content", () => {
@@ -62,15 +73,10 @@ describe("ClpIoConfigSchema", () => {
                 timestamp_key: null,
                 unstructured: true,
             },
-            output: {
-                compression_level: 3,
-                target_archive_size: 268435456,
-                target_dictionaries_size: 536870912,
-                target_encoded_file_size: 268435456,
-                target_segment_size: 268435456,
-            },
+            output: DEFAULT_OUTPUT,
             schema_content: null,
         };
+
         expect(Value.Check(ClpIoConfigSchema, config)).toBe(true);
     });
 
@@ -84,15 +90,10 @@ describe("ClpIoConfigSchema", () => {
                 timestamp_key: null,
                 unstructured: false,
             },
-            output: {
-                compression_level: 3,
-                target_archive_size: 268435456,
-                target_dictionaries_size: 536870912,
-                target_encoded_file_size: 268435456,
-                target_segment_size: 268435456,
-            },
+            output: DEFAULT_OUTPUT,
             schema_content: ":timestamp:string",
         };
+
         expect(Value.Check(ClpIoConfigSchema, config)).toBe(true);
     });
 
@@ -106,14 +107,9 @@ describe("ClpIoConfigSchema", () => {
                 timestamp_key: null,
                 unstructured: true,
             },
-            output: {
-                compression_level: 3,
-                target_archive_size: 268435456,
-                target_dictionaries_size: 536870912,
-                target_encoded_file_size: 268435456,
-                target_segment_size: 268435456,
-            },
+            output: DEFAULT_OUTPUT,
         };
+
         expect(Value.Check(ClpIoConfigSchema, config)).toBe(false);
     });
 });

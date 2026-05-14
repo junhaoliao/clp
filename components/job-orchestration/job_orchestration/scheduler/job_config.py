@@ -122,3 +122,7 @@ class SearchJobConfig(QueryJobConfig):
             raise ValueError("Port must be in the range [1, 65535]")
 
         return value
+
+
+class LogtypeStatsJobConfig(QueryJobConfig):
+    dataset: str | None = None

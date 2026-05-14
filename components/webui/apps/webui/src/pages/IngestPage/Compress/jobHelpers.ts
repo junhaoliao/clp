@@ -191,4 +191,6 @@ export {
     getSuccessMessage,
 };
 
-export type {SubmitResult};
+export type {
+    ClpSFormValues, ClpSPayload, SubmitResult,
+};

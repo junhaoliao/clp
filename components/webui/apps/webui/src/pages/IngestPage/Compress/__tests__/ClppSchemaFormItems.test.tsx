@@ -2,14 +2,13 @@ import {
     render,
     screen,
 } from "@testing-library/react";
+import {Form} from "antd";
 import {
     describe,
     expect,
     it,
     vi,
 } from "vitest";
-
-import {Form} from "antd";
 
 
 vi.mock("@tanstack/react-query", async () => {
@@ -33,8 +32,7 @@ vi.mock("@monaco-editor/react", () => ({
             value={value ?? ""}
             onChange={(e) => {
                 onChange?.(e.target.value);
-            }}
-        />
+            }}/>
     ),
 }));
 
@@ -49,13 +47,13 @@ const ClppSchemaFormItems = (await import("../ClppSchemaFormItems")).default;
 
 
 describe("ClppSchemaFormItems", () => {
-    it("should render the unstructured logs schema label", () => {
+    it("should render the Schema form label", () => {
         render(
             <Form>
                 <ClppSchemaFormItems/>
             </Form>,
         );
-        expect(screen.getByText("Unstructured logs processor")).toBeTruthy();
+        expect(screen.getByText("Schema")).toBeTruthy();
     });
 
     it("should render the Ant Design Select", () => {

@@ -16,6 +16,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import type {LogtypeStatsResponse} from "@/features/clpp/types";
 
 
 const LOGTYPE_NAME_MAX = 20;
@@ -25,18 +26,26 @@ const api = hc<AppType>("/");
 /**
  * Renders the Stats tab showing logtype occurrence charts and summary cards.
  *
+ * @param root0
+ * @param root0.dataset
  * @return The stats tab component with charts and summary cards.
  */
-const StatsTab = () => {
+const StatsTab = ({dataset}: {dataset: string}) => {
     const {data, isLoading, error} = useQuery({
-        queryKey: ["logtype-stats"],
+        queryKey: ["logtype-stats",
+            dataset],
         queryFn: async () => {
             const res = await api.api["logtype-stats"].$get({
-                query: {archive_id: "latest"},
+                query: {dataset},
             });
 
-            return res.json();
+            if (!res.ok) {
+                throw new Error("Failed to fetch logtype stats");
+            }
+
+            return res.json() as unknown as Promise<LogtypeStatsResponse>;
         },
+        enabled: 0 < dataset.length,
     });
 
     if (isLoading) {
@@ -91,11 +100,11 @@ const StatsTab = () => {
                 </Card>
                 <Card>
                     <CardHeader className={"pb-2"}>
-                        <CardTitle className={"text-sm"}>Archive</CardTitle>
+                        <CardTitle className={"text-sm"}>Dataset</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className={"truncate font-mono text-sm"}>
-                            {data.archiveId}
+                            {dataset}
                         </p>
                     </CardContent>
                 </Card>

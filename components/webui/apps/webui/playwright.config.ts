@@ -14,6 +14,6 @@ export default defineConfig({
     testMatch: "clpp-validation.spec.ts",
     timeout: 30_000,
     use: {
-        baseURL: "http://localhost:8080",
+        baseURL: "http://localhost:4000",
     },
 });

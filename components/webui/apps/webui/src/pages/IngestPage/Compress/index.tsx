@@ -47,7 +47,6 @@ import ScannerAdvancedFormItems from "./ScannerAdvancedFormItems";
 import SubmitFormItem from "./SubmitFormItem";
 
 
-
 type FormValues = {
     bucket?: string;
     bufferChannelCapacity?: number;
@@ -160,7 +159,7 @@ const Compress = () => {
     const [form] = Form.useForm<FormValues>();
     const ingestMode = Form.useWatch("ingestMode", form);
     const unstructured = Form.useWatch<boolean>("unstructured", form);
-    
+
     const isScanner = isS3Input && INGEST_MODE_SCANNER === ingestMode;
     const queryClient = useQueryClient();
     const {

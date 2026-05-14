@@ -72,14 +72,15 @@ const SchemaDialog = ({mode, schema}: {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         mutation.mutate({
+            content: content,
             name: formData.get("name") as string,
-            content,
         });
-    }, [mutation, content]);
+    }, [mutation,
+        content]);
 
     return (
         <Dialog>
-            <DialogTrigger render={<Button size="sm" />}>
+            <DialogTrigger render={<Button size={"sm"}/>}>
                 {isEdit ?
                     "Edit" :
                     "Add Schema"}
@@ -111,9 +112,8 @@ const SchemaDialog = ({mode, schema}: {
                         <Label>Schema Content</Label>
                         <SchemaMonacoEditor
                             height={"200px"}
-                            onChange={setContent}
                             value={content}
-                        />
+                            onChange={setContent}/>
                     </div>
                     <div className={"flex justify-end"}>
                         <Button
