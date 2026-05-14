@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useState,
 } from "react";
 import {useSearchParams} from "react-router";
 
@@ -221,7 +222,7 @@ const DatasourceVariable = ({variable}: {variable: DashboardVariable}) => {
                     setVariableValue(variable.name, e.target.value);
                 }}
             >
-                {datasources.map((ds) => (
+                {datasources.map((ds: {uid: string; name: string}) => (
                     <option
                         key={ds.uid}
                         value={ds.uid}

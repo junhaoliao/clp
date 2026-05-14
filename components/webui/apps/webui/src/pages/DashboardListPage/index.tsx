@@ -42,6 +42,12 @@ export const DashboardListPage = () => {
         navigate(`/dashboards/${dashboard.uid}`);
     };
 
+    const handleDelete = async (uid: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        await deleteDashboard(uid);
+        queryClient.invalidateQueries({queryKey: ["dashboards"]});
+    };
+
     const filteredDashboards = useMemo(() => {
         if (!searchQuery) {
             return dashboards;

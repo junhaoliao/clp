@@ -288,6 +288,10 @@ tasks:
         PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
         rsync -a package.json dist "{{.OUTPUT_DIR}}/common/"
       - |-
+        cd packages/datasource
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
+        rsync -a package.json dist "{{.OUTPUT_DIR}}/datasource/"
+      - |-
         cd apps/webui
         PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build -- \
         --emptyOutDir --outDir '{{.OUTPUT_DIR}}/client'
@@ -295,19 +299,9 @@ tasks:
         rsync -a "{{.G_DEPS_LOG_VIEWER_BUILD_DIR}}/" "{{.OUTPUT_DIR}}/yscope-log-viewer/"
       - |-
         cd packages/server
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npx tsc --outDir '{{.OUTPUT_DIR}}/server/dist'
-        rsync -a package.json "{{.OUTPUT_DIR}}/server/"
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npx tsc
       - |-
-        cd packages/datasource
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH npm run build
-        rsync -a package.json dist "{{.OUTPUT_DIR}}/datasource/"
-      - |-
-        rsync -a package.json pnpm-lock.yaml pnpm-workspace.yaml "{{.OUTPUT_DIR}}/"
-      - |-
-        cd "{{.OUTPUT_DIR}}"
-        python3 {{.ROOT_DIR}}/taskfiles/webui-rewrite-workspace.py pnpm-workspace.yaml
-        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm install --prod --node-linker=hoisted
-        rm -f pnpm-workspace.yaml
+        PATH="{{.G_NODEJS_22_BIN_DIR}}":$PATH pnpm --filter=@webui/server deploy --prod --legacy "{{.OUTPUT_DIR}}/server"
       - task: "utils:checksum:compute"
         vars:
           CHECKSUM_FILE: "{{.CHECKSUM_FILE}}"
