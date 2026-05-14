@@ -1,31 +1,22 @@
 import * as React from "react";
 
-import {Tooltip as TooltipPrimitive} from "radix-ui";
+import {Tooltip as TooltipPrimitive} from "@base-ui/react/tooltip";
 
 import {cn} from "@/lib/utils";
 
 
-/**
- *
- * @param root0
- * @param root0.delayDuration
- */
 const TooltipProvider = ({
-    delayDuration = 0,
+    delay = 0,
     ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) => {
     return (
         <TooltipPrimitive.Provider
             data-slot={"tooltip-provider"}
-            delayDuration={delayDuration}
+            delay={delay}
             {...props}/>
     );
 };
 
-/**
- *
- * @param root0
- */
 const Tooltip = ({
     ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) => {
@@ -36,47 +27,57 @@ const Tooltip = ({
     );
 };
 
-/**
- *
- * @param root0
- */
 const TooltipTrigger = ({
+    asChild,
+    children,
+    delay = 0,
     ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) => {
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger> & {
+    asChild?: boolean;
+}) => {
     return (
         <TooltipPrimitive.Trigger
             data-slot={"tooltip-trigger"}
-            {...props}/>
+            delay={delay}
+            render={asChild && React.isValidElement(children) ? children : undefined}
+            {...props}
+        >
+            {asChild ? undefined : children}
+        </TooltipPrimitive.Trigger>
     );
 };
 
-/**
- *
- * @param root0
- * @param root0.className
- * @param root0.sideOffset
- * @param root0.children
- */
 const TooltipContent = ({
     className,
     sideOffset = 0,
+    side = "top",
+    align,
     children,
     ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) => {
+}: React.ComponentProps<typeof TooltipPrimitive.Popup> & {
+    side?: "top" | "bottom" | "left" | "right";
+    sideOffset?: number;
+    align?: "start" | "center" | "end";
+}) => {
     return (
         <TooltipPrimitive.Portal>
-            <TooltipPrimitive.Content
-                data-slot={"tooltip-content"}
+            <TooltipPrimitive.Positioner
+                side={side}
                 sideOffset={sideOffset}
-                className={cn(
-                    "z-50 w-fit origin-(--radix-tooltip-content-transform-origin) animate-in rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-                    className
-                )}
-                {...props}
+                align={align}
             >
-                {children}
-                <TooltipPrimitive.Arrow className={"z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground"}/>
-            </TooltipPrimitive.Content>
+                <TooltipPrimitive.Popup
+                    data-slot={"tooltip-content"}
+                    className={cn(
+                        "z-50 w-fit origin-(--transform-origin) animate-in rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[popup=closed]:animate-out data-[popup=closed]:fade-out-0 data-[popup=closed]:zoom-out-95",
+                        className
+                    )}
+                    {...props}
+                >
+                    {children}
+                    <TooltipPrimitive.Arrow className={"z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground"}/>
+                </TooltipPrimitive.Popup>
+            </TooltipPrimitive.Positioner>
         </TooltipPrimitive.Portal>
     );
 };

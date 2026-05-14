@@ -67,6 +67,7 @@ enum CompressionJobInputType {
  */
 const clpSJobCreationFields = {
     dataset: Type.Optional(DatasetNameSchema),
+    schemaContent: Type.Optional(Type.String()),
     timestampKey: Type.Optional(Type.String()),
     unstructured: Type.Optional(Type.Boolean()),
 };
@@ -206,6 +207,8 @@ const ClpIoConfigSchema =
             ClpIoS3ObjectMetadataInputConfigSchema,
         ]),
         output: ClpIoOutputConfigSchema,
+        schema_content: Type.Union([Type.String(),
+            Type.Null()]),
     });
 
 type ClpIoConfig = Static<typeof ClpIoConfigSchema>;

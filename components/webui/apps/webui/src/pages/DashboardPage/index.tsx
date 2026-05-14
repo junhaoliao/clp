@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useMemo,
     useState,
 } from "react";
 import {useParams} from "react-router";
@@ -55,6 +56,9 @@ import {useCascadingVariables} from "@/features/dashboard/hooks/use-cascading-va
 import {usePanelErrorSummary} from "@/features/dashboard/hooks/use-panel-error-summary";
 import {migratePanels} from "@/features/dashboard/plugins/migration";
 import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store";
+import {useDashboardVariableStore} from "@/features/dashboard/stores/variable-store";
+import {useBreadcrumbTitle} from "@/hooks/use-breadcrumb-title";
+import {useHeaderActions} from "@/hooks/use-header-actions";
 
 
 /**
@@ -106,6 +110,26 @@ export const DashboardPage = () => {
     const [showSettings, setShowSettings] = useState(false);
     const {fullScreenPanel, openFullScreen, closeFullScreen} = useFullScreenPanel();
     const errorSummary = usePanelErrorSummary(dashboard?.panels ?? []);
+    const {setTitle} = useBreadcrumbTitle();
+    const {setActions} = useHeaderActions();
+
+    useEffect(() => {
+        if (dashboard?.title) {
+            setTitle(dashboard.title);
+        }
+
+        return () => {
+            setTitle("");
+        };
+    }, [dashboard?.title,
+        setTitle]);
+
+    useEffect(() => {
+        return () => {
+            useDashboardLayoutStore.getState().reset();
+            useDashboardVariableStore.setState({variableValues: {}});
+        };
+    }, []);
 
     useAutoRefresh(() => {
         queryClient.invalidateQueries({queryKey: ["panelQuery"]});
@@ -151,181 +175,214 @@ export const DashboardPage = () => {
         },
     });
 
+    const headerActions = useMemo(() => {
+        if (!dashboard) {
+            return null;
+        }
+
+        if (isEditing) {
+            return (
+                <>
+                    <div className={"flex items-center gap-3 text-xs text-muted-foreground"}>
+                        {isDirty && <span>(unsaved)</span>}
+                        {errorSummary.hasErrors && (
+                            <span className={"text-destructive"}>
+                                {errorSummary.errorCount}
+                                {" "}
+                                of
+                                {" "}
+                                {errorSummary.totalPanels}
+                                {" "}
+                                panels failed
+                            </span>
+                        )}
+                    </div>
+                    <div className={"flex items-center gap-2"}>
+                        <TimeRangePicker/>
+                        <div className={"border-l h-6 mx-2"}/>
+                        <Button
+                            size={"sm"}
+                            variant={"outline"}
+                            onClick={() => {
+                                setShowAddPanel(true);
+                            }}
+                        >
+                            <Plus className={"size-4"}/>
+                            {" "}
+                            Add Panel
+                        </Button>
+                        <Button
+                            size={"sm"}
+                            variant={"outline"}
+                            onClick={() => {
+                                useDashboardLayoutStore.temporal.getState().undo();
+                            }}
+                        >
+                            <Undo2 className={"size-4"}/>
+                        </Button>
+                        <Button
+                            size={"sm"}
+                            variant={"outline"}
+                            onClick={() => {
+                                useDashboardLayoutStore.temporal.getState().redo();
+                            }}
+                        >
+                            <Redo2 className={"size-4"}/>
+                        </Button>
+                        <Button
+                            size={"sm"}
+                            variant={"ghost"}
+                            onClick={() => {
+                                setShowSettings(true);
+                            }}
+                        >
+                            <Settings className={"size-4"}/>
+                        </Button>
+                        <Button
+                            disabled={!isDirty || saveMutation.isPending}
+                            size={"sm"}
+                            onClick={() => {
+                                saveMutation.mutate();
+                            }}
+                        >
+                            <Save className={"size-4"}/>
+                            {" "}
+                            Save
+                        </Button>
+                        <Button
+                            size={"sm"}
+                            variant={"ghost"}
+                            onClick={() => {
+                                setEditing(false);
+                            }}
+                        >
+                            Close
+                        </Button>
+                    </div>
+                </>
+            );
+        }
+
+        return (
+            <>
+                {errorSummary.hasErrors && (
+                    <span className={"text-xs text-destructive"}>
+                        {errorSummary.errorCount}
+                        {" "}
+                        of
+                        {" "}
+                        {errorSummary.totalPanels}
+                        {" "}
+                        panels failed
+                    </span>
+                )}
+                <div className={"flex items-center gap-2"}>
+                    <TimeRangePicker/>
+                    <div className={"border-l h-6 mx-2"}/>
+                    <Button
+                        size={"sm"}
+                        variant={"outline"}
+                        onClick={() => {
+                            queryClient.invalidateQueries({queryKey: ["panelQuery"]});
+                        }}
+                    >
+                        <RefreshCw className={"size-4"}/>
+                        {" "}
+                        Refresh
+                    </Button>
+                    {errorSummary.hasErrors && (<Button
+                        size={"sm"}
+                        variant={"ghost"}
+                        onClick={() => {
+                            queryClient.resetQueries({queryKey: ["panelQuery"]});
+                        }}
+                    >
+                        <AlertTriangle className={"size-4"}/>
+                        {" "}
+                        Retry Failed
+                    </Button>)}
+                    <Button
+                        size={"sm"}
+                        variant={"outline"}
+                        onClick={() => {
+                            setEditing(true);
+                        }}
+                    >
+                        <Pencil className={"size-4"}/>
+                        {" "}
+                        Edit
+                    </Button>
+                    <Button
+                        size={"sm"}
+                        variant={"ghost"}
+                        onClick={() => {
+                            setShowSettings(true);
+                        }}
+                    >
+                        <Settings className={"size-4"}/>
+                    </Button>
+                    <Button
+                        size={"sm"}
+                        variant={"ghost"}
+                        onClick={() => {
+                            const json = exportDashboard(dashboard);
+                            downloadJson(json, `${dashboard.title}.json`);
+                        }}
+                    >
+                        <Download className={"size-4"}/>
+                    </Button>
+                    <label className={"cursor-pointer"}>
+                        <input
+                            accept={".json"}
+                            className={"hidden"}
+                            type={"file"}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) {
+                                    return;
+                                }
+                                file.text().then((text) => {
+                                    const {dashboard: imported, error} = importDashboard(text);
+                                    if (error) {
+                                        alert(error);
+
+                                        return;
+                                    }
+                                    if (imported.title) {
+                                        setDashboard({...dashboard, ...imported, id: dashboard.id, uid: dashboard.uid, version: dashboard.version});
+                                    }
+                                });
+                            }}/>
+                        <span className={"inline-flex items-center justify-center h-8 px-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"}>
+                            <Upload className={"size-4"}/>
+                        </span>
+                    </label>
+                </div>
+            </>
+        );
+    }, [dashboard,
+        isEditing,
+        isDirty,
+        errorSummary,
+        saveMutation,
+        queryClient,
+        setEditing,
+        setDashboard]);
+
+    useEffect(() => {
+        setActions(headerActions);
+
+        return () => {
+            setActions(null);
+        };
+    }, [headerActions, setActions]);
+
     if (!dashboard) {
         return <div className={"flex items-center justify-center h-full text-muted-foreground"}>Loading...</div>;
     }
 
     return (
         <div className={"flex flex-col h-full"}>
-            <div className={"flex items-center justify-between border-b px-4 py-2 bg-background"}>
-                <div className={"flex items-center gap-3"}>
-                    <h1 className={"text-lg font-semibold"}>
-                        {dashboard.title}
-                    </h1>
-                    {isDirty && <span className={"text-xs text-muted-foreground"}>(unsaved)</span>}
-                    {errorSummary.hasErrors && (
-                        <span className={"text-xs text-destructive"}>
-                            {errorSummary.errorCount}
-                            {" "}
-                            of
-                            {errorSummary.totalPanels}
-                            {" "}
-                            panels failed
-                        </span>
-                    )}
-                </div>
-                <div className={"flex items-center gap-2"}>
-                    <TimeRangePicker/>
-                    <div className={"border-l h-6 mx-2"}/>
-                    {isEditing ?
-                        (
-                            <>
-                                <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    onClick={() => {
-                                        setShowAddPanel(true);
-                                    }}
-                                >
-                                    <Plus className={"size-4"}/>
-                                    {" "}
-                                    Add Panel
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    onClick={() => {
-                                        useDashboardLayoutStore.temporal.getState().undo();
-                                    }}
-                                >
-                                    <Undo2 className={"size-4"}/>
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    onClick={() => {
-                                        useDashboardLayoutStore.temporal.getState().redo();
-                                    }}
-                                >
-                                    <Redo2 className={"size-4"}/>
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        setShowSettings(true);
-                                    }}
-                                >
-                                    <Settings className={"size-4"}/>
-                                </Button>
-                                <Button
-                                    disabled={!isDirty || saveMutation.isPending}
-                                    size={"sm"}
-                                    onClick={() => {
-                                        saveMutation.mutate();
-                                    }}
-                                >
-                                    <Save className={"size-4"}/>
-                                    {" "}
-                                    Save
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        setEditing(false);
-                                    }}
-                                >
-                                    Close
-                                </Button>
-                            </>
-                        ) :
-                        (
-                            <>
-                                <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    onClick={() => {
-                                        queryClient.invalidateQueries({queryKey: ["panelQuery"]});
-                                    }}
-                                >
-                                    <RefreshCw className={"size-4"}/>
-                                    {" "}
-                                    Refresh
-                                </Button>
-                                {errorSummary.hasErrors && (<Button
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        queryClient.resetQueries({queryKey: ["panelQuery"]});
-                                    }}
-                                >
-                                    <AlertTriangle className={"size-4"}/>
-                                    {" "}
-                                    Retry Failed
-                                </Button>)}
-                                <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    onClick={() => {
-                                        setEditing(true);
-                                    }}
-                                >
-                                    <Pencil className={"size-4"}/>
-                                    {" "}
-                                    Edit
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        setShowSettings(true);
-                                    }}
-                                >
-                                    <Settings className={"size-4"}/>
-                                </Button>
-                                <Button
-                                    size={"sm"}
-                                    variant={"ghost"}
-                                    onClick={() => {
-                                        const json = exportDashboard(dashboard);
-                                        downloadJson(json, `${dashboard.title}.json`);
-                                    }}
-                                >
-                                    <Download className={"size-4"}/>
-                                </Button>
-                                <label className={"cursor-pointer"}>
-                                    <input
-                                        accept={".json"}
-                                        className={"hidden"}
-                                        type={"file"}
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) {
-                                                return;
-                                            }
-                                            file.text().then((text) => {
-                                                const {dashboard: imported, error} = importDashboard(text);
-                                                if (error) {
-                                                    alert(error);
-
-                                                    return;
-                                                }
-                                                if (imported.title) {
-                                                    setDashboard({...dashboard, ...imported, id: dashboard.id, uid: dashboard.uid, version: dashboard.version});
-                                                }
-                                            });
-                                        }}/>
-                                    <span className={"inline-flex items-center justify-center h-8 px-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"}>
-                                        <Upload className={"size-4"}/>
-                                    </span>
-                                </label>
-
-                            </>
-                        )}
-                </div>
-            </div>
-
             {0 < dashboard.variables.length && (
                 <VariableBar variables={dashboard.variables}/>
             )}

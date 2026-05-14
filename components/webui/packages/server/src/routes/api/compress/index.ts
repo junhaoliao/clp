@@ -60,6 +60,9 @@ const applyClpSFields = (
     if (true === body.unstructured) {
         input.unstructured = true;
     }
+    if ("string" === typeof body.schemaContent && 0 < body.schemaContent.length) {
+        input.unstructured = false;
+    }
 };
 
 /**
@@ -93,6 +96,7 @@ const buildFsJobConfig = (
     return {
         input: input,
         output: structuredClone(DEFAULT_OUTPUT_CONFIG),
+        schema_content: body.schemaContent ?? null,
     };
 };
 
@@ -146,6 +150,7 @@ const buildS3JobConfig = (
     return {
         input: input,
         output: structuredClone(DEFAULT_OUTPUT_CONFIG),
+        schema_content: body.schemaContent ?? null,
     };
 };
 

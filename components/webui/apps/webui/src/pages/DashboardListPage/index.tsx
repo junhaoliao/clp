@@ -15,6 +15,7 @@ import {
 import {Button} from "@/components/ui/button";
 import {createDashboard} from "@/features/dashboard/api/dashboard-api";
 import {useDashboardListStore} from "@/features/dashboard/stores/list-store";
+import {useHeaderActions} from "@/hooks/use-header-actions";
 
 
 /**
@@ -29,10 +30,17 @@ export const DashboardListPage = () => {
     const fetchDashboards = useDashboardListStore((s) => s.fetchDashboards);
     const deleteDashboard = useDashboardListStore((s) => s.deleteDashboard);
     const setSearchQuery = useDashboardListStore((s) => s.setSearchQuery);
+    const {setActions} = useHeaderActions();
 
     useEffect(() => {
         fetchDashboards();
     }, [fetchDashboards]);
+
+    const handleCreate = async () => {
+        const dashboard = await createDashboard({title: "New Dashboard"});
+        queryClient.invalidateQueries({queryKey: ["dashboards"]});
+        navigate(`/dashboards/${dashboard.uid}`);
+    };
 
     const filteredDashboards = useMemo(() => {
         if (!searchQuery) {
@@ -46,30 +54,22 @@ export const DashboardListPage = () => {
     }, [dashboards,
         searchQuery]);
 
-    const handleCreate = async () => {
-        const dashboard = await createDashboard({title: "New Dashboard"});
-        queryClient.invalidateQueries({queryKey: ["dashboards"]});
-        navigate(`/dashboards/${dashboard.uid}`);
-    };
+    useEffect(() => {
+        setActions(
+            <Button size={"sm"} onClick={handleCreate}>
+                <Plus className={"size-4"}/>
+                {" "}
+                New Dashboard
+            </Button>,
+        );
 
-    const handleDelete = async (uid: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        await deleteDashboard(uid);
-    };
+        return () => {
+            setActions(null);
+        };
+    }, [setActions]);
 
     return (
-        <div className={"p-6 max-w-4xl mx-auto"}>
-            <div className={"flex items-center justify-between mb-6"}>
-                <h1 className={"text-2xl font-bold"}>Dashboards</h1>
-                {0 < dashboards.length && (
-                    <Button onClick={handleCreate}>
-                        <Plus className={"size-4"}/>
-                        {" "}
-                        New Dashboard
-                    </Button>
-                )}
-            </div>
-
+        <div className={"p-6"}>
             {0 < dashboards.length && (
                 <div className={"relative mb-4"}>
                     <Search className={"absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"}/>
