@@ -1,205 +1,209 @@
-import {Type, type Static} from "@sinclair/typebox";
+import {
+    type Static,
+    Type,
+} from "@sinclair/typebox";
 
-/** Grid position schema */
+
+/** Schema for a panel's position on the 12-column grid. */
 export const GridPosSchema = Type.Object({
-  x: Type.Integer({minimum: 0, maximum: 11}),
-  y: Type.Integer({minimum: 0}),
-  w: Type.Integer({minimum: 1, maximum: 12}),
-  h: Type.Integer({minimum: 1}),
+    h: Type.Integer({minimum: 1}),
+    w: Type.Integer({minimum: 1, maximum: 12}),
+    x: Type.Integer({minimum: 0, maximum: 11}),
+    y: Type.Integer({minimum: 0}),
 });
 
-/** Panel type enum */
+/** Enum of supported visualization panel types. */
 export const PanelTypeSchema = Type.Union([
-  Type.Literal("timeseries"),
-  Type.Literal("stat"),
-  Type.Literal("table"),
-  Type.Literal("barchart"),
-  Type.Literal("logs"),
-  Type.Literal("markdown"),
-  Type.Literal("gauge"),
-  Type.Literal("heatmap"),
-  Type.Literal("piechart"),
-  Type.Literal("row"),
+    Type.Literal("timeseries"),
+    Type.Literal("stat"),
+    Type.Literal("table"),
+    Type.Literal("barchart"),
+    Type.Literal("logs"),
+    Type.Literal("markdown"),
+    Type.Literal("gauge"),
+    Type.Literal("heatmap"),
+    Type.Literal("piechart"),
+    Type.Literal("row"),
 ]);
 
-/** Datasource type enum */
+/** Enum of supported datasource backends. */
 export const DatasourceTypeSchema = Type.Union([
-  Type.Literal("mysql"),
-  Type.Literal("clp"),
-  Type.Literal("infinity"),
+    Type.Literal("mysql"),
+    Type.Literal("clp"),
+    Type.Literal("infinity"),
 ]);
 
-/** Datasource reference schema */
+/** Reference to a specific datasource instance by type and uid. */
 export const DatasourceRefSchema = Type.Object({
-  type: DatasourceTypeSchema,
-  uid: Type.String({minLength: 1, maxLength: 32}),
+    type: DatasourceTypeSchema,
+    uid: Type.String({minLength: 1, maxLength: 32}),
 });
 
-/** Panel query schema */
+/** A single query bound to a datasource within a panel. */
 export const PanelQuerySchema = Type.Object({
-  refId: Type.String({minLength: 1}),
-  datasource: DatasourceRefSchema,
-  query: Type.Any(),
+    datasource: DatasourceRefSchema,
+    query: Type.Any(),
+    refId: Type.String({minLength: 1}),
 });
 
-/** Dashboard variable schema */
+/** Template variable for dashboard parameterization. */
 export const DashboardVariableSchema = Type.Object({
-  id: Type.String({minLength: 1}),
-  name: Type.String({minLength: 1}),
-  label: Type.Optional(Type.String()),
-  type: Type.Union([
-    Type.Literal("query"),
-    Type.Literal("custom"),
-    Type.Literal("textbox"),
-    Type.Literal("datasource"),
-    Type.Literal("interval"),
-  ]),
-  defaultValue: Type.Optional(Type.Any()),
-  current: Type.Optional(Type.Object({
-    value: Type.Any(),
-    text: Type.String(),
-  })),
-  options: Type.Optional(Type.Array(Type.Object({
-    value: Type.Any(),
-    text: Type.String(),
-    selected: Type.Boolean(),
-  }))),
-  datasource: Type.Optional(DatasourceRefSchema),
-  query: Type.Optional(Type.String()),
-  multi: Type.Optional(Type.Boolean()),
-  includeAll: Type.Optional(Type.Boolean()),
-  dependsOn: Type.Optional(Type.Array(Type.String())),
+    current: Type.Optional(Type.Object({
+        text: Type.String(),
+        value: Type.Any(),
+    })),
+    datasource: Type.Optional(DatasourceRefSchema),
+    defaultValue: Type.Optional(Type.Any()),
+    dependsOn: Type.Optional(Type.Array(Type.String())),
+    id: Type.String({minLength: 1}),
+    includeAll: Type.Optional(Type.Boolean()),
+    label: Type.Optional(Type.String()),
+    multi: Type.Optional(Type.Boolean()),
+    name: Type.String({minLength: 1}),
+    options: Type.Optional(Type.Array(Type.Object({
+        selected: Type.Boolean(),
+        text: Type.String(),
+        value: Type.Any(),
+    }))),
+    query: Type.Optional(Type.String()),
+    type: Type.Union([
+        Type.Literal("query"),
+        Type.Literal("custom"),
+        Type.Literal("textbox"),
+        Type.Literal("datasource"),
+        Type.Literal("interval"),
+    ]),
 });
 
-/** Time range schema */
+/** Absolute time range for dashboard filtering. */
 export const DashboardTimeRangeSchema = Type.Object({
-  from: Type.String({minLength: 1}),
-  to: Type.String({minLength: 1}),
+    from: Type.String({minLength: 1}),
+    to: Type.String({minLength: 1}),
 });
 
-/** Panel schema */
+/** Visualization panel within a dashboard. */
 export const DashboardPanelSchema = Type.Object({
-  id: Type.String({minLength: 1}),
-  type: PanelTypeSchema,
-  title: Type.String(),
-  description: Type.Optional(Type.String()),
-  gridPos: GridPosSchema,
-  datasource: DatasourceRefSchema,
-  queries: Type.Array(PanelQuerySchema),
-  options: Type.Record(Type.String(), Type.Any()),
-  fieldConfig: Type.Optional(Type.Any()),
-  schemaVersion: Type.Optional(Type.Integer()),
-  timeFrom: Type.Optional(Type.String()),
-  transparent: Type.Optional(Type.Boolean()),
-  repeatVariable: Type.Optional(Type.String()),
-  collapsed: Type.Optional(Type.Boolean()),
-  tabId: Type.Optional(Type.String()),
+    collapsed: Type.Optional(Type.Boolean()),
+    datasource: DatasourceRefSchema,
+    description: Type.Optional(Type.String()),
+    fieldConfig: Type.Optional(Type.Any()),
+    gridPos: GridPosSchema,
+    id: Type.String({minLength: 1}),
+    options: Type.Record(Type.String(), Type.Any()),
+    queries: Type.Array(PanelQuerySchema),
+    repeatVariable: Type.Optional(Type.String()),
+    schemaVersion: Type.Optional(Type.Integer()),
+    tabId: Type.Optional(Type.String()),
+    timeFrom: Type.Optional(Type.String()),
+    title: Type.String(),
+    transparent: Type.Optional(Type.Boolean()),
+    type: PanelTypeSchema,
 });
 
-/** Dashboard tab schema */
+/** Tab grouping within a dashboard row. */
 export const DashboardTabSchema = Type.Object({
-  id: Type.String({minLength: 1}),
-  order: Type.Integer({minimum: 1}),
-  title: Type.String(),
+    id: Type.String({minLength: 1}),
+    order: Type.Integer({minimum: 1}),
+    title: Type.String(),
 });
 
-/** Annotation schema */
+/** Time-stamped annotation overlay on dashboards. */
 export const AnnotationSchema = Type.Object({
-  id: Type.String({minLength: 1}),
-  time: Type.Number(),
-  timeEnd: Type.Optional(Type.Number()),
-  title: Type.String(),
-  tags: Type.Optional(Type.Array(Type.String())),
-  color: Type.Optional(Type.String()),
+    color: Type.Optional(Type.String()),
+    id: Type.String({minLength: 1}),
+    tags: Type.Optional(Type.Array(Type.String())),
+    time: Type.Number(),
+    timeEnd: Type.Optional(Type.Number()),
+    title: Type.String(),
 });
 
-/** Create dashboard request */
+/** Request body for creating a new dashboard. */
 export const CreateDashboardSchema = Type.Object({
-  uid: Type.Optional(Type.String({minLength: 1, maxLength: 32})),
-  title: Type.String({minLength: 1, maxLength: 255}),
-  description: Type.Optional(Type.String()),
-  tags: Type.Optional(Type.Array(Type.String())),
-  variables: Type.Optional(Type.Array(DashboardVariableSchema)),
-  timeRange: Type.Optional(DashboardTimeRangeSchema),
-  refreshInterval: Type.Optional(Type.String()),
-  panels: Type.Optional(Type.Array(DashboardPanelSchema)),
-  tabs: Type.Optional(Type.Array(DashboardTabSchema)),
-  annotations: Type.Optional(Type.Array(AnnotationSchema)),
+    annotations: Type.Optional(Type.Array(AnnotationSchema)),
+    description: Type.Optional(Type.String()),
+    panels: Type.Optional(Type.Array(DashboardPanelSchema)),
+    refreshInterval: Type.Optional(Type.String()),
+    tabs: Type.Optional(Type.Array(DashboardTabSchema)),
+    tags: Type.Optional(Type.Array(Type.String())),
+    timeRange: Type.Optional(DashboardTimeRangeSchema),
+    title: Type.String({minLength: 1, maxLength: 255}),
+    uid: Type.Optional(Type.String({minLength: 1, maxLength: 32})),
+    variables: Type.Optional(Type.Array(DashboardVariableSchema)),
 });
 
 export type CreateDashboardRequest = Static<typeof CreateDashboardSchema>;
 
-/** Update dashboard request */
+/** Request body for updating an existing dashboard. */
 export const UpdateDashboardSchema = Type.Object({
-  title: Type.Optional(Type.String({minLength: 1, maxLength: 255})),
-  description: Type.Optional(Type.String()),
-  tags: Type.Optional(Type.Array(Type.String())),
-  variables: Type.Optional(Type.Array(DashboardVariableSchema)),
-  timeRange: Type.Optional(DashboardTimeRangeSchema),
-  refreshInterval: Type.Optional(Type.String()),
-  panels: Type.Optional(Type.Array(DashboardPanelSchema)),
-  tabs: Type.Optional(Type.Array(DashboardTabSchema)),
-  annotations: Type.Optional(Type.Array(AnnotationSchema)),
-  version: Type.Integer({minimum: 1}),
+    annotations: Type.Optional(Type.Array(AnnotationSchema)),
+    description: Type.Optional(Type.String()),
+    panels: Type.Optional(Type.Array(DashboardPanelSchema)),
+    refreshInterval: Type.Optional(Type.String()),
+    tabs: Type.Optional(Type.Array(DashboardTabSchema)),
+    tags: Type.Optional(Type.Array(Type.String())),
+    timeRange: Type.Optional(DashboardTimeRangeSchema),
+    title: Type.Optional(Type.String({minLength: 1, maxLength: 255})),
+    variables: Type.Optional(Type.Array(DashboardVariableSchema)),
+    version: Type.Integer({minimum: 1}),
 });
 
 export type UpdateDashboardRequest = Static<typeof UpdateDashboardSchema>;
 
-/** Dashboard response */
+/** Full dashboard object returned by the API. */
 export const DashboardResponseSchema = Type.Object({
-  id: Type.String(),
-  uid: Type.String(),
-  title: Type.String(),
-  description: Type.Optional(Type.String()),
-  tags: Type.Array(Type.String()),
-  variables: Type.Array(DashboardVariableSchema),
-  timeRange: DashboardTimeRangeSchema,
-  refreshInterval: Type.Optional(Type.String()),
-  panels: Type.Array(DashboardPanelSchema),
-  tabs: Type.Optional(Type.Array(DashboardTabSchema)),
-  annotations: Type.Optional(Type.Array(AnnotationSchema)),
-  version: Type.Integer(),
-  updatedAt: Type.String(),
-  createdAt: Type.String(),
+    annotations: Type.Optional(Type.Array(AnnotationSchema)),
+    createdAt: Type.String(),
+    description: Type.Optional(Type.String()),
+    id: Type.String(),
+    panels: Type.Array(DashboardPanelSchema),
+    refreshInterval: Type.Optional(Type.String()),
+    tabs: Type.Optional(Type.Array(DashboardTabSchema)),
+    tags: Type.Array(Type.String()),
+    timeRange: DashboardTimeRangeSchema,
+    title: Type.String(),
+    uid: Type.String(),
+    updatedAt: Type.String(),
+    variables: Type.Array(DashboardVariableSchema),
+    version: Type.Integer(),
 });
 
-/** Dashboard summary (for list endpoint) */
+/** Compact dashboard metadata for list endpoints. */
 export const DashboardSummarySchema = Type.Object({
-  id: Type.String(),
-  uid: Type.String(),
-  title: Type.String(),
-  tags: Type.Array(Type.String()),
-  updatedAt: Type.String(),
+    id: Type.String(),
+    tags: Type.Array(Type.String()),
+    title: Type.String(),
+    uid: Type.String(),
+    updatedAt: Type.String(),
 });
 
-/** Datasource instance schema */
+/** Full datasource instance returned by the API. */
 export const DatasourceInstanceSchema = Type.Object({
-  id: Type.String(),
-  uid: Type.String(),
-  name: Type.String({minLength: 1, maxLength: 255}),
-  type: DatasourceTypeSchema,
-  config: Type.Record(Type.String(), Type.Any()),
-  isDefault: Type.Boolean(),
-  createdAt: Type.String(),
-  updatedAt: Type.String(),
+    config: Type.Record(Type.String(), Type.Any()),
+    createdAt: Type.String(),
+    id: Type.String(),
+    isDefault: Type.Boolean(),
+    name: Type.String({minLength: 1, maxLength: 255}),
+    type: DatasourceTypeSchema,
+    uid: Type.String(),
+    updatedAt: Type.String(),
 });
 
-/** Create datasource request */
+/** Request body for creating a new datasource. */
 export const CreateDatasourceSchema = Type.Object({
-  uid: Type.Optional(Type.String({minLength: 1, maxLength: 32})),
-  name: Type.String({minLength: 1, maxLength: 255}),
-  type: DatasourceTypeSchema,
-  config: Type.Record(Type.String(), Type.Any()),
-  isDefault: Type.Optional(Type.Boolean()),
+    config: Type.Record(Type.String(), Type.Any()),
+    isDefault: Type.Optional(Type.Boolean()),
+    name: Type.String({minLength: 1, maxLength: 255}),
+    type: DatasourceTypeSchema,
+    uid: Type.Optional(Type.String({minLength: 1, maxLength: 32})),
 });
 
 export type CreateDatasourceRequest = Static<typeof CreateDatasourceSchema>;
 
-/** Update datasource request */
+/** Request body for updating an existing datasource. */
 export const UpdateDatasourceSchema = Type.Object({
-  name: Type.Optional(Type.String({minLength: 1, maxLength: 255})),
-  config: Type.Optional(Type.Record(Type.String(), Type.Any())),
-  isDefault: Type.Optional(Type.Boolean()),
+    config: Type.Optional(Type.Record(Type.String(), Type.Any())),
+    isDefault: Type.Optional(Type.Boolean()),
+    name: Type.Optional(Type.String({minLength: 1, maxLength: 255})),
 });
 
 export type UpdateDatasourceRequest = Static<typeof UpdateDatasourceSchema>;

@@ -7,8 +7,8 @@ import {
     Tooltip,
 } from "recharts";
 
-import type {PanelComponentProps} from "../plugins/registry";
 import {useEmitPanelEvent} from "../hooks/use-panel-events";
+import type {PanelComponentProps} from "../plugins/registry";
 import {
     CHART_COLORS,
     EmptyState,
@@ -27,6 +27,7 @@ const PIE_RADIUS_DIVISOR = 4;
  * @param root0.height
  * @param root0.options
  * @param root0.syncId
+ * @param root0.id
  */
 export const PieChartPanel = ({data, width, height, id, options, syncId}: PanelComponentProps) => {
     const emit = useEmitPanelEvent(id);
@@ -51,7 +52,11 @@ export const PieChartPanel = ({data, width, height, id, options, syncId}: PanelC
             height={height - CHART_HEADER_OFFSET}
             width={"100%"}
         >
-            <PieChart {...(syncId ? {syncId} : {})}>
+            <PieChart
+                {...(syncId ?
+                    {syncId} :
+                    {})}
+            >
                 <Pie
                     cx={"50%"}
                     cy={"50%"}

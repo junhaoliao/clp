@@ -4,12 +4,13 @@ import {
 } from "react-router";
 
 import MainLayout from "./components/Layout/MainLayout";
-import IngestPage from "./pages/IngestPage";
-import IngestNewPage from "./pages/IngestNewPage";
-import QueryStatus from "./pages/LogViewerLoadingPage/QueryStatus";
-import SearchPage from "./pages/SearchPage";
-import {DashboardPage} from "./pages/DashboardPage";
 import {DashboardListPage} from "./pages/DashboardListPage";
+import {DashboardPage} from "./pages/DashboardPage";
+import ExplorePage from "./pages/ExplorePage";
+import IngestNewPage from "./pages/IngestNewPage";
+import IngestPage from "./pages/IngestPage";
+import QueryStatus from "./pages/LogViewerLoadingPage/QueryStatus";
+import SettingsPage from "./pages/SettingsPage";
 
 
 const router = createBrowserRouter([
@@ -25,7 +26,8 @@ const router = createBrowserRouter([
             },
             {path: "ingest", Component: IngestPage},
             {path: "ingest-new", Component: IngestNewPage},
-            {path: "search", Component: SearchPage},
+            {path: "search", Component: ExplorePage},
+            {path: "settings", Component: SettingsPage},
             {path: "dashboards", Component: DashboardListPage},
             {path: "dashboards/:uid", Component: DashboardPage},
         ],

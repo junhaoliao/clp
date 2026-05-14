@@ -12,7 +12,7 @@ import {constants} from "http2";
 /**
  * Valid AWS region codes from the standard (`aws`) partition.
  */
-const awsPartition = partitions.partitions.find((p) => "aws" === p.id);
+const awsPartition = partitions.partitions.find((p: {id: string}) => "aws" === p.id);
 const validRegionCodes: Set<string> = new Set(
     awsPartition ?
         Object.keys(awsPartition.regions) :

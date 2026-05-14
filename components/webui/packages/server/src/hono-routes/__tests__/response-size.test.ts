@@ -1,5 +1,11 @@
-import {describe, expect, it} from "vitest";
+import {
+    describe,
+    expect,
+    it,
+} from "vitest";
+
 import {honoApp} from "../../hono-app.js";
+
 
 describe("Response Payload Size Middleware", () => {
     it("should allow normal-sized responses", async () => {

@@ -1,21 +1,39 @@
-import {useEffect, useCallback} from "react";
-import {panelEventBus, type PanelEvent} from "./panel-event-bus";
+import {
+    useCallback,
+    useEffect,
+} from "react";
 
-export function usePanelEvent(
-  eventType: string,
-  handler: (event: PanelEvent) => void,
+import {
+    type PanelEvent,
+    panelEventBus,
+} from "./panel-event-bus";
+
+
+/**
+ *
+ * @param eventType
+ * @param handler
+ */
+export function usePanelEvent (
+    eventType: string,
+    handler: (event: PanelEvent) => void,
 ) {
-  useEffect(() => {
-    const unsub = panelEventBus.on(eventType, handler);
-    return unsub;
-  }, [eventType, handler]);
+    useEffect(() => {
+        const unsub = panelEventBus.on(eventType, handler);
+        return unsub;
+    }, [eventType,
+        handler]);
 }
 
-export function useEmitPanelEvent(sourcePanelId: string) {
-  return useCallback(
-    (type: string, payload: Record<string, unknown> = {}) => {
-      panelEventBus.emit({type, sourcePanelId, payload});
-    },
-    [sourcePanelId],
-  );
+/**
+ *
+ * @param sourcePanelId
+ */
+export function useEmitPanelEvent (sourcePanelId: string) {
+    return useCallback(
+        (type: string, payload: Record<string, unknown> = {}) => {
+            panelEventBus.emit({type, sourcePanelId, payload});
+        },
+        [sourcePanelId],
+    );
 }

@@ -19,11 +19,9 @@ import type {
 import {useDashboardLayoutStore} from "../stores/layout-store";
 import {useDashboardTimeStore} from "../stores/time-store";
 import {useDashboardVariableStore} from "../stores/variable-store";
-import {useDashboardQueryPool} from "./use-dashboard-query-pool";
-import {
-    executePanelQuery,
-} from "./panel-query-utils";
+import {executePanelQuery} from "./panel-query-utils";
 import {parseTimeRange} from "./parse-time-range";
+import {useDashboardQueryPool} from "./use-dashboard-query-pool";
 import {
     interpolateVariables,
     resolveVariables,
@@ -49,6 +47,17 @@ interface UsePanelQueriesOptions {
     panelWidthPx?: number;
 }
 
+/**
+ *
+ * @param query
+ * @param query.data
+ * @param query.error
+ * @param query.isLoading
+ * @param query.isFetching
+ * @param refetch
+ * @param isSlowQuery
+ * @param retryCount
+ */
 function computeResult (
     query: {data: DataQueryResponse | undefined; error: Error | null; isLoading: boolean; isFetching: boolean},
     refetch: () => void,
@@ -146,9 +155,9 @@ function useQueryFn (opts: UseQueryFnOpts) {
         from;
 
     // Refs and setState are stable across renders — capture once outside the callback
-    const abortRef = opts.abortRef;
-    const slowTimerRef = opts.slowTimerRef;
-    const setIsSlowQuery = opts.setIsSlowQuery;
+    const {abortRef} = opts;
+    const {slowTimerRef} = opts;
+    const {setIsSlowQuery} = opts;
 
     return useCallback(async (): Promise<DataQueryResponse> => {
         setIsSlowQuery(false);
@@ -240,10 +249,12 @@ export function usePanelQueries (panel: DashboardPanel, opts?: UsePanelQueriesOp
             if ("string" === typeof q.query) {
                 return "" !== q.query;
             }
+
             // CLP queries: q.query is {queryString, datasets, ...}
             if ("object" === typeof q.query && null !== q.query && "queryString" in q.query) {
                 return "" !== (q.query as {queryString: string}).queryString;
             }
+
             return true;
         }),
         queryFn: () => enqueue(queryFn),

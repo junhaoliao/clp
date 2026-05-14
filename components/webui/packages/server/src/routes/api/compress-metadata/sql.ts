@@ -31,6 +31,8 @@ type CompressionMetadataQueryRow = CompressionMetadata & {
     s3_keys?: string | null;
 } & RowDataPacket;
 
+type CompressionMetadataSimpleQueryRow = CompressionMetadata & RowDataPacket;
+
 interface IngestionJobQueryRow extends RowDataPacket {
     _id: number;
     config: string;
@@ -41,6 +43,28 @@ interface IngestionJobQueryRow extends RowDataPacket {
 }
 
 const COMPRESSION_METADATA_QUERY_LIMIT = 1000;
+
+/**
+ * Builds the SQL query to fetch recent compression metadata without the
+ * log-ingestor JOIN (used when the log-ingestor is not configured).
+ *
+ * @return Compression metadata query string.
+ */
+const getCompressionMetadataSimpleQuery = () => `
+    SELECT
+        cj.id as ${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.ID},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.STATUS},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.STATUS_MSG},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.START_TIME},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.UPDATE_TIME},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.DURATION},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.UNCOMPRESSED_SIZE},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.COMPRESSED_SIZE},
+        cj.${COMPRESSION_JOBS_TABLE_COLUMN_NAMES.CLP_CONFIG}
+    FROM ${settings.SqlDbCompressionJobsTableName} cj
+    ORDER BY cj.id DESC
+    LIMIT ${COMPRESSION_METADATA_QUERY_LIMIT};
+`;
 
 /**
  * Builds the SQL query to fetch recent compression metadata, joining with
@@ -99,9 +123,11 @@ const getIngestionJobsQuery = () => `
 export {
     COMPRESSION_JOBS_TABLE_COLUMN_NAMES,
     getCompressionMetadataQuery,
+    getCompressionMetadataSimpleQuery,
     getIngestionJobsQuery,
 };
 export type {
     CompressionMetadataQueryRow,
+    CompressionMetadataSimpleQueryRow,
     IngestionJobQueryRow,
 };

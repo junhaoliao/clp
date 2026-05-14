@@ -1,5 +1,6 @@
 import React from "react";
 import type {DashboardPanel} from "@webui/common/dashboard/types";
+import SqlCodeEditor from "./sql-code-editor";
 
 
 /**
@@ -43,13 +44,16 @@ const MysqlQueryEditor = ({panel, updatePanel}: {panel: DashboardPanel; updatePa
     return (
         <div>
             <label className={"text-xs text-muted-foreground"}>SQL Query</label>
-            <textarea
-                className={"w-full h-24 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
-                placeholder={"SELECT * FROM table WHERE time > $__from"}
-                value={queryStr}
-                onChange={(e) => {
-                    updateQuery(panel, updatePanel, e.target.value);
-                }}/>
+            <div className={"mt-1"}>
+                <SqlCodeEditor
+                    height={96}
+                    language={"sql"}
+                    placeholder={"SELECT * FROM table WHERE time > $__from"}
+                    value={queryStr}
+                    onChange={(v) => {
+                        updateQuery(panel, updatePanel, v);
+                    }}/>
+            </div>
             <p className={"text-[10px] text-muted-foreground mt-1"}>
                 {"Use $variable or $\\u007Bvariable} for interpolation. Read-only queries only."}
             </p>
@@ -111,13 +115,16 @@ const ClpQueryEditor = ({panel, updatePanel}: {panel: DashboardPanel; updatePane
             </div>
             <div>
                 <label className={"text-xs text-muted-foreground"}>KQL Query</label>
-                <textarea
-                    className={"w-full h-24 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
-                    placeholder={"level:ERROR AND service:web"}
-                    value={queryString}
-                    onChange={(e) => {
-                        doUpdate({queryString: e.target.value});
-                    }}/>
+                <div className={"mt-1"}>
+                    <SqlCodeEditor
+                        height={96}
+                        language={"kql"}
+                        placeholder={"level:ERROR AND service:web"}
+                        value={queryString}
+                        onChange={(v) => {
+                            doUpdate({queryString: v});
+                        }}/>
+                </div>
             </div>
         </div>
     );
@@ -214,12 +221,15 @@ export const QueryEditor = ({panel, updatePanel}: {panel: DashboardPanel; update
     return (
         <div>
             <label className={"text-xs text-muted-foreground"}>Query</label>
-            <textarea
-                className={"w-full h-20 mt-1 rounded border border-input bg-background px-2 py-1 text-xs font-mono"}
-                value={queryStr}
-                onChange={(e) => {
-                    updateQuery(panel, updatePanel, e.target.value);
-                }}/>
+            <div className={"mt-1"}>
+                <SqlCodeEditor
+                    height={80}
+                    language={"sql"}
+                    value={queryStr}
+                    onChange={(v) => {
+                        updateQuery(panel, updatePanel, v);
+                    }}/>
+            </div>
         </div>
     );
 };

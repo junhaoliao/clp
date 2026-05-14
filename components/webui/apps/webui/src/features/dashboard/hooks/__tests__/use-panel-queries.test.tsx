@@ -211,13 +211,18 @@ describe("usePanelQueries", () => {
             defaultOptions: {queries: {retry: false, refetchInterval: 10_000}},
         });
 
-        function WrapperWithInterval ({children}: {children: ReactNode}) {
+        /**
+         *
+         * @param root0
+         * @param root0.children
+         */
+        const WrapperWithInterval = ({children}: {children: ReactNode}) => {
             return (
                 <QueryClientProvider client={queryClientWithInterval}>
                     {children}
                 </QueryClientProvider>
             );
-        }
+        };
 
         renderHook(() => usePanelQueries(mockPanel), {wrapper: WrapperWithInterval});
 
@@ -237,7 +242,8 @@ describe("usePanelQueries", () => {
 
     it("should set isRefetching=false and isLoading=true on initial load", () => {
         // Create a fetch that never resolves so we stay in loading state
-        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {
+        }));
 
         const wrapper = createWrapper();
         const {result} = renderHook(() => usePanelQueries(mockPanel), {wrapper});
@@ -285,7 +291,8 @@ describe("usePanelQueries", () => {
         expect(result.current.isRefetching).toBe(false);
 
         // Now make the next fetch hang (simulating a background refetch in progress)
-        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+        globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {
+        }));
 
         // Trigger a refetch
         result.current.refetch();

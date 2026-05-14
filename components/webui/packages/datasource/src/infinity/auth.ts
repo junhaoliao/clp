@@ -1,5 +1,6 @@
 import type {InfinityAuth} from "../types.js";
 
+
 const AUTH_TYPE_BASIC = "basic";
 const AUTH_TYPE_APIKEY = "apikey";
 const AUTH_TYPE_NONE = "none";
@@ -16,7 +17,7 @@ export function buildAuthHeaders (auth: InfinityAuth | undefined): Record<string
 
     if (auth.type === AUTH_TYPE_BASIC) {
         const credentials = `${auth.username}:${auth.password}`;
-        const encoded = (typeof Buffer !== "undefined") ?
+        const encoded = ("undefined" !== typeof Buffer) ?
             Buffer.from(credentials).toString("base64") :
             btoa(credentials);
 

@@ -1,13 +1,14 @@
 import {
+    renderHook,
+    waitFor,
+} from "@testing-library/react";
+import {
     describe,
     expect,
     it,
     vi,
 } from "vitest";
-import {
-    renderHook,
-    waitFor,
-} from "@testing-library/react";
+
 import {useVariableComboboxSearch} from "../variable-combobox";
 
 
@@ -29,10 +30,14 @@ describe("useVariableComboboxSearch", () => {
     it("should fetch options on mount when enabled", async () => {
         const mockFetch = vi.fn().mockResolvedValue({
             json: () => Promise.resolve({
-                data: [{fields: [{name: "host", values: ["host-1", "host-2"]}], length: 2}],
+                data: [{fields: [{name: "host",
+                    values: ["host-1",
+                        "host-2"]}],
+                length: 2}],
             }),
             ok: true,
         });
+
         vi.stubGlobal("fetch", mockFetch);
 
         const {result} = renderHook(() => useVariableComboboxSearch({
@@ -73,6 +78,7 @@ describe("useVariableComboboxSearch", () => {
             json: () => Promise.resolve({data: []}),
             ok: true,
         });
+
         vi.stubGlobal("fetch", mockFetch);
 
         const {result} = renderHook(() => useVariableComboboxSearch({

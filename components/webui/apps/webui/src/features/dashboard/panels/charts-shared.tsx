@@ -1,4 +1,5 @@
 import {QUERY_LIMITS} from "@webui/datasource/types";
+
 import type {PanelComponentProps} from "../plugins/registry";
 
 

@@ -3,10 +3,12 @@ import {
     expect,
     it,
 } from "vitest";
+
 import {
     buildPaginatedUrl,
     isPaginationComplete,
 } from "../infinity/pagination";
+
 
 describe("buildPaginatedUrl", () => {
     it("should append offset and limit params for offset pagination", () => {
@@ -17,6 +19,7 @@ describe("buildPaginatedUrl", () => {
             page: 1,
             pageSize: 100,
         });
+
         expect(url).toBe("https://api.example.com/data?offset=0&limit=100");
     });
 
@@ -28,6 +31,7 @@ describe("buildPaginatedUrl", () => {
             pageParam: "page",
             pageSize: 50,
         });
+
         expect(url).toBe("https://api.example.com/data?page=2&per_page=50");
     });
 
@@ -39,6 +43,7 @@ describe("buildPaginatedUrl", () => {
             page: 1,
             pageSize: 100,
         });
+
         expect(url).toContain("q=test");
         expect(url).toContain("offset=0");
     });
@@ -47,6 +52,7 @@ describe("buildPaginatedUrl", () => {
         const url = buildPaginatedUrl("https://api.example.com/data", {
             mode: "none",
         });
+
         expect(url).toBe("https://api.example.com/data");
     });
 });

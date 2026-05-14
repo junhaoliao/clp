@@ -1,10 +1,20 @@
-import {describe, it, expect} from "vitest";
-import {QUERY_LIMITS} from "@webui/datasource/types";
 import type {DataFrame} from "@webui/datasource/types";
+import {QUERY_LIMITS} from "@webui/datasource/types";
+import {
+    describe,
+    expect,
+    it,
+} from "vitest";
+
 import {truncateDataForDisplay} from "../truncate-display-data";
+
 
 const {MAX_DISPLAY_ROWS} = QUERY_LIMITS;
 
+/**
+ *
+ * @param length
+ */
 const makeFrame = (length: number): DataFrame => ({
     name: "test",
     fields: [{name: "value", type: "number", values: Array.from({length}, (_, i) => i)}],

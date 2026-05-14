@@ -9,7 +9,12 @@ import {
     useQuery,
     useQueryClient,
 } from "@tanstack/react-query";
-import type {PanelType} from "@webui/common/dashboard/types";
+import type {
+    Annotation,
+    DashboardPanel,
+    DashboardTab,
+    PanelType,
+} from "@webui/common/dashboard/types";
 import {
     AlertTriangle,
     Download,
@@ -49,7 +54,6 @@ import {useAutoRefresh} from "@/features/dashboard/hooks/use-auto-refresh";
 import {useCascadingVariables} from "@/features/dashboard/hooks/use-cascading-variables";
 import {usePanelErrorSummary} from "@/features/dashboard/hooks/use-panel-error-summary";
 import {migratePanels} from "@/features/dashboard/plugins/migration";
-import type {Annotation, DashboardPanel, DashboardTab} from "@webui/common/dashboard/types";
 import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store";
 
 
@@ -62,13 +66,13 @@ import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store"
  * @param root0.annotations
  * @param root0.onFullScreen
  */
-function FilteredDashboardGrid ({panels, tabs, isEditing, annotations, onFullScreen}: {
+const FilteredDashboardGrid = ({panels, tabs, isEditing, annotations, onFullScreen}: {
     annotations?: Annotation[];
     isEditing: boolean;
     onFullScreen: (panel: DashboardPanel) => void;
     panels: DashboardPanel[];
     tabs: DashboardTab[];
-}) {
+}) => {
     const activeTabId = useDashboardLayoutStore((s) => s.activeTabId);
 
     const filteredPanels = 0 === tabs.length || !activeTabId ?
@@ -82,7 +86,7 @@ function FilteredDashboardGrid ({panels, tabs, isEditing, annotations, onFullScr
             panels={filteredPanels}
             onFullScreen={onFullScreen}/>
     );
-}
+};
 
 
 /**
@@ -331,7 +335,9 @@ export const DashboardPage = () => {
             <div className={"flex-1 flex overflow-hidden"}>
                 <div className={"flex-1 overflow-auto bg-muted/30"}>
                     <FilteredDashboardGrid
-                        {...(dashboard.annotations ? {annotations: dashboard.annotations} : {})}
+                        {...(dashboard.annotations ?
+                            {annotations: dashboard.annotations} :
+                            {})}
                         isEditing={isEditing}
                         panels={dashboard.panels}
                         tabs={dashboard.tabs ?? []}
@@ -339,7 +345,7 @@ export const DashboardPage = () => {
                 </div>
 
                 {isEditing && selectedPanelId && (
-                    <ResizableSidebar side="right">
+                    <ResizableSidebar side={"right"}>
                         <PanelOptionsEditor/>
                     </ResizableSidebar>
                 )}
@@ -361,8 +367,10 @@ export const DashboardPage = () => {
             )}
 
             <DashboardSettings
-                key={showSettings ? "open" : "closed"}
                 open={showSettings}
+                key={showSettings ?
+                    "open" :
+                    "closed"}
                 onClose={() => {
                     setShowSettings(false);
                 }}/>

@@ -11,8 +11,8 @@ import {
     YAxis,
 } from "recharts";
 
-import type {PanelComponentProps} from "../plugins/registry";
 import {useEmitPanelEvent} from "../hooks/use-panel-events";
+import type {PanelComponentProps} from "../plugins/registry";
 import {
     CHART_COLORS,
     EmptyState,
@@ -79,7 +79,9 @@ function handleChartClick (
     emit: (type: string, payload: Record<string, unknown>) => void,
 ) {
     const p = payload as Record<string, unknown> | null;
-    if (!p) return;
+    if (!p) {
+        return;
+    }
     const active = p["activePayload"] as {payload: Record<string, unknown>}[] | undefined;
     if (active?.[0]) {
         const point = active[0].payload;
@@ -158,6 +160,7 @@ function renderAnnotation (xField: {name: string; type: string}) {
  * @param root0.onTimeRangeChange
  * @param root0.annotations
  * @param root0.syncId
+ * @param root0.id
  */
 export const TimeSeriesPanel = ({
     data,
@@ -192,8 +195,12 @@ export const TimeSeriesPanel = ({
         >
             <LineChart
                 data={chartData}
-                onClick={(payload) => handleChartClick(payload, xField.name, emit)}
-                {...(syncId ? {syncId} : {})}
+                onClick={(payload) => {
+                    handleChartClick(payload, xField.name, emit);
+                }}
+                {...(syncId ?
+                    {syncId} :
+                    {})}
             >
                 <CartesianGrid
                     stroke={"var(--color-border)"}

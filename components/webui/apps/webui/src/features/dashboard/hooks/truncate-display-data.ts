@@ -1,9 +1,12 @@
-import {QUERY_LIMITS} from "@webui/datasource/types";
 import type {DataFrame} from "@webui/datasource/types";
+import {QUERY_LIMITS} from "@webui/datasource/types";
+
 
 /**
  * Truncates DataFrame rows to MAX_DISPLAY_ROWS for non-table panels.
  * Table panels use server-side pagination / virtual scrolling and are exempt.
+ *
+ * @param frames
  */
 export function truncateDataForDisplay (frames: DataFrame[]): DataFrame[] {
     return frames.map((frame) => {

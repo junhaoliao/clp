@@ -1,0 +1,4 @@
+2026-05-01 15:06:11 [error] Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}
+2026-05-01 15:06:11 [error] Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}
+2026-05-01 20:13:49 [error] Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}
+2026-05-01 20:13:49 [error] Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}

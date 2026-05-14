@@ -7,6 +7,7 @@ import {
 import {
     DashboardOutlined,
     SearchOutlined,
+    SettingOutlined,
     UploadOutlined,
 } from "@ant-design/icons";
 import {
@@ -25,8 +26,9 @@ type MenuItem = Required<MenuProps>["items"][number];
 const SIDEBAR_MENU_ITEMS: MenuItem[] = [
     {label: <Link to={"/ingest"}>Ingest</Link>, key: "/ingest", icon: <UploadOutlined/>},
     {label: <Link to={"/ingest-new"}>Ingest (new)</Link>, key: "/ingest-new", icon: <UploadOutlined/>},
-    {label: <Link to={"/search"}>Search</Link>, key: "/search", icon: <SearchOutlined/>},
+    {label: <Link to={"/search"}>Explore</Link>, key: "/search", icon: <SearchOutlined/>},
     {label: <Link to={"/dashboards"}>Dashboards</Link>, key: "/dashboards", icon: <DashboardOutlined/>},
+    {label: <Link to={"/settings"}>Settings</Link>, key: "/settings", icon: <SettingOutlined/>},
 ];
 
 /**

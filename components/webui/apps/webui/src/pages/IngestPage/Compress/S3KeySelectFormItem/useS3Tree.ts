@@ -32,7 +32,7 @@ const getErrorMessage = (e: unknown, fallback: string): string => {
     if (e instanceof AxiosError) {
         const data: unknown = e.response?.data;
         if ("object" === typeof data && null !== data && "message" in data) {
-            const {message} = data as {message: unknown};
+            const {message} = data;
             if ("string" === typeof message) {
                 return message;
             }

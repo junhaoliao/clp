@@ -1,4 +1,8 @@
-import type {DataFrame, DataField} from "../types.js";
+import type {
+    DataField,
+    DataFrame,
+} from "../types.js";
+
 
 /**
  * Extract text content between XML tags.
@@ -12,7 +16,7 @@ function extractXmlRecords (xml: string, tagName: string): Record<string, string
     const closeTag = `</${tagName}>`;
 
     let searchStart = 0;
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     while (searchStart < xml.length) {
         const openIdx = xml.indexOf(openTag, searchStart);
         if (-1 === openIdx) {
@@ -80,7 +84,7 @@ function detectRepeatingElement (xml: string): string | undefined {
     let bestTag: string | undefined;
     let bestCount = 0;
     for (const [tag, count] of Object.entries(tagCounts)) {
-        if (count > bestCount && count > 1) {
+        if (count > bestCount && 1 < count) {
             bestCount = count;
             bestTag = tag;
         }
@@ -123,6 +127,7 @@ export function parseXmlResponse (
                         null :
                         num;
                 }
+
                 return raw;
             }),
         }));
@@ -210,6 +215,7 @@ export function parseHtmlResponse (
                         null :
                         num;
                 }
+
                 return raw;
             }),
         }));
@@ -237,7 +243,7 @@ export function parseHtmlResponse (
  * @param selector
  */
 function isCssSelector (selector: string): boolean {
-    return !/^\d+$/.test(selector.trim());
+    return !(/^\d+$/).test(selector.trim());
 }
 
 /**
@@ -263,12 +269,13 @@ function parseHtmlByCssSelectors (
                         null :
                         num;
                 }
+
                 return raw;
             }),
         };
     });
 
-    const length = fields.length > 0 ?
+    const length = 0 < fields.length ?
         Math.max(...fields.map((f) => f.values.length)) :
         0;
 
@@ -292,7 +299,7 @@ export function extractHtmlBySelector (html: string, selector: string): string[]
     if (selector.startsWith(".")) {
         // Class selector: .name
         classFilter = selector.slice(1);
-        tagPattern = `\\w+`;
+        tagPattern = "\\w+";
     } else if (selector.includes(".")) {
         // tag.class selector: span.name
         const dotIdx = selector.indexOf(".");

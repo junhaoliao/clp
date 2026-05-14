@@ -1,12 +1,12 @@
 import {useEffect} from "react";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {CLP_STORAGE_ENGINES, STORAGE_TYPE} from "@webui/common/config";
+import {CLP_STORAGE_ENGINES} from "@webui/common/config";
 import {RefreshCw} from "lucide-react";
 
 import {Button} from "@/components/ui/button";
 import {DashboardGrid} from "@/features/dashboard/components/dashboard-grid";
 import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store";
-import {SETTINGS_LOGS_INPUT_TYPE, SETTINGS_STORAGE_ENGINE} from "../../config";
+import {SETTINGS_STORAGE_ENGINE} from "../../config";
 import Compress from "../IngestPage/Compress";
 import Jobs from "../IngestPage/Jobs";
 import {fetchDatasetNames} from "../SearchPage/SearchControls/Dataset/sql";
@@ -65,8 +65,8 @@ const IngestNewPage = () => {
     }
 
     return (
-        <div className={"flex flex-col h-full"}>
-            <div className={"flex items-center justify-between border-b px-4 py-2 bg-background"}>
+        <div className={"flex flex-col h-full overflow-auto"}>
+            <div className={"flex items-center justify-between border-b px-4 py-2 bg-background sticky top-0 z-10"}>
                 <h1 className={"text-lg font-semibold"}>Ingest Overview</h1>
                 <Button
                     size={"sm"}
@@ -81,16 +81,14 @@ const IngestNewPage = () => {
                 </Button>
             </div>
 
-            <div className={"flex-1 overflow-auto bg-muted/30"}>
+            <div className={"bg-muted/30"}>
                 <DashboardGrid
                     isEditing={false}
                     panels={dashboard.panels}/>
             </div>
 
-            <div>
-                {STORAGE_TYPE.FS === SETTINGS_LOGS_INPUT_TYPE && <Compress/>}
-                <Jobs/>
-            </div>
+            <Compress/>
+            <Jobs/>
         </div>
     );
 };

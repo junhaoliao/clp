@@ -1,7 +1,12 @@
-import {describe, it, expect} from "vitest";
+import {
+    describe,
+    expect,
+    it,
+} from "vitest";
+
 
 describe("@webui/ui", () => {
-  it("should be importable", () => {
-    expect(true).toBe(true);
-  });
+    it("should be importable", () => {
+        expect(true).toBe(true);
+    });
 });

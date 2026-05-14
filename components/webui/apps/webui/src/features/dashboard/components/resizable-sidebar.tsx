@@ -4,6 +4,7 @@ import {
     useState,
 } from "react";
 
+
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 600;
 
@@ -13,7 +14,14 @@ interface ResizableSidebarProps {
     side: "left" | "right";
 }
 
-export function ResizableSidebar({children, defaultWidth = 280, side}: ResizableSidebarProps) {
+/**
+ *
+ * @param root0
+ * @param root0.children
+ * @param root0.defaultWidth
+ * @param root0.side
+ */
+export const ResizableSidebar = ({children, defaultWidth = 280, side}: ResizableSidebarProps) => {
     const [width, setWidth] = useState(defaultWidth);
     const isResizing = useRef(false);
 
@@ -29,9 +37,9 @@ export function ResizableSidebar({children, defaultWidth = 280, side}: Resizable
             if (!isResizing.current) {
                 return;
             }
-            const delta = "right" === side
-                ? startX - moveEvent.clientX
-                : moveEvent.clientX - startX;
+            const delta = "right" === side ?
+                startX - moveEvent.clientX :
+                moveEvent.clientX - startX;
             const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
             setWidth(next);
         };
@@ -55,24 +63,22 @@ export function ResizableSidebar({children, defaultWidth = 280, side}: Resizable
 
     return (
         <div
-            className="flex shrink-0 border-l bg-background overflow-auto"
+            className={"flex shrink-0 border-l bg-background overflow-auto"}
             style={{width}}
         >
             {isRight && (
                 <div
-                    className="w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"
-                    onMouseDown={handleMouseDown}
-                />
+                    className={"w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
+                    onMouseDown={handleMouseDown}/>
             )}
-            <div className="flex-1 overflow-auto">
+            <div className={"flex-1 overflow-auto"}>
                 {children}
             </div>
             {!isRight && (
                 <div
-                    className="w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"
-                    onMouseDown={handleMouseDown}
-                />
+                    className={"w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
+                    onMouseDown={handleMouseDown}/>
             )}
         </div>
     );
-}
+};

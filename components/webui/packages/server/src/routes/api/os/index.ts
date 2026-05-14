@@ -2,7 +2,6 @@ import {FastifyPluginAsyncTypebox} from "@fastify/type-provider-typebox";
 import {
     FileListingSchema,
     FileListRequestSchema,
-    type FileListRequest,
 } from "@webui/common/schemas/os";
 import fs from "fs/promises";
 import {constants} from "http2";
@@ -29,7 +28,7 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
             },
         },
         async (request, reply) => {
-            const {path: requestedPath} = request.query as FileListRequest;
+            const {path: requestedPath} = request.query;
 
             try {
                 await fs.access(requestedPath);

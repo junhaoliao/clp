@@ -27,7 +27,7 @@ export default async function serviceApp (
 ) {
     // Option only serves testing purpose. It's used in testing to expose all decorators to the
     // test app. Some decorators may not be exposed in production.
-    delete opts["skipOverride"];
+    delete opts['skipOverride'];
 
     // Loads all external plugins. Registered first as application plugins might depend on them.
     await fastify.register(fastifyAutoload, {

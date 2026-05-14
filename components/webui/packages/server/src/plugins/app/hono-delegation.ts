@@ -1,117 +1,171 @@
-import type {FastifyInstance, FastifyPluginOptions, FastifyRequest, FastifyReply} from "fastify";
 import {CLP_QUERY_ENGINES} from "@webui/common/config";
+import type {
+    FastifyInstance,
+    FastifyReply,
+    FastifyRequest,
+} from "fastify";
 import fp from "fastify-plugin";
 import mysql from "mysql2/promise";
-import {honoApp} from "../../hono-app.js";
-import {setDashboardStorage} from "../../hono-routes/dashboards.js";
-import {MySQLDashboardStorage, DASHBOARD_MIGRATION} from "../../storage/dashboard-storage.js";
-import {setClpQueryService} from "../../hono-routes/clp-query-service.js";
-import {setDatasourceStorage} from "../../hono-routes/datasource.js";
-import {MySQLDatasourceStorage, DATASOURCE_MIGRATION} from "../../storage/datasource-storage.js";
-import {provisionDatasources} from "../../storage/provisioning.js";
+
 import settings from "../../../settings.json" with {type: "json"};
+import {honoApp} from "../../hono-app.js";
+import {setClpQueryService} from "../../hono-routes/clp-query-service.js";
+import {setDashboardStorage} from "../../hono-routes/dashboards.js";
+import {setDatasourceStorage} from "../../hono-routes/datasource.js";
+import {
+    DASHBOARD_MIGRATION,
+    MySQLDashboardStorage,
+} from "../../storage/dashboard-storage.js";
+import {
+    DATASOURCE_MIGRATION,
+    MySQLDatasourceStorage,
+} from "../../storage/datasource-storage.js";
+import {provisionDatasources} from "../../storage/provisioning.js";
+
+
+const HONO_DELEGATED_ROUTES = [
+    "/api/dashboards",
+    "/api/dashboards/*",
+    "/api/datasource",
+    "/api/datasource/*",
+    "/api/logtype-stats",
+    "/api/logtype-stats/*",
+    "/api/schema-tree",
+    "/api/schema-tree/*",
+    "/api/schemas",
+    "/api/schemas/*",
+];
 
 /**
- * Delegates /api/dashboards/* and /api/datasource/* requests to the Hono app.
- * Same-port coexistence: Fastify is the primary server, Hono handles dashboard routes.
- * Also wires MySQL storage for dashboard/datasource persistence and runs migrations.
+ * Streams an SSE response through the Fastify raw response.
+ *
+ * @param reply
+ * @param res
  */
-async function honoDelegation(fastify: FastifyInstance, _opts: FastifyPluginOptions) {
-  // Wire MySQL storage for persistence
-  const {CLP_DB_USER, CLP_DB_PASS} = fastify.config;
-  const mysqlConfig = {
-    host: settings.SqlDbHost,
-    port: settings.SqlDbPort,
-    user: CLP_DB_USER,
-    password: CLP_DB_PASS,
-    database: settings.SqlDbName,
-  };
+const streamSSEResponse = async (reply: FastifyReply, res: Response) => {
+    reply.raw.writeHead(res.status, Object.fromEntries(res.headers.entries()));
+    const reader = res.body?.getReader();
+    if (!reader) {
+        reply.raw.end();
 
-  const getMySQLConnection = () => mysql.createConnection(mysqlConfig);
-
-  // Run migrations
-  const conn = await mysql.createConnection(mysqlConfig);
-  try {
-    await conn.query(DASHBOARD_MIGRATION);
-    await conn.query(DATASOURCE_MIGRATION);
-  } finally {
-    await conn.end();
-  }
-
-  // Set MySQL storage backends
-  setDashboardStorage(new MySQLDashboardStorage(getMySQLConnection));
-  setDatasourceStorage(new MySQLDatasourceStorage(getMySQLConnection));
-
-  // Provision default datasources on first startup
-  await provisionDatasources(new MySQLDatasourceStorage(getMySQLConnection));
-
-  // Wire CLP query service (QueryJobDbManager + MongoDB) for dashboard datasource routes
-  const mongoDb = fastify.mongo.db;
-  if ("undefined" === typeof mongoDb) {
-    throw new Error("MongoDB database not found");
-  }
-  setClpQueryService({
-    queryJobDbManager: fastify.QueryJobDbManager,
-    mongoDb,
-    queryEngine: settings.ClpQueryEngine as CLP_QUERY_ENGINES,
-    metadataCollectionName: settings.MongoDbSearchResultsMetadataCollectionName,
-  });
-
-  const honoFetch = honoApp.fetch;
-
-  const delegateToHono = async (request: FastifyRequest, reply: FastifyReply) => {
-    let urlPath = request.url;
-    // Normalize trailing slash so Hono matches root routes on mounted sub-paths
-    if (urlPath.endsWith("/") && urlPath.split("/").filter(Boolean).length > 0) {
-      const basePath = urlPath.replace(/\/+$/, "");
-      if (basePath === "/api/dashboards" || basePath === "/api/datasource") {
-        urlPath = basePath;
-      }
+        return;
     }
-    const url = `${request.protocol}://${request.hostname}${urlPath}`;
-    const init: RequestInit = {
-      method: request.method,
-      headers: Object.entries(request.headers).filter(([, v]) => v !== undefined) as [string, string][],
-    };
-    if (request.body) {
-      init.body = JSON.stringify(request.body);
-    }
-    const webReq = new Request(url, init);
-    const res = await honoFetch(webReq);
-
-    // Check if the response is SSE (streaming)
-    const contentType = res.headers.get("content-type") ?? "";
-    if (contentType.includes("text/event-stream")) {
-      // Stream SSE responses properly through Fastify
-      reply.raw.writeHead(res.status, Object.fromEntries(res.headers.entries()));
-      const reader = res.body?.getReader();
-      if (reader) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          while (true) {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        while (true) {
             const {done, value} = await reader.read();
-            if (done) break;
+            if (done) {
+                break;
+            }
             reply.raw.write(value);
-          }
-        } finally {
-          reply.raw.end();
         }
-      }
-
-      return;
+    } finally {
+        reply.raw.end();
     }
+};
 
-    reply.code(res.status);
-    for (const [key, value] of res.headers.entries()) {
-      reply.header(key, value);
+/**
+ * Initializes MySQL storage for dashboard/datasource persistence and runs migrations.
+ *
+ * @param mysqlConfig
+ * @param getMySQLConnection
+ */
+const initMySQLStorage = async (
+    mysqlConfig: mysql.ConnectionOptions,
+    getMySQLConnection: () => Promise<mysql.Connection>,
+) => {
+    const conn = await mysql.createConnection(mysqlConfig);
+    try {
+        await conn.query(DASHBOARD_MIGRATION);
+        await conn.query(DATASOURCE_MIGRATION);
+    } finally {
+        await conn.end();
     }
-    return res.text();
-  };
+    setDashboardStorage(new MySQLDashboardStorage(getMySQLConnection));
+    setDatasourceStorage(new MySQLDatasourceStorage(getMySQLConnection));
+    await provisionDatasources(new MySQLDatasourceStorage(getMySQLConnection));
+};
 
-  fastify.all("/api/dashboards", delegateToHono);
-  fastify.all("/api/dashboards/*", delegateToHono);
-  fastify.all("/api/datasource", delegateToHono);
-  fastify.all("/api/datasource/*", delegateToHono);
-}
+/**
+ * Wires the CLP query service (QueryJobDbManager + MongoDB) for datasource routes.
+ *
+ * @param fastify
+ * @throws {Error} If MongoDB database is not found
+ */
+const initClpQueryService = (fastify: FastifyInstance) => {
+    const mongoDb = fastify.mongo.db;
+    if ("undefined" === typeof mongoDb) {
+        throw new Error("MongoDB database not found");
+    }
+    setClpQueryService({
+        metadataCollectionName: settings.MongoDbSearchResultsMetadataCollectionName,
+        mongoDb: mongoDb,
+        queryEngine: settings.ClpQueryEngine as CLP_QUERY_ENGINES,
+        queryJobDbManager: fastify.QueryJobDbManager,
+    });
+};
+
+/**
+ * Delegates /api/dashboards/*, /api/datasource/*, and CLPP API requests to the Hono app.
+ * Same-port coexistence: Fastify is the primary server, Hono handles specific routes.
+ *
+ * @param fastify
+ */
+const honoDelegation = async (fastify: FastifyInstance) => {
+    const {CLP_DB_USER, CLP_DB_PASS} = fastify.config;
+    const mysqlConfig = {
+        database: settings.SqlDbName,
+        host: settings.SqlDbHost,
+        password: CLP_DB_PASS,
+        port: settings.SqlDbPort,
+        user: CLP_DB_USER,
+    };
+
+    const getMySQLConnection = () => mysql.createConnection(mysqlConfig);
+    await initMySQLStorage(mysqlConfig, getMySQLConnection);
+    initClpQueryService(fastify);
+
+    const honoFetch = honoApp.fetch;
+
+    const delegateToHono = async (request: FastifyRequest, reply: FastifyReply) => {
+        let urlPath = request.url;
+        if (urlPath.endsWith("/") && 0 < urlPath.split("/").filter(Boolean).length) {
+            const basePath = urlPath.replace(/\/+$/, "");
+            if ("/api/dashboards" === basePath || "/api/datasource" === basePath) {
+                urlPath = basePath;
+            }
+        }
+
+        const url = `${request.protocol}://${request.hostname}${urlPath}`;
+        const init: RequestInit = {
+            headers: Object.entries(request.headers)
+                .filter(([, v]) => "undefined" !== typeof v) as [string, string][],
+            method: request.method,
+        };
+
+        if (request.body) {
+            init.body = JSON.stringify(request.body);
+        }
+
+        const webReq = new Request(url, init);
+        const res = await honoFetch(webReq);
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("text/event-stream")) {
+            await streamSSEResponse(reply, res);
+
+            return;
+        }
+
+        reply.code(res.status);
+        for (const [key, value] of res.headers.entries()) {
+            reply.header(key, value);
+        }
+        reply.send(await res.text());
+    };
+
+    for (const route of HONO_DELEGATED_ROUTES) {
+        fastify.all(route, delegateToHono);
+    }
+};
 
 export default fp(honoDelegation, {name: "hono-delegation"});
