@@ -2,11 +2,11 @@ import {useCallback} from "react";
 
 import {Editor} from "@monaco-editor/react";
 
-import {cn} from "@/lib/utils";
-
 import styles from "./index.module.css";
 
 import "./monaco-loader";
+
+import {cn} from "@/lib/utils";
 
 
 type SchemaMonacoEditorProps = {
@@ -16,7 +16,7 @@ type SchemaMonacoEditorProps = {
     height?: string;
 
     /** Whether the editor is read-only. */
-    readOnly?: boolean;
+    isReadOnly?: boolean;
 
     /** Fired when the editor content changes. */
     onChange?: (value: string) => void;
@@ -33,11 +33,18 @@ const DEFAULT_HEIGHT = "160px";
  * Framework-agnostic — no Ant Design or shadcn/ui theming dependency.
  * Uses the local Monaco bundle (not CDN) via the sibling monaco-loader.
  * Intended for use in both the Compress form and the Settings SchemaDialog.
+ *
+ * @param root0
+ * @param root0.className
+ * @param root0.height
+ * @param root0.isReadOnly
+ * @param root0.onChange
+ * @param root0.value
  */
 const SchemaMonacoEditor = ({
     className,
     height = DEFAULT_HEIGHT,
-    readOnly = false,
+    isReadOnly = false,
     onChange,
     value,
 }: SchemaMonacoEditorProps) => {
@@ -53,27 +60,25 @@ const SchemaMonacoEditor = ({
             <Editor
                 height={height}
                 language={"plaintext"}
+                theme={"vs"}
+                value={value ?? ""}
                 loading={
                     <div
                         style={{
                             backgroundColor: "hsl(var(--muted))",
                             height: "100%",
                             width: "100%",
-                        }}
-                    />
+                        }}/>
                 }
                 options={{
                     fontSize: 13,
                     lineNumbers: "on",
                     minimap: {enabled: false},
-                    readOnly,
+                    readOnly: isReadOnly,
                     scrollBeyondLastLine: false,
                     wordWrap: "on",
                 }}
-                theme={"vs"}
-                value={value ?? ""}
-                onChange={handleChange}
-            />
+                onChange={handleChange}/>
         </div>
     );
 };

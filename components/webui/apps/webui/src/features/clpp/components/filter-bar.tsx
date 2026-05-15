@@ -104,15 +104,18 @@ const AddFilterPopover = ({
 
     return (
         <Popover>
-            <PopoverTrigger>
-                <Button
-                    className={"h-7 text-xs"}
-                    size={"sm"}
-                    variant={"outline"}
-                >
-                    + Filter
-                </Button>
-            </PopoverTrigger>
+            <PopoverTrigger
+                render={(props: React.HTMLAttributes<HTMLElement>) => (
+                    <Button
+                        className={"h-7 text-xs"}
+                        size={"sm"}
+                        variant={"outline"}
+                        {...props}
+                    >
+                        + Filter
+                    </Button>
+                )}
+            />
             <PopoverContent
                 align={"start"}
                 className={"w-80"}

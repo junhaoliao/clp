@@ -188,8 +188,16 @@ public:
         return m_archive_reader_adaptor->get_header();
     }
 
+    [[nodiscard]] auto has_logtype_metadata() const -> bool {
+        return m_logtype_metadata.has_value();
+    }
+
     auto get_logtype_metadata() const -> clpp::LogTypeMetadataArray const& {
         return m_logtype_metadata.value();
+    }
+
+    [[nodiscard]] auto has_logtype_stats() const -> bool {
+        return m_logtype_stats.has_value();
     }
 
     auto get_logtype_stats() const -> clpp::LogTypeStatArray const& {

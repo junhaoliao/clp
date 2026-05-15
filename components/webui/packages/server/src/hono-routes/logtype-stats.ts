@@ -57,9 +57,9 @@ export const logtypeStatsRoutes = new Hono()
                 return c.json({error: msg}, 500);
             }
 
-            // Read results from MongoDB
+            // Read results from MongoDB, excluding schema tree marker documents
             const collection = mongoDb.collection(jobId.toString());
-            const results = await collection.find({}).toArray();
+            const results = await collection.find({_schema_tree: {$ne: true}}).toArray();
 
             // Clean up the collection after reading
             try {
@@ -71,7 +71,7 @@ export const logtypeStatsRoutes = new Hono()
             return c.json({
                 jobId,
                 logtypes: results,
-                totalCount: results.length,
+                totalCount: results.reduce<number>((sum, r) => sum + ((r["count"] as number) ?? 0), 0),
             });
         },
     );

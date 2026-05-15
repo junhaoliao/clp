@@ -85,11 +85,18 @@ auto ArchiveReader::initialize_archive_reader() -> void {
     if (m_options.m_experimental) {
         auto metadata{read_logtype_metadata()};
         if (metadata.has_error()) {
-            throw OperationFailed(ErrorCodeBadParam, __FILENAME__, __LINE__);
+            SPDLOG_INFO("Archive does not contain CLPP logtype metadata");
+        } else {
+            m_logtype_metadata = metadata.value();
         }
-        m_logtype_metadata = metadata.value();
+
         m_logtype_stats = clpp::LogTypeStatArray();
-        read_logtype_stats();
+        auto stats_result{read_logtype_stats()};
+        if (stats_result.has_error()) {
+            SPDLOG_INFO("Archive does not contain CLPP logtype stats");
+            m_logtype_stats = std::nullopt;
+        }
+
         m_typed_log_dict->read_entries();
     }
 }
@@ -170,7 +177,7 @@ auto ArchiveReader::read_metadata() -> ystdlib::error_handling::Result<void> {
         throw OperationFailed(error, __FILENAME__, __LINE__);
     }
     if (0 == num_schemas) {
-        throw OperationFailed(ErrorCodeUnsupported, __FILENAME__, __LINE__);
+        return ystdlib::error_handling::success();
     }
 
     auto [prev_schema_id,
@@ -538,9 +545,16 @@ std::shared_ptr<char[]> ArchiveReader::read_stream(size_t stream_id, bool reuse_
 auto ArchiveReader::read_logtype_metadata()
         -> ystdlib::error_handling::Result<clpp::LogTypeMetadataArray> {
     constexpr size_t cDecompressorFileReadBufferCapacity{64UL * 1024};
-    auto reader{m_archive_reader_adaptor->checkout_reader_for_section(
-            constants::cArchiveLogTypeMetadataFile
-    )};
+    std::unique_ptr<clp::ReaderInterface> reader;
+    try {
+        reader = m_archive_reader_adaptor->checkout_reader_for_section(
+                constants::cArchiveLogTypeMetadataFile
+        );
+    } catch (std::exception const& e) {
+        SPDLOG_INFO("Logtype metadata section not found - {}", e.what());
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeMetadataFile);
+        return clpp::ClppErrorCode{clpp::ClppErrorCodeEnum::BadParam};
+    }
     ZstdDecompressor decompressor{};
     decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 
@@ -557,9 +571,16 @@ auto ArchiveReader::read_logtype_stats() -> ystdlib::error_handling::Result<void
         return clpp::ClppErrorCode{clpp::ClppErrorCodeEnum::BadParam};
     }
     constexpr size_t cDecompressorFileReadBufferCapacity{64UL * 1024};
-    auto reader{m_archive_reader_adaptor->checkout_reader_for_section(
-            constants::cArchiveLogTypeStatsFile
-    )};
+    std::unique_ptr<clp::ReaderInterface> reader;
+    try {
+        reader = m_archive_reader_adaptor->checkout_reader_for_section(
+                constants::cArchiveLogTypeStatsFile
+        );
+    } catch (std::exception const& e) {
+        SPDLOG_INFO("Logtype stats section not found - {}", e.what());
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeStatsFile);
+        return clpp::ClppErrorCode{clpp::ClppErrorCodeEnum::BadParam};
+    }
     ZstdDecompressor decompressor{};
     decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 

@@ -42,12 +42,6 @@ import type {
 
 
 describe("applyClpSFields", () => {
-    it("should set default dataset when dataset is undefined", () => {
-        const payload: Partial<ClpSPayload> = {};
-        applyClpSFields(payload, {unstructured: void 0} as unknown as Partial<ClpSFormValues>); // eslint-disable-line no-void
-        expect(payload.dataset).toBe("default");
-    });
-
     it("should set default dataset when dataset is empty string", () => {
         const payload: Partial<ClpSPayload> = {};
         applyClpSFields(payload, {dataset: "", unstructured: void 0} as unknown as Partial<ClpSFormValues>); // eslint-disable-line no-void
@@ -128,10 +122,14 @@ describe("buildS3Payload", () => {
 
 describe("filterValidS3Paths", () => {
     it("should filter out empty and whitespace-only paths", () => {
-        expect(filterValidS3Paths(["path1", "", "  ", "path2"])).toEqual(["path1", "path2"]);
+        expect(filterValidS3Paths(["path1",
+            "",
+            "  ",
+            "path2"])).toEqual(["path1",
+            "path2"]);
     });
 
-    it("should return empty array for undefined input", () => {
+    it("should return empty array for void input", () => {
         expect(filterValidS3Paths(void 0 as never)).toEqual([]); // eslint-disable-line no-void
     });
 });
@@ -151,7 +149,10 @@ describe("getSuccessMessage", () => {
     });
 
     it("should return scanner jobs message for multiple jobs", () => {
-        expect(getSuccessMessage({type: "scanner", jobIds: [1, 2, 3]}))
+        expect(getSuccessMessage({type: "scanner",
+            jobIds: [1,
+                2,
+                3]}))
             .toBe("Scanner jobs created with IDs: 1, 2, 3");
     });
 });

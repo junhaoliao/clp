@@ -293,7 +293,9 @@ bool search_archive(
 
 auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
     auto const& query = cli_args.get_query();
-    if (CommandLineArguments::cLogTypeStatsQuery != query) {
+    if (CommandLineArguments::cLogTypeStatsQuery != query
+        && CommandLineArguments::cSchemaTreeQuery != query)
+    {
         return -1;
     }
     auto output_handler{cli_args.create_output_handler()};
@@ -316,10 +318,36 @@ auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
             return 2;
         }
         archive_reader->read_dictionaries_and_metadata();
-        auto const logtype_stats{archive_reader->get_logtype_stats()};
+        if (CommandLineArguments::cSchemaTreeQuery == query) {
+            auto const& schema_tree = archive_reader->get_schema_tree();
+            auto const& nodes = schema_tree->get_nodes();
+            nlohmann::json json_nodes = nlohmann::json::array();
+            for (auto const& node : nodes) {
+                json_nodes.push_back(nlohmann::json{
+                        {"id", node.get_id()},
+                        {"parentId", node.get_parent_id()},
+                        {"key", node.get_key_name()},
+                        {"type", static_cast<uint8_t>(node.get_type())},
+                        {"count", node.get_count()},
+                        {"children", node.get_children_ids()},
+                });
+            }
+            auto message{fmt::format("{}\n", json_nodes.dump())};
+            output_handler.value()->write(message);
+        }
         if (CommandLineArguments::cLogTypeStatsQuery == query) {
+            if (false == archive_reader->has_logtype_stats()) {
+                SPDLOG_INFO("Archive does not contain logtype stats, skipping");
+                archive_reader->close();
+                continue;
+            }
+            auto const logtype_stats{archive_reader->get_logtype_stats()};
             auto logtype_dict{archive_reader->get_typed_log_type_dictionary()};
-            for (clp::logtype_dictionary_id_t i{0}; i < logtype_stats.size(); ++i) {
+            auto const num_dict_entries{logtype_dict->get_entries().size()};
+            for (clp::logtype_dictionary_id_t i{0}; i < num_dict_entries; ++i) {
+                if (i >= logtype_stats.size()) {
+                    break;
+                }
                 auto message{fmt::format(
                         "{{\"id\":{},\"count\":{},\"log_type\":\"{}\"}}\n",
                         i,

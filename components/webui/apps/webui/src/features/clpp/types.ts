@@ -12,10 +12,11 @@ type SchemaTreeResponse = {
 };
 
 type LogtypeEntry = {
-    logtype: string;
+    id: number;
     count: number;
-    template: string;
-    variables: {index: number; type: "string" | "int" | "float"}[];
+    log_type: string;
+    archive_id?: string;
+    dataset?: string;
 };
 
 type LogtypeStatsResponse = {

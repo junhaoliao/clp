@@ -32,8 +32,7 @@ vi.mock("@monaco-editor/react", () => ({
             value={value ?? ""}
             onChange={(e) => {
                 onChange?.(e.target.value);
-            }}
-        />
+            }}/>
     ),
 }));
 

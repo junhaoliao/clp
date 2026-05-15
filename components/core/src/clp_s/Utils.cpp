@@ -88,7 +88,10 @@ bool is_multi_file_archive(std::string_view const path) {
             || constants::cArchiveVarDictFile == formatted_name
             || constants::cArchiveLogDictFile == formatted_name
             || constants::cArchiveArrayDictFile == formatted_name
-            || constants::cArchiveTableMetadataFile == formatted_name)
+            || constants::cArchiveTableMetadataFile == formatted_name
+            || constants::cArchiveLogSurgeonSchemaFile == formatted_name
+            || constants::cArchiveLogTypeMetadataFile == formatted_name
+            || constants::cArchiveLogTypeStatsFile == formatted_name)
         {
             continue;
         } else {

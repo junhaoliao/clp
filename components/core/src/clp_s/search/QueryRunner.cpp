@@ -1174,10 +1174,15 @@ EvaluatedValue QueryRunner::constant_propagate(std::shared_ptr<Expression> const
                 return EvaluatedValue::False;
             }
             if (filter->get_column()->matches_type(LiteralType::ClpStringT)) {
-                auto& query_processing_result = m_string_query_map.at(filter_string);
-                if (query_processing_result.has_value()) {
-                    m_expr_clp_query[expr.get()] = &(query_processing_result.value());
-                    matches_clp_string = true;
+                auto const it = m_string_query_map.find(filter_string);
+                if (m_string_query_map.end() != it) {
+                    auto& query_processing_result = it->second;
+                    if (query_processing_result.has_value()) {
+                        m_expr_clp_query[expr.get()] = &(query_processing_result.value());
+                        matches_clp_string = true;
+                    } else {
+                        m_expr_clp_query[expr.get()] = nullptr;
+                    }
                 } else {
                     m_expr_clp_query[expr.get()] = nullptr;
                 }
@@ -1222,6 +1227,7 @@ EvaluatedValue QueryRunner::constant_propagate(std::shared_ptr<Expression> const
             }
             return EvaluatedValue::Unknown;
         } else if (filter->get_column()->matches_type(LiteralType::ClpStringT)) {
+            m_expr_clp_query[expr.get()] = nullptr;
             return EvaluatedValue::Unknown;
             std::string filter_string;
             filter->get_operand()->as_clp_string(filter_string, filter->get_operation());

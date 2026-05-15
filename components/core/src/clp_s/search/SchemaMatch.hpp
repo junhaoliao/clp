@@ -341,7 +341,7 @@ auto SchemaMatch::find_schemas_matching_predicate(
             if (matcher(std::string_view{log_type.get_value()})) {
                 matched_lt_ids.emplace_back(log_type.get_id());
             }
-        } else {
+        } else if (m_archive_reader->has_logtype_metadata()) {
             auto metadata{m_archive_reader->get_logtype_metadata().at(log_type.get_id())};
             for (auto const& parent_match : metadata.get_parent_matches()) {
                 if (qualified_name == parent_match.m_name
