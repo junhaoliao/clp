@@ -2,14 +2,9 @@ import {useState} from "react";
 
 import {X} from "lucide-react";
 
+import type {LogtypeEntry} from "@/features/clpp/types";
 import {analyzeSharedNodes} from "@/features/clpp/utils/shared-node-analysis";
 
-
-type LogtypeEntry = {
-    logtype: string;
-    template: string;
-    variables: Array<{index: number; type: string}>;
-};
 
 /**
  * Dismissable banner warning about schema deduplication traps.

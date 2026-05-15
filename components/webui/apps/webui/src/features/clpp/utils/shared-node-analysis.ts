@@ -1,8 +1,5 @@
-export interface VariableOccurrence {
-    index: number;
-    logtype: string;
-    type: "string" | "int" | "float";
-}
+import type {LogtypeEntry} from "@/features/clpp/types";
+
 
 export interface SharedNodeWarning {
     variableIndex: number;
@@ -12,67 +9,20 @@ export interface SharedNodeWarning {
 }
 
 /**
- * Counts the number of `%VAR%` placeholders in a logtype template string.
+ * Analyzes logtype entries to detect shared-node deduplication traps.
+ * Currently, the logtype-stats API does not provide variable/type information,
+ * so this always returns an empty array. Once variable metadata is available
+ * from the API, this function can be extended to perform the analysis.
  *
- * @param template
- * @return The number of variable placeholders in the template.
- */
-const countVariables = (template: string): number => {
-    const matches = template.match(/%VAR%/g);
-    return matches ?
-        matches.length :
-        0;
-};
-
-/**
- * Analyzes logtype entries to detect shared-node deduplication traps —
- * variables that appear in multiple logtypes with inconsistent types.
- *
- * @param logtypes
- * @return Array of shared-node warnings for inconsistent variable types.
+ * @param _logtypes
+ * @return Array of shared-node warnings (currently always empty).
  */
 const analyzeSharedNodes = (
-    logtypes: Array<{logtype: string;
-        template: string;
-        variables: Array<{index: number; type: string}>;}>,
+    _logtypes: LogtypeEntry[],
 ): SharedNodeWarning[] => {
-    const indexMap = new Map<number, Array<{logtype: string; type: string}>>();
-
-    for (const entry of logtypes) {
-        for (const v of entry.variables) {
-            if (!indexMap.has(v.index)) {
-                indexMap.set(v.index, []);
-            }
-            const bucket = indexMap.get(v.index);
-            if (bucket) {
-                bucket.push({logtype: entry.logtype, type: v.type});
-            }
-        }
-    }
-
-    const warnings: SharedNodeWarning[] = [];
-    for (const [index, occurrences] of indexMap) {
-        if (1 < occurrences.length) {
-            const types = new Set(occurrences.map((o) => o.type));
-            if (1 < types.size) {
-                const typeList = [...types].join(", ");
-                warnings.push({
-                    variableIndex: index,
-                    types: types,
-                    logtypes: occurrences.map((o) => o.logtype),
-                    message: `Variable at position ${index} appears in ` +
-                        `${occurrences.length} logtypes with inconsistent ` +
-                        `types (${typeList}). This creates a shared node ` +
-                        "in the schema tree that may cause ambiguous " +
-                        "query results.",
-                });
-            }
-        }
-    }
-
-    return warnings;
+    // Variable/type metadata is not yet available in the logtype-stats API.
+    // Return no warnings until that data is available.
+    return [];
 };
 
-export {
-    analyzeSharedNodes, countVariables,
-};
+export {analyzeSharedNodes};

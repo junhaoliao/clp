@@ -7,10 +7,8 @@ import {useQuery} from "@tanstack/react-query";
 import type {AppType} from "@webui/server/hono-app";
 import {hc} from "hono/client";
 
-import {Badge} from "@/components/ui/badge";
 import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
-import {Separator} from "@/components/ui/separator";
 import {
     Table,
     TableBody,
@@ -27,58 +25,6 @@ import type {
 
 const api = hc<AppType>("/");
 
-const VARIABLE_TYPE_COLORS: Record<string, string> = {
-    int: "bg-blue-100 text-blue-800",
-    float: "bg-purple-100 text-purple-800",
-    string: "bg-green-100 text-green-800",
-};
-
-/**
- * Renders the expanded variable details for a logtype row.
- *
- * @param root0
- * @param root0.lt
- * @return
- */
-const LogtypeDetailRow = ({lt}: {lt: LogtypeEntry}) => (
-    <TableRow>
-        <TableCell
-            className={"bg-muted/50 px-8 py-3"}
-            colSpan={4}
-        >
-            <div className={"space-y-2"}>
-                <p className={"text-xs font-medium"}>
-                    Variables (
-                    {lt.variables.length}
-                    )
-                </p>
-                <div className={"flex flex-wrap gap-2"}>
-                    {lt.variables.map((v) => (
-                        <Badge
-                            className={VARIABLE_TYPE_COLORS[v.type] ?? ""}
-                            key={v.index}
-                            variant={"outline"}
-                        >
-                            #
-                            {v.index}
-                            {" "}
-                            {v.type}
-                        </Badge>
-                    ))}
-                </div>
-                <Separator/>
-                <p className={"text-xs text-muted-foreground"}>
-                    Template:
-                    {" "}
-                    <code className={"text-foreground"}>
-                        {lt.template}
-                    </code>
-                </p>
-            </div>
-        </TableCell>
-    </TableRow>
-);
-
 /**
  * Renders the Patterns tab showing logtype stats from the schema.
  *
@@ -88,7 +34,7 @@ const LogtypeDetailRow = ({lt}: {lt: LogtypeEntry}) => (
  */
 const PatternsTab = ({dataset}: {dataset: string}) => {
     const [search, setSearch] = useState("");
-    const [expandedLogtype, setExpandedLogtype] = useState<string | null>(null);
+    const [expandedLogtype, setExpandedLogtype] = useState<number | null>(null);
 
     const {data, isLoading, error} = useQuery<LogtypeStatsResponse>({
         queryKey: ["logtype-stats",
@@ -128,10 +74,11 @@ const PatternsTab = ({dataset}: {dataset: string}) => {
         );
     }
 
-    const filtered = data.logtypes.filter(
-        (lt) => lt.logtype.toLowerCase().includes(search.toLowerCase()) ||
-            lt.template.toLowerCase().includes(search.toLowerCase()),
-    );
+    const filtered = data.logtypes
+        .filter((lt) => lt.log_type)
+        .filter(
+            (lt) => lt.log_type.toLowerCase().includes(search.toLowerCase()),
+        );
 
     return (
         <div className={"flex flex-col gap-4"}>
@@ -163,21 +110,20 @@ const PatternsTab = ({dataset}: {dataset: string}) => {
                             <TableHead className={"w-12"}/>
                             <TableHead>Logtype</TableHead>
                             <TableHead className={"text-right"}>Count</TableHead>
-                            <TableHead>Template</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filtered.map((lt) => {
-                            const isExpanded = expandedLogtype === lt.logtype;
+                        {filtered.map((lt: LogtypeEntry) => {
+                            const isExpanded = expandedLogtype === lt.id;
                             return (
-                                <Fragment key={lt.logtype}>
+                                <Fragment key={lt.id}>
                                     <TableRow
                                         className={"cursor-pointer"}
                                         onClick={() => {
                                             setExpandedLogtype(
                                                 isExpanded ?
                                                     null :
-                                                    lt.logtype
+                                                    lt.id,
                                             );
                                         }}
                                     >
@@ -192,20 +138,34 @@ const PatternsTab = ({dataset}: {dataset: string}) => {
                                             </span>
                                         </TableCell>
                                         <TableCell className={"font-mono text-xs"}>
-                                            {lt.logtype}
+                                            {lt.log_type}
                                         </TableCell>
                                         <TableCell className={"text-right"}>
                                             {lt.count.toLocaleString()}
                                         </TableCell>
-                                        <TableCell
-                                            className={"max-w-md truncate " +
-                                                "font-mono text-xs"}
-                                        >
-                                            {lt.template}
-                                        </TableCell>
                                     </TableRow>
                                     {isExpanded && (
-                                        <LogtypeDetailRow lt={lt}/>
+                                        <TableRow>
+                                            <TableCell
+                                                className={"bg-muted/50 px-8 py-3"}
+                                                colSpan={3}
+                                            >
+                                                <div className={"space-y-2"}>
+                                                    <p className={"text-xs text-muted-foreground"}>
+                                                        Archive:
+                                                        {" "}
+                                                        <code className={"text-foreground"}>
+                                                            {lt.archive_id}
+                                                        </code>
+                                                    </p>
+                                                    <p className={"text-xs text-muted-foreground"}>
+                                                        ID:
+                                                        {" "}
+                                                        {lt.id}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
                                 </Fragment>
                             );

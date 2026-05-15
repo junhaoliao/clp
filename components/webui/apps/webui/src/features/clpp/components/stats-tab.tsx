@@ -66,12 +66,13 @@ const StatsTab = ({dataset}: {dataset: string}) => {
     }
 
     const top10 = [...data.logtypes]
+        .filter((lt) => lt.log_type)
         .sort((a, b) => b.count - a.count)
         .slice(0, 10)
         .map((lt) => ({
-            name: LOGTYPE_NAME_MAX < lt.logtype.length ?
-                `${lt.logtype.slice(0, LOGTYPE_NAME_DISPLAY_MAX)}...` :
-                lt.logtype,
+            name: LOGTYPE_NAME_MAX < lt.log_type.length ?
+                `${lt.log_type.slice(0, LOGTYPE_NAME_DISPLAY_MAX)}...` :
+                lt.log_type,
             count: lt.count,
         }));
 

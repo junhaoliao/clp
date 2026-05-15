@@ -47,10 +47,9 @@ const applyClpSFields = (
         payload.dataset = values.dataset;
     }
     if (true === values.unstructured) {
+        payload.unstructured = true;
         if ("string" === typeof values.schemaContent && 0 < values.schemaContent.length) {
             payload.schemaContent = values.schemaContent;
-        } else {
-            payload.unstructured = true;
         }
     } else if ("undefined" !== typeof values.timestampKey) {
         payload.timestampKey = values.timestampKey;

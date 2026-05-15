@@ -68,7 +68,8 @@ class TestMakeClpSLogtypeStatsCommand:
 
         assert command is not None
         assert command[0] == "/opt/clp/bin/clp-s"
-        assert command[1] == "s"
+        assert command[1] == "--experimental"
+        assert command[2] == "s"
         assert str(Path("/data/archives/test-ds")) in command
         assert "--archive-id" in command
         assert "abc-123" in command
@@ -104,7 +105,8 @@ class TestMakeClpSLogtypeStatsCommand:
 
         assert command is not None
         assert command[0] == "/opt/clp/bin/clp-s"
-        assert "s" == command[1]
+        assert "--experimental" == command[1]
+        assert "s" == command[2]
         assert "s3://my-bucket/prefix/test-ds/abc-123" in command
         assert "--auth" in command
         assert "s3" in command
