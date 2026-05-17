@@ -816,7 +816,7 @@ Based on user impact and dependency order:
 - `components/webui/client/src/pages/IngestPage/index.tsx` — add logtype stats tab
 - `components/webui/client/src/pages/SearchPage/SearchControls/Native/NativeControls.tsx` — EXISTS query support
 - `components/webui/apps/webui/src/features/clpp/components/schema-monaco-editor/` — shared SchemaMonacoEditor component (used in compression form and Settings SchemaDialog)
-- `components/webui/apps/webui/src/features/clpp/components/clpp-schema-form-items.tsx` — ClppSchemaFormItems (saved schema Combobox + SchemaMonacoEditor)
+- `components/webui/apps/webui/src/pages/IngestPage/Compress/ClppSchemaFormItems.tsx` — JSON-mode Schema selector (Default / Custom / saved schemas + SchemaMonacoEditor)
 - `components/webui/apps/webui/src/components/ui/combobox.tsx` — Combobox UI component wrapping `@base-ui/react/combobox` (same pattern as Select)
 - `components/webui/apps/webui/src/components/ui/` — other UI primitives (button, card, popover, skeleton, toggle)
 - `components/webui/server/src/routes/api/search/index.ts` — decompose endpoint
@@ -1555,34 +1555,36 @@ Output:
 |                                                                         |
 | Timestamp Key: [__timestamp__]  (disabled if Text)                     |
 |                                                                         |
-| +--CLPP Schema Configuration [NEW]-----+  [?]                         |
-| |                                       |                               |
-| | Saved Schema:                         |                               |
-| | [Default (Hadoop) v]   or [Custom]   |                               |
-| |                                       |                               |
-| | [If "Custom" selected:]               |                               |
-| | Schema Content:                       |                               |
-| | +-------------------------------+     |                               |
-| | | (Monaco Editor — edit schema |     |                               |
-| | |  text inline via              |     |                               |
-| | |  SchemaMonacoEditor)         |     |                               |
-| | | delimiters: \t\r\n !"#%&...  |     |                               |
-| | | int:-?\d+                    |     |                               |
-| | | float:-?\d+\.\d+            |     |                               |
-| | +-------------------------------+     |                               |
-| |                                       |                               |
-| | [If saved schema selected:]           |                               |
-| | Schema Content:                       |                               |
-| | +-------------------------------+     |                               |
-| | | (Monaco Editor — pre-filled  |     |                               |
-| | |  with saved schema content,  |     |                               |
-| | |  editable via                 |     |                               |
-| | |  SchemaMonacoEditor)         |     |                               |
-| | | delimiters: \t\r\n !"#%&...  |     |                               |
-| | | int:-?\d+                    |     |                               |
-| | | float:-?\d+\.\d+            |     |                               |
-| | +-------------------------------+     |                               |
-| +---------------------------------------+                               |
+| [If JSON selected] ─────────────────────────────────────────────        |
+| Schema: [Default v]  [?]                                               |
+|   Options: Default | Custom | <saved schemas...>                      |
+|                                                                         |
+|   [If "Custom" selected:]                                              |
+|   Schema Content:                                                      |
+|   +-------------------------------+                                     |
+|   | (Monaco Editor — edit schema |                                     |
+|   |  text inline via              |                                     |
+|   |  SchemaMonacoEditor)         |                                     |
+|   | delimiters: \t\r\n !"#%&...  |                                     |
+|   | int:-?\d+                    |                                     |
+|   | float:-?\d+\.\d+            |                                     |
+|   +-------------------------------+                                     |
+|                                                                         |
+|   [If a saved schema selected:]                                        |
+|   Schema Content:                                                      |
+|   +-------------------------------+                                     |
+|   | (Monaco Editor — pre-filled  |                                     |
+|   |  with saved schema content,  |                                     |
+|   |  editable via                 |                                     |
+|   |  SchemaMonacoEditor)         |                                     |
+|   | delimiters: \t\r\n !"#%&...  |                                     |
+|   | int:-?\d+                    |                                     |
+|   | float:-?\d+\.\d+            |                                     |
+|   +-------------------------------+                                     |
+| ───────────────────────────────────────────────────────────────        |
+|                                                                         |
+| [If Text selected]                                                     |
+| (no schema option — Text mode uses default clp-s behavior)             |
 |                                                                         |
 | Dataset: [default]                                                      |
 |                                                                         |
@@ -1599,13 +1601,13 @@ Output:
 
 **Key design changes from the original form:**
 
-1. **Schema Path replaced by Schema Content:** The compression form no longer accepts a "Schema Path" file path input. Instead, it has a Monaco Editor (the `SchemaMonacoEditor` component) for authoring log-surgeon schema text inline. The field is called "Schema Content" and maps to the `schemaContent` field in the job creation API body.
+1. **Schema selector lives under JSON mode, not as a standalone section:** The `Schema` dropdown only appears when "JSON" is selected as the Logs Type. This is because `clp-s --schema-path` is designed for JSONL input — the schema tells clp-s how to parse and type JSON fields. Text (unstructured) mode does not use a schema; it uses the default clp-s behavior. The previous implementation incorrectly tied the schema selector to Text mode (`unstructured=true`) — that was a misunderstanding of how `clp-s` uses schemas.
 
-2. **Saved Schema Selector (Combobox):** A Combobox dropdown (built on `@base-ui/react/Combobox`, NOT cmdk) allows selecting from a library of saved schemas (fetched from `/api/schemas`) or choosing "Custom" to write schema text from scratch. Selecting a saved schema pre-fills the Monaco editor with that schema's content. The Combobox component lives at `@/components/ui/combobox.tsx` and wraps `@base-ui/react/combobox` following the same pattern as the existing Select component.
+2. **"Default" schema option:** When JSON mode is selected with "Default" (the default option), the compression job sends no `schemaContent` — clp-s uses its built-in default schema. Selecting "Custom" shows the Monaco editor for writing schema text from scratch. Selecting a saved schema pre-fills the editor with that schema's content. The dropdown replaces the previous "Unstructured logs processor" label and "Log Convertor" option, which was incorrectly named for JSON mode.
 
 3. **No `--experimental` flag in the WebUI:** The `--experimental` flag is never exposed or sent by the WebUI. The WebUI simply sends `schemaContent: string | null` in the compression job creation body. When `schema_content` is present in the `ClpIoConfig`, the Python worker automatically writes it to a temp file and appends `--experimental --schema-path <temp>` to the `clp-s` command. This abstracts away the `--experimental` flag from the user — providing schema content is sufficient.
 
-4. **Shared SchemaMonacoEditor component:** A reusable Monaco editor component at `features/clpp/components/schema-monaco-editor/` is used in both the compression form (via `ClppSchemaFormItems`) and the Settings SchemaDialog. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
+4. **Shared SchemaMonacoEditor component:** A reusable Monaco editor component at `features/clpp/components/schema-monaco-editor/` is used in both the compression form (inside the JSON-mode Schema dropdown) and the Settings SchemaDialog. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
 
 **API changes:**
 ```
@@ -1614,6 +1616,8 @@ Body addition: { ..., schemaContent: string | null }
 ```
 
 The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`. The worker then: if `schema_content` is present, writes it to a temp file and passes `--experimental --schema-path <temp>` to `clp-s`.
+
+**Note on the current implementation:** The existing `ClppSchemaFormItems` component is wired under `unstructured=true` (Text mode) and labels itself "Unstructured logs processor" with a "Log Convertor" option. This is incorrect — `clp-s --schema-path` operates on JSONL input, not raw text. The implementation needs to be refactored: move the schema selector under JSON mode, change the label to "Schema", replace the "Log Convertor" default option with "Default", and update `applyClpSFields()` in `jobHelpers.ts` to send `schemaContent` regardless of the `unstructured` flag.
 
 
 #### Prototyping Commands
@@ -1713,9 +1717,9 @@ terminate called after throwing an instance of 'clp_s::ErrorCodeFailed'
 +-------------------------------------------------------------------------+
 ```
 
-**Shared SchemaMonacoEditor component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is a reusable Monaco editor component used in both the Settings SchemaDialog (above) and the compression form's `ClppSchemaFormItems`. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component. This ensures a consistent schema editing experience across the application.
+**Shared SchemaMonacoEditor component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is a reusable Monaco editor component used in both the Settings SchemaDialog (above) and the compression form's JSON-mode Schema dropdown. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component. This ensures a consistent schema editing experience across the application.
 
-**Saved schema selector (Combobox):** The compression form uses a Combobox dropdown (at `@/components/ui/combobox.tsx`, wrapping `@base-ui/react/Combobox`) to select from saved schemas fetched via `/api/schemas`, or to choose "Custom" for writing schema text from scratch. This replaces the previously attempted cmdk-based Command component.
+**Saved schema selector (Select dropdown):** The compression form uses a Select dropdown under JSON mode to choose from saved schemas fetched via `/api/schemas`, or to select "Default" (no schema) or "Custom" (write schema text from scratch). This replaces the previous "Unstructured logs processor" / "Log Convertor" dropdown which was incorrectly placed under Text mode.
 
 **Real data mapping:** The "In cIntSet?" column makes the hardcoded `cIntSet` in `JsonParser.cpp` configurable. Currently `cIntSet` contains: `int, blk_id, containerSeq, portNum, memory, vcores, pid, blockID, exitStatus`. With the editor, users can add `fetcher_id`, `job_id`, `attempt_id`, `byte_count` to the set, producing unique `Integer` nodes per variable instead of the shared `Integer("int")` trap.
 
@@ -1754,7 +1758,8 @@ The Schema Editor UI would make these hardcoded sets configurable, allowing user
 | Experimental Mode (CLPP): [===O        ]  ON                          |
 |                                                                         |
 | When OFF:                                                               |
-|   - Schema config hidden on Compress form                               |
+|   - Schema selector hidden on Compress form (JSON mode always shown,   |
+|     but schema dropdown defaults to "Default" with no schemaContent)    |
 |   - Logtype Fields section hidden in Explore sidebar                    |
 |   - Patterns/Schema/Stats tabs hidden in Explore                       |
 |   - Query Interpretation panel hidden                                  |
@@ -1764,7 +1769,8 @@ The Schema Editor UI would make these hardcoded sets configurable, allowing user
 |                                                                         |
 | When ON:                                                                |
 |   - All CLPP features visible                                           |
-|   - Compression form shows saved schema selector + SchemaMonacoEditor  |
+|   - Compression form shows schema selector under JSON mode             |
+|     (Default / Custom / saved schemas) + SchemaMonacoEditor            |
 |   - Compression jobs send schemaContent: <schema text>                  |
 |   - Worker automatically passes --experimental --schema-path <temp>     |
 |   - Search uses CLPP decomposition path (prototype — may crash)        |
@@ -2324,15 +2330,738 @@ Output (with logtype template and variable values):
 
 **Leveraging the 2-clp dashboard system:** The dashboard's plugin registry, 12-column grid, MySQL persistence, and Hono API are direct drop-in. CLPP panels (`logtype-stats`, `schema-tree`) register as new plugins. Existing panel types (stat, bar chart, table) can already visualize CLPP data via the new API endpoints.
 
-**Leveraging PR #2169:** The S3 compression form fields are additive — CLPP schema config sits below them as a collapsible group. The `CompressionJobCreationSchema` union type needs a `schemaContent` optional string field (replacing the previously proposed `experimental: boolean` + `schemaPath: string` fields). The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`.
+**Leveraging PR #2169:** The S3 compression form fields are additive. The schema selector appears under JSON mode (not as a standalone section). The `CompressionJobCreationSchema` union type needs a `schemaContent` optional string field (replacing the previously proposed `experimental: boolean` + `schemaPath: string` fields). The server maps `body.schemaContent ?? null` to `schema_content` in `ClpIoConfig`. Note: `schemaContent` is sent regardless of the `unstructured` flag — the current `applyClpSFields()` logic that only sends `schemaContent` when `unstructured === true` is incorrect and must be fixed.
 
 **No `--experimental` flag in the WebUI:** The `--experimental` flag is never exposed or sent by the WebUI. The WebUI simply sends `schemaContent: string | null`. When `schema_content` is present in the `ClpIoConfig`, the Python worker automatically writes it to a temp file and appends `--experimental --schema-path <temp>` to the `clp-s` command. This abstracts away the `--experimental` flag from the user — providing schema content is sufficient to enable CLPP mode.
 
 **Combobox UI component:** The saved schema selector in the compression form uses a new `@/components/ui/combobox.tsx` that wraps `@base-ui/react/combobox`, following the same pattern as the existing Select component. This replaces the previously attempted cmdk-based Command component.
 
-**SchemaMonacoEditor is a shared component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is reused in both the compression form (`ClppSchemaFormItems`) and the Settings `SchemaDialog`. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
+**SchemaMonacoEditor is a shared component:** The `SchemaMonacoEditor` at `features/clpp/components/schema-monaco-editor/` is reused in both the compression form (inside the JSON-mode Schema dropdown) and the Settings `SchemaDialog`. It uses a local `monaco-loader` to bundle Monaco instead of using CDN, following the same pattern as the existing `SqlEditor` component.
 
 **Raw text ingestion is blocked.** `clp-s` rejects `FileType::LogText` with "Direct ingestion of unstructured logtext is not supported." The input must be JSON/JSONL. A pre-processing step (wrapping raw text in `{"message": "..."}` JSONL) is needed for the compression form, or the `JsonParser` needs to handle `LogText` files when `--experimental` is on.
+
+---
+
+---
+
+## 9. Explore Page Redesign — Elastic Logs Explorer Pattern
+
+This section redesigns the Explore page to match the interaction model of the [Elastic Logs Explorer](https://demo.elastic.co/app/observability-logs-explorer) (Kibana Discover). The current Explore page uses a custom field sidebar, an `AddFilterPopover` with EXISTS/NEXISTS types, and a basic `Table` component. The redesign replaces these with:
+
+1. A **field browser sidebar** with hover "+" toggle (matching Elastic's `fieldToggle` behavior)
+2. A **KQL-style query bar** with inline completion dropdown (replacing the `AddFilterPopover`)
+3. A **shadcn `data-table`** (TanStack Table) for the Logs tab
+4. A **data-table** for the Patterns tab with Count, Example, and Actions columns
+5. The existing **schema tree** for the Field Statistics tab (kept as-is)
+
+Reference implementation explored via `playwright-cli` on the Elastic demo (2025-05-15). Key findings:
+- KQL completion: empty input → all field names; partial field → matching fields + syntax hints (`: equals some value`, `: * exists in any form`); `field:` → actual field values; `field:value` → `and`/`or` connectors
+- Field toggle: `aria-label="Add field as column"`, clicking adds the field as a table column (reflected in URL state)
+- Elastic shows ~50 fields in the Available Fields panel
+
+---
+
+### 9.1 Page Layout
+
+```
++-----------------------------------------------------------------------------+
+| [Dataset selector]  [============ KQL Query Bar ============] [Search]      |
++--------+--------------------------------------------------------------------+
+|        |  [Logs]  [Patterns]  [Field Statistics]                            |
+| Fields | +----------------------------------------------------------------+ |
+| Filter | | Timestamp          | Body                                        | |
+| [____] | |-------------------|---------------------------------------------| |
+|        | | 2015-03-23 05:40  | INFO [fetcher#2] org...Fetcher: fetcher#2  | |
+| SELECT | |                   | about to shuffle output of map attempt_... | |
+| 2      | |-------------------|---------------------------------------------| |
+| fields | | 2015-03-23 05:41  | INFO [fetcher#3] org...MergeManagerImpl:   | |
+|        | |                   | closeInMemoryFile -> map-output of size...| |
+| > ts   | |-------------------|---------------------------------------------| |
+| > body | | ...              | ...                                         | |
+|        | +----------------------------------------------------------------+ |
+| AVAIL. |                                                                    |
+| 75     |  500 results  |  Page 1 of 5  |  20 per page  ▼                    |
+| fields |                                                                    |
+|        |                                                                    |
+| + logL |                                                                    |
+| + javaF |                                                                    |
+| + fetID |                                                                    |
+| + atte  |                                                                    |
+| ...    |                                                                    |
++--------+--------------------------------------------------------------------+
+```
+
+**Layout changes from current implementation:**
+- **Field browser sidebar** (left, 240px): "Selected Fields" section on top, "Available Fields" section below. Each Available field row shows a "+" button on hover; clicking adds the field to "Selected Fields" and adds a column to the Logs table. Selected fields show a "×" button to remove.
+- **Query bar** replaces `FilterBar` and `AddFilterPopover`. Single text input with KQL-style completion dropdown.
+- **Logs tab** uses shadcn `data-table` (TanStack Table) with dynamic columns derived from `selectedFields`. Default columns: Timestamp, Body.
+- **Patterns tab** uses shadcn `data-table` with Count, Example, Actions columns.
+- **Field Statistics tab** keeps the current recursive schema tree with type badges and counts.
+
+---
+
+### 9.2 Available Fields Panel
+
+```
++--------+
+| Fields |
+| [____] |  ← filter input (searches field names)
+|        |
+| SELECT |
+| 2      |
+| fields |
+|        |
+| × ts   |  ← selected: click × to remove from table + selected list
+| × body  |  ← selected fields become table columns
+|--------|
+| AVAIL. |
+| 75     |
+| fields |
+|        |
+| + logLe|  ← hover shows blue "+" button; click to add column
+|   Aa   |     type icon + field name + count
+| + javaF|  ← logLevel: String, count 500
+|   Aa   |
+| + fID  |  ← fetcherID: Integer, count 340
+|   #    |
+| + attID|  ← attempt_id: String, count 120
+|   Aa   |
+| + INT  |  ← INT: Integer, count 158  [!]  (shared node warning)
+|   # [!]|
+| + toSt |  ← to_state: String, count 80
+|   Aa   |
+| ...    |     (scrollable, 75 total CLPP fields + 3 standard)
++--------+
+```
+
+**Behavior (matching Elastic):**
+1. **Hover "+" button**: When the cursor hovers over an Available field row, a blue "+" button appears at the left edge of the row (matching Elastic's `fieldToggle` button with `aria-label="Add field as column"`). Clicking the "+" moves the field to "Selected Fields" and adds a corresponding column to the Logs table.
+2. **"×" remove button**: Selected field rows show a "×" button. Clicking it removes the field from both "Selected Fields" and the Logs table columns.
+3. **No log_types in the list**: Log type IDs (the numeric dictionary IDs) are NOT shown as field names — they are internal identifiers, not meaningful to users. Only schema tree variable names (e.g., `logLevel`, `fetcherID`, `attempt_id`, `INT`) appear in the Available Fields list.
+4. **Field metadata**: Each field shows its type icon (`Aa` for string, `#` for int, `~` for float) and occurrence count. Shared nodes show a `[!]` warning badge (matching existing `WildcardOnNumericBadge` + shared-node indicator pattern).
+5. **Standard fields**: Three always-present fields: `timestamp` (String), `service` (String), `level` (String). These are not from the schema tree — they are metadata fields on every log event.
+
+**Data source**: The field list is built from the schema tree API (`GET /api/schema-tree?dataset=...`). The existing `flattenTree()` function in `field-browser.tsx` converts the hierarchical schema tree into a flat list of `FieldItem` objects. The only change is adding the hover "+" / "×" toggle behavior and removing the log_type entries.
+
+**Implementation — hover "+" toggle:**
+```tsx
+// FieldRow addition: hover state for "+" button
+const FieldRow = ({ field, isSelected, onToggleSelect }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
+    return (
+        <div
+            className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/50"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {isHovered && !isSelected && (
+                <button
+                    className="w-4 h-4 text-xs text-primary hover:text-primary/80"
+                    onClick={() => onToggleSelect(field.name)}
+                    aria-label="Add field as column"
+                >
+                    +
+                </button>
+            )}
+            {isSelected && (
+                <button
+                    className="w-4 h-4 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => onToggleSelect(field.name)}
+                    aria-label="Remove field from columns"
+                >
+                    ×
+                </button>
+            )}
+            {/* ... type icon, field name, count ... */}
+        </div>
+    );
+};
+```
+
+This matches the Elastic behavior where `data-test-subj="fieldToggle-{fieldName}"` appears on hover and toggles the field between selected/available states.
+
+---
+
+### 9.3 Logs Tab — Data Table
+
+The Logs tab is rewritten using the shadcn `data-table` component (built on [TanStack Table](https://tanstack.com/table/v8)). This replaces the current basic `<Table>` component with a full-featured data table supporting sorting, pagination, and dynamic columns.
+
+```
++------------------------------------------------------------------------+
+| [Logs]  [Patterns]  [Field Statistics]                                 |
+| +--------------------------------------------------------------------+ |
+| |  Timestamp ▲    | Body                                        | ... | |
+| |-----------------|---------------------------------------------|-----| |
+| | 2015-03-23 05:4| INFO [fetcher#2] org...Fetcher: fetcher#2  |     | |
+| |                 | about to shuffle output of map attempt_... |     | |
+| |-----------------|---------------------------------------------|-----| |
+| | 2015-03-23 05:4| INFO [fetcher#3] org...MergeManagerImpl:   |     | |
+| |                 | closeInMemoryFile -> map-output of size... |     | |
+| |-----------------|---------------------------------------------|-----| |
+| | ...             | ...                                         |     | |
+| +--------------------------------------------------------------------+ |
+|                                                                        |
+|  500 results  |  ◀ 1 2 3 4 5 ▶  |  20 per page ▼                      |
++------------------------------------------------------------------------+
+```
+
+**Column behavior:**
+- **Default columns**: `Timestamp` + `Body` (always shown, not removable).
+  - `Timestamp`: Renders the log event's timestamp. Sortable.
+  - `Body`: Renders the full log event as JSONL with syntax highlighting (reusing existing `<SyntaxHighlight>` component). One row per event — no multi-line expansion. If the text overflows the cell, it truncates with ellipsis.
+- **Dynamic columns**: For each field in `selectedFields` (beyond Timestamp and Body), a column is added. Column header = field name. Column cell = the field's value for that log event.
+- **Column removal**: Clicking "×" on a selected field in the sidebar removes both the field from `selectedFields` and the column from the table.
+
+**Data source**: Search results from the existing search API. The search endpoint returns log events as JSONL. Each event's fields are parsed client-side to extract column values.
+
+**shadcn data-table setup:**
+```bash
+# Install TanStack Table + shadcn data-table
+npx shadcn@latest add table
+# The data-table component lives at:
+#   src/components/ui/data-table.tsx
+#   src/components/ui/data-table-pagination.tsx
+#   src/components/ui/data-table-toolbar.tsx
+# etc.
+```
+
+**Column definition (TanStack Table):**
+```tsx
+import { getCoreRowModel, useReactTable, flexRender } from "@tanstack/react-table";
+
+const columns: ColumnDef<LogEvent>[] = [
+    {
+        accessorKey: "timestamp",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Timestamp" />,
+        cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("timestamp")}</span>,
+    },
+    {
+        accessorKey: "body",
+        header: "Body",
+        cell: ({ row }) => (
+            <div className="truncate max-w-[600px]">
+                <SyntaxHighlight code={row.original.body} />
+            </div>
+        ),
+        enableSorting: false,
+    },
+    // Dynamic columns from selectedFields:
+    ...selectedFields
+        .filter(f => f !== "timestamp" && f !== "body")
+        .map(field => ({
+            accessorKey: field,
+            header: field,
+            cell: ({ row }: { row: Row<LogEvent> }) => (
+                <span className="truncate text-xs">{row.getValue(field) ?? "—"}</span>
+            ),
+        })),
+];
+```
+
+**Pagination**: Server-side pagination via the search API's `page` and `pageSize` query parameters. Default: 20 rows per page. TanStack Table's `PaginationState` controls the current page.
+
+**Key differences from current implementation:**
+1. **One row per log event** — the current implementation sometimes renders multi-line rows. The data-table enforces single-line rows with truncation.
+2. **Dynamic columns** — columns are derived from `selectedFields` state, not hardcoded.
+3. **Built-in sorting and pagination** — TanStack Table provides this out of the box, replacing manual implementation.
+4. **Body column with syntax highlighting** — preserves the existing JSONL syntax highlighting but constrains it to a single line with truncation.
+
+---
+
+### 9.4 Patterns Tab — Data Table
+
+The Patterns tab shows all log types in a data-table format. Currently it shows a simple table with expand/collapse rows. The redesign adds Count, Example, and Actions columns with richer interaction.
+
+```
++------------------------------------------------------------------------+
+| [Logs]  [Patterns]  [Field Statistics]                                 |
+|                                                                        |
+|  1,399 log types  |  500 total events                                 |
+|  [Filter logtypes..._______________]                                   |
+|                                                                        |
+| +------+------------------------------------------+------------------+ |
+| |Count | Example                                  | Actions          | |
+| |------|------------------------------------------|------------------| |
+| | 48   | INFO [fetcher#2] org...Fetcher: fetcher# | [+] [-] [▼ i]  | |
+| |------|------------------------------------------|------------------| |
+| | 48   | INFO [fetcher#3] org...MergeManagerImpl: | [+] [-] [▼ i]  | |
+| |------|------------------------------------------|------------------| |
+| | ...  | ...                                      | ...              | |
+| +------+------------------------------------------+------------------+ |
+|                                                                        |
+|  ▼ Expanded row (after clicking [i]):                                 |
+| +--------------------------------------------------------------------+ |
+| | Tokens: logLevel, fetcherID, javaFQCN, attempt_id, INT, to_state  | |
+| | Regex:  %logLevel.logLevel% [fetcher#%fetcher_id.fetcherID%]      | |
+| |        %javaFQCN%: fetcher#%fetcher_id.fetcherID% about to...    | |
+| | Examples:                                                          | |
+| |   1. INFO [fetcher#2] ...Fetcher: fetcher#2 about to shuffle... | |
+| |   2. INFO [fetcher#3] ...Fetcher: fetcher#3 about to shuffle... | |
+| |   3. INFO [fetcher#5] ...Fetcher: fetcher#5 about to shuffle... | |
+| +--------------------------------------------------------------------+ |
+|                                                                        |
+|  ◀ 1 2 ... 70 ▶  |  20 per page ▼                                     |
++------------------------------------------------------------------------+
+```
+
+**Columns:**
+
+| Column | Content | Behavior |
+|--------|---------|----------|
+| **Count** | Occurrence count from `logtype_stats` | Sortable (default: descending) |
+| **Example** | One example log event rendered from the logtype template (with variable placeholders filled from a real record) | Truncated if too long |
+| **Actions** | Three action buttons per row | See below |
+
+**Action buttons:**
+
+| Button | Action | Effect |
+|--------|--------|--------|
+| **[+]** | Add filter for this pattern | Inserts `logtype_id:<id>` into the query bar. Multiple patterns can be combined with `or`. Matching events are highlighted in the Logs tab. |
+| **[-]** | Remove/exclude this pattern | Inserts `NOT logtype_id:<id>` into the query bar. Excludes matching events from results. |
+| **[▼ i]** | Expand row details | Toggles the expanded section showing Tokens, Regex, and 3 Examples. The chevron rotates when expanded. |
+
+**Expanded row content:**
+- **Tokens**: List of variable/field names extracted from the logtype template (e.g., `logLevel`, `fetcherID`, `javaFQCN`). These correspond to schema tree leaf nodes.
+- **Regex**: The logtype pattern string with `%qualified_name%` placeholders (e.g., `%logLevel.logLevel% [fetcher#%fetcher_id.fetcherID%] ...`). This is the "rule" that defines this log type.
+- **Examples**: Up to 3 example log events matching this logtype. Rendered with syntax highlighting. These require a new API endpoint or client-side caching of search results grouped by logtype.
+
+**Data sources:**
+- Count: `GET /api/logtype-stats?dataset=...` — existing endpoint.
+- Example/Examples: Requires either (a) a new API endpoint `GET /api/logtype-examples?dataset=...&logtype_id=<id>&count=3` or (b) client-side grouping of search results by `log_type` field.
+- Tokens/Regex: Derivable from the logtype template string in `logtype_stats` response.
+
+**Implementation — TanStack Table with expandable rows:**
+```tsx
+const columns: ColumnDef<LogtypeEntry>[] = [
+    {
+        accessorKey: "count",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Count" />,
+        cell: ({ row }) => row.original.count.toLocaleString(),
+    },
+    {
+        accessorKey: "example",
+        header: "Example",
+        cell: ({ row }) => (
+            <span className="truncate max-w-[400px] text-xs font-mono">
+                {row.original.example}
+            </span>
+        ),
+    },
+    {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row, table }) => (
+            <div className="flex gap-1">
+                <Button size="icon" variant="ghost" className="h-6 w-6"
+                    onClick={() => table.options.meta?.addPatternFilter(row.original.id)}>
+                    +
+                </Button>
+                <Button size="icon" variant="ghost" className="h-6 w-6"
+                    onClick={() => table.options.meta?.removePatternFilter(row.original.id)}>
+                    −
+                </Button>
+                <Button size="icon" variant="ghost" className="h-6 w-6"
+                    onClick={() => row.toggleExpanded()}>
+                    {row.getIsExpanded() ? "▲" : "▼"}
+                </Button>
+            </div>
+        ),
+    },
+];
+
+// Expanded row renderer
+const renderSubComponent = ({ row }: { row: Row<LogtypeEntry> }) => (
+    <div className="ml-6 border-l px-4 py-2 text-xs space-y-2">
+        <p><span className="font-semibold">Tokens:</span> {row.original.tokens.join(", ")}</p>
+        <p><span className="font-semibold">Regex:</span> <code>{row.original.log_type}</code></p>
+        <div>
+            <span className="font-semibold">Examples:</span>
+            <ol className="list-decimal ml-4 space-y-1">
+                {row.original.examples.slice(0, 3).map((ex, i) => (
+                    <li key={i}><SyntaxHighlight code={ex} /></li>
+                ))}
+            </ol>
+        </div>
+    </div>
+);
+```
+
+**Key differences from current implementation:**
+1. **Data-table** replaces the current basic `<Table>` with manual expand/collapse state.
+2. **Count + Example + Actions** columns replace the current expand chevron + Logtype + Count layout.
+3. **Action buttons** ([+], [-], [▼ i]) provide direct pattern-level filtering, replacing the need for the user to manually type logtype filters.
+4. **Pagination** — 1,399 log types need pagination (20 per page = 70 pages). TanStack Table handles this.
+
+---
+
+### 9.5 Field Statistics Tab — Schema Tree
+
+The Field Statistics tab keeps the current schema tree implementation from `schema-tab.tsx`. No changes needed — the existing recursive `Collapsible` tree with type badges and occurrence counts in parentheses already matches the requirement.
+
+```
++------------------------------------------------------------------------+
+| [Logs]  [Patterns]  [Field Statistics]                                 |
+|                                                                        |
+|  [Filter fields..._______________]                                     |
+|                                                                        |
+|  ▼ LogMessage (500)                                                    |
+|    ▼ LogType (500)                                                      |
+|      ▸ LogTypeID (500)                                                 |
+|      ▸ Timestamp (500)                                                 |
+|    ▸ Integer — int (500)  [!]                                          |
+|    ▸ String — logLevel (500)                                           |
+|    ▸ String — javaFQCN (500)                                           |
+|    ▸ Integer — fetcherID (340)                                         |
+|    ...                                                                 |
++------------------------------------------------------------------------+
+```
+
+**Requirement confirmed**: Occurrence counts are shown in parentheses after each node name (e.g., `(500)`, `(340)`), which is already the current behavior via `node.count`.
+
+---
+
+### 9.6 Query Input Bar — KQL-Style Completion
+
+The `AddFilterPopover` (with EXISTS/NEXISTS/EQUALS/NOT_EQUALS types) and the current `FilterBar` are **removed**. They are replaced by a single KQL-style query input bar with inline completion dropdown, matching Elastic's KQL behavior.
+
+```
++------------------------------------------------------------------------+
+| [============ query bar with completion dropdown ============] [Search] |
++------------------------------------------------------------------------+
+                                                                          |
+   When input is empty (focus active):                                    |
+   +--------------------------------------------------------------------+ |
+   | @timestamp                                                        | |
+   | @message                                                          | |
+   | logLevel                                                          | |
+   | fetcherID                                                         | |
+   | javaFQCN                                                          | |
+   | attempt_id                                                        | |
+   | INT                                                               | |
+   | to_state                                                          | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   When "logLevel" is typed:                                             |
+   +--------------------------------------------------------------------+ |
+   | logLevel  :  equals some value                                    | |
+   | logLevel  :*  exists in any form                                  | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   When "logLevel:" is typed:                                            |
+   +--------------------------------------------------------------------+ |
+   | INFO                                                               | |
+   | WARN                                                               | |
+   | ERROR                                                               | |
+   | DEBUG                                                               | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   When "logLevel: INFO " is typed (trailing space):                     |
+   +--------------------------------------------------------------------+ |
+   | and                                                                | |
+   | or                                                                 | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   When "logLevel: INFO and " is typed:                                  |
+   +--------------------------------------------------------------------+ |
+   | @timestamp                                                        | |
+   | @message                                                          | |
+   | fetcherID                                                         | |
+   | ... (all field names again)                                       | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   Applied filters shown as inline chips inside the input:               |
+   +--------------------------------------------------------------------+ |
+   | [logLevel: INFO ×] [fetcherID: 2 ×] and  |cursor|                 | |
+   +--------------------------------------------------------------------+ |
+                                                                          |
+   Or as parsed summary below the input:                                  |
+   +--------------------------------------------------------------------+ |
+   | logLevel: INFO  AND  fetcherID: 2                       [Clear]    | |
+   +--------------------------------------------------------------------+ |
++------------------------------------------------------------------------+
+```
+
+**Completion state machine:**
+
+```
+                    ┌──────────────┐
+                    │  Empty input │
+                    │ (focus active)│
+                    └──────┬───────┘
+                           │
+                    Show all field names
+                           │
+                    ┌──────▼───────┐
+                    │ Field prefix │ ← user types "logLe"
+                    └──────┬───────┘
+                           │
+                    Show matching fields
+                    + syntax operators
+                           │
+               ┌───────────┼───────────┐
+               │           │           │
+        ┌──────▼──┐  ┌─────▼────┐  ┌───▼──────┐
+        │ field:  │  │ field:* │  │ and / or │
+        │ (value) │  │ (exists)│  │ (connect)│
+        └──────┬──┘  └─────────┘  └───┬──────┘
+               │                        │
+        Show field values          Back to field list
+        (from schema tree)         (after connector)
+```
+
+**Completion logic:**
+
+1. **Empty input + focus** → show all field names (from schema tree + standard fields).
+2. **Partial field name** (e.g., `"logLe"`) → show matching field names + syntax operators for the first match (e.g., `logLevel: equals some value`, `logLevel:* exists in any form`).
+3. **Field name + `:`** (e.g., `"logLevel:"`) → show actual field values from the schema tree or a dedicated values API.
+4. **Complete clause** (e.g., `"logLevel: INFO "`) → show connectors: `and`, `or`.
+5. **After connector** (e.g., `"logLevel: INFO and "`) → back to step 1 (show all field names).
+
+**Query syntax (CLPP KQL):**
+
+| Syntax | Meaning | Example |
+|--------|---------|---------|
+| `field: value` | Field equals value | `logLevel: INFO` |
+| `field: *` | Field exists (any value) | `fetcherID: *` |
+| `field: wild*card` | Wildcard match on field | `javaFQCN: Fetch*` |
+| `<clause> and <clause>` | Both must match | `logLevel: INFO and fetcherID: 2` |
+| `<clause> or <clause>` | Either must match | `logLevel: WARN or logLevel: ERROR` |
+| `logtype_id: <id>` | Match specific log type (from Patterns [+]) | `logtype_id: 0` |
+| `not <clause>` | Negation | `not logLevel: DEBUG` |
+
+**Filter chips rendering:**
+When the query is well-formed (e.g., `logLevel: INFO and fetcherID: 2`), the parsed clauses are rendered as inline chips or as a summary line below the input. Each chip shows the clause text and a "×" button that removes the clause from the query. This replaces the current `FilterBar` with its `Badge`-based filter chips.
+
+**Data sources for completion:**
+- **Field names**: From schema tree API (`GET /api/schema-tree`). Already available client-side via `flattenTree()`.
+- **Field values**: New API endpoint `GET /api/field-values?dataset=...&field=<name>&limit=100` or derived client-side from schema tree node children / search result aggregation.
+- **logtype_id values**: From `GET /api/logtype-stats?dataset=...`.
+
+**Implementation — Completion dropdown:**
+```tsx
+const QueryBar = ({ dataset, fieldNames, onQuerySubmit }) => {
+    const [query, setQuery] = useState("");
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [completionItems, setCompletionItems] = useState<CompletionItem[]>([]);
+
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const parseQueryContext = (text: string): QueryContext => {
+        // Determine what completions are valid based on cursor position
+        // and the current query text.
+        const trimmed = text.trimEnd();
+
+        if ("" === trimmed) {
+            return { type: "field-list" };
+        }
+
+        if (trimmed.endsWith(":")) {
+            return { type: "field-values", field: trimmed.slice(0, -1) };
+        }
+
+        if (trimmed.endsWith(" ") && isCompleteClause(trimmed)) {
+            return { type: "connectors" };
+        }
+
+        // Partial field name
+        const lastToken = trimmed.split(/\s+/).pop() ?? "";
+        if (!lastToken.includes(":")) {
+            return { type: "field-prefix", prefix: lastToken };
+        }
+
+        return { type: "none" };
+    };
+
+    const updateCompletions = (context: QueryContext) => {
+        switch (context.type) {
+            case "field-list":
+            case "field-prefix":
+                setCompletionItems(
+                    fieldNames
+                        .filter(f => "field-prefix" === context.type ?
+                            f.startsWith(context.prefix) : true)
+                        .map(f => ({ label: f, type: "field" as const }))
+                );
+                break;
+            case "field-values":
+                // Fetch from API or derive from schema tree
+                setCompletionItems(
+                    getValuesForField(context.field).map(v => ({
+                        label: v,
+                        type: "value" as const,
+                    }))
+                );
+                break;
+            case "connectors":
+                setCompletionItems([
+                    { label: "and", type: "operator" as const },
+                    { label: "or", type: "operator" as const },
+                ]);
+                break;
+        }
+    };
+
+    return (
+        <Popover open={showDropdown} onOpenChange={setShowDropdown}>
+            <PopoverTrigger asChild>
+                <div className="relative flex-1">
+                    <Input
+                        ref={inputRef}
+                        value={query}
+                        onChange={(e) => {
+                            setQuery(e.target.value);
+                            const ctx = parseQueryContext(e.target.value);
+                            updateCompletions(ctx);
+                            setShowDropdown(true);
+                        }}
+                        onFocus={() => {
+                            const ctx = parseQueryContext(query);
+                            updateCompletions(ctx);
+                            setShowDropdown(true);
+                        }}
+                        placeholder="Search logs... (e.g., logLevel: INFO and fetcherID: 2)"
+                        className="h-9 text-sm"
+                    />
+                </div>
+            </PopoverTrigger>
+            <PopoverContent
+                align="start"
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
+                <Command>
+                    <CommandList>
+                        {completionItems.map((item) => (
+                            <CommandItem
+                                key={item.label}
+                                onSelect={() => applyCompletion(item)}
+                                className="text-xs"
+                            >
+                                {item.label}
+                            </CommandItem>
+                        ))}
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+};
+```
+
+**What gets removed:**
+- `filter-bar.tsx` — the entire `AddFilterPopover` component and `FilterBar` component are deleted.
+- `FilterType` enum (`EXISTS`, `NEXISTS`, `EQUALS`, `NOT_EQUALS`) — replaced by KQL syntax (`field: *` for exists, `field: value` for equals).
+- The `filters` state in `ExplorePage/index.tsx` — replaced by a single `queryString` state.
+
+---
+
+### 9.7 Implementation Details
+
+#### 9.7.1 shadcn Data Table Setup
+
+The shadcn `data-table` component is built on TanStack Table v8. Install and configure:
+
+```bash
+# 1. Install TanStack Table
+npm install @tanstack/react-table
+
+# 2. Add shadcn data-table component
+npx shadcn@latest add table
+# This adds src/components/ui/data-table.tsx and related files
+```
+
+The `data-table` component at `src/components/ui/data-table.tsx` provides:
+- `DataTable` — main table wrapper with `<TableHeader>`, `<TableBody>`, `<TableRow>`, `<TableCell>`
+- `DataTableColumnHeader` — sortable column header with asc/desc/reset icons
+- `DataTablePagination` — pagination controls (previous/next, page size selector, row count)
+- `DataTableToolbar` — optional toolbar with search/filter input
+- `DataTableViewOptions` — column visibility toggles
+
+#### 9.7.2 File Changes
+
+| File | Change | Priority |
+|------|--------|----------|
+| `features/clpp/components/field-browser.tsx` | Add hover "+" / "×" toggle to `FieldRow`. Remove log_type entries from field list. | P0 |
+| `features/clpp/components/filter-bar.tsx` | **DELETE** — replaced by `query-bar.tsx` | P0 |
+| `features/clpp/components/query-bar.tsx` | **NEW** — KQL-style query input with completion dropdown | P0 |
+| `features/clpp/components/logs-data-table.tsx` | **NEW** — Logs tab using shadcn data-table with dynamic columns | P0 |
+| `features/clpp/components/patterns-data-table.tsx` | **NEW** — Patterns tab using shadcn data-table with Count/Example/Actions | P0 |
+| `features/clpp/components/patterns-tab.tsx` | **DELETE** — replaced by `patterns-data-table.tsx` | P0 |
+| `features/clpp/components/schema-tab.tsx` | Keep as-is (already matches Field Statistics tab requirements) | — |
+| `pages/ExplorePage/index.tsx` | Replace `filters` state with `queryString` state. Replace `FilterBar` with `QueryBar`. Replace Logs tab content with `LogsDataTable`. Replace Patterns tab with `PatternsDataTable`. | P0 |
+| `components/ui/data-table.tsx` | **NEW** — shadcn data-table component (from `npx shadcn add table`) | P0 |
+| `features/clpp/components/query-interpretation-panel.tsx` | Keep for now — becomes useful when search path is fixed | P2 |
+| `features/clpp/types.ts` | Add `LogEvent` type for data-table rows, `LogtypeEntry` extension for `example`/`tokens`/`examples` fields | P0 |
+
+#### 9.7.3 API Requirements
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `GET /api/schema-tree?dataset=...` | GET | Field names + types + counts for sidebar and completion | **Existing** |
+| `GET /api/logtype-stats?dataset=...` | GET | Logtype counts + templates for Patterns tab | **Existing** |
+| `GET /api/field-values?dataset=...&field=<name>&limit=100` | GET | Top values for a field (for KQL completion) | **NEW** — needed for `field:` completion |
+| `GET /api/logtype-examples?dataset=...&logtype_id=<id>&count=3` | GET | Example log events for a logtype (for expanded Patterns rows) | **NEW** — needed for [i] expand |
+| `GET /api/search?dataset=...&query=<kql>&page=1&pageSize=20` | GET | Paginated search results for Logs tab | **Existing** (may need pagination params) |
+
+#### 9.7.4 KQL Query Parsing
+
+The KQL-style query bar requires a client-side parser to:
+1. **Determine completion context** — what completions to show based on cursor position and current text.
+2. **Parse completed queries** — extract clauses for the search API.
+3. **Render filter chips** — show parsed clauses as removable chips.
+
+Parser grammar (simplified):
+```
+query     = clause ( ("and" | "or") clause )*
+clause    = field ":" value
+          | field ":*"
+          | "not" clause
+field     = identifier
+value     = string | wildcard_pattern
+identifier = [a-zA-Z_][a-zA-Z0-9_.]*
+wildcard_pattern = ( identifier | "*" | "?" )+
+```
+
+The parser does NOT need to be a full AST — it just needs to identify the current completion context and extract clauses for the search API. A simple tokenizer + state machine is sufficient (no PEG/ANTLR needed).
+
+---
+
+### 9.8 Updated Priority Matrix
+
+The redesigned Explore page changes the priority of several features:
+
+| Priority | Feature | Section | Dependencies | Notes |
+|----------|---------|---------|-------------|-------|
+| **P0** | shadcn data-table setup + Logs tab rewrite | 9.3 | TanStack Table install | Foundation for both Logs and Patterns tabs |
+| **P0** | Field browser hover "+" / "×" toggle | 9.2 | None | Core interaction pattern from Elastic |
+| **P0** | KQL query bar with completion | 9.6 | Field names API | Replaces EXISTS filter popup |
+| **P0** | Patterns tab data-table rewrite | 9.4 | data-table + logtype-examples API | Count/Example/Actions columns |
+| **P1** | Field values API for KQL completion | 9.7.3 | Backend | Needed for `field:` value completion |
+| **P1** | Logtype examples API for Patterns expand | 9.7.3 | Backend | Needed for [i] expand rows |
+| **P2** | KQL `not` clause support | 9.6 | KQL parser | Negation syntax |
+| **P2** | Query Interpretation Panel | 8.2.5 | Search path fixed | Low priority until search works |
+| ~~P1~~ | ~~EXISTS Filters~~ | ~~8.2.7~~ | ~~P0 toggle~~ | **REMOVED** — replaced by KQL `field:*` syntax |
+
+**Deleted features:**
+- `AddFilterPopover` with EXISTS/NEXISTS/EQUALS/NOT_EQUALS — replaced by KQL query bar.
+- `FilterBar` with `Badge` chips — replaced by inline KQL chips or parsed summary.
+- `FilterType` enum — replaced by KQL syntax.
+
+---
+
+### 9.9 Migration Path
+
+1. **Install TanStack Table** and add shadcn `data-table` component.
+2. **Rewrite `field-browser.tsx`** — add hover "+" / "×" toggle, remove log_type entries. This is the smallest change and can be shipped independently.
+3. **Create `query-bar.tsx`** — KQL input with completion dropdown. Delete `filter-bar.tsx`. Update `ExplorePage` to use `queryString` instead of `filters` array.
+4. **Create `logs-data-table.tsx`** — Logs tab with TanStack Table, dynamic columns from `selectedFields`, default Timestamp + Body columns.
+5. **Create `patterns-data-table.tsx`** — Patterns tab with Count/Example/Actions columns, expandable rows with Tokens/Regex/Examples.
+6. **Add `field-values` API endpoint** — for KQL `field:` value completion.
+7. **Add `logtype-examples` API endpoint** — for Patterns [i] expand rows.
+8. **Update `ExplorePage/index.tsx`** — wire up all new components, remove old FilterBar/Filter state.
+
+Each step is independently deployable. Steps 2-3 can be done in parallel. Step 4-5 can be done in parallel. Steps 6-7 are backend work that unblocks the full KQL and Patterns experience but are not blockers for the initial UI rewrite (completion can show field names only; Patterns can omit examples in the expanded row initially).
 
 ---
 

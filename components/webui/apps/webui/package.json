@@ -27,6 +27,7 @@
     "@sinclair/typebox": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-query-devtools": "^5.91.2",
+    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "catalog:",
     "@webui/common": "workspace:*",
     "@webui/datasource": "workspace:*",

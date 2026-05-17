@@ -46,6 +46,33 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 /**
+ * Filters a schema tree to only include nodes whose key contains the
+ * search string (case-insensitive), preserving the path to matching nodes.
+ *
+ * @param node
+ * @param search
+ * @return Filtered node or null if no match in subtree.
+ */
+const filterTree = (
+    node: SchemaTreeNode,
+    search: string,
+): SchemaTreeNode | null => {
+    const matches = node.key.toLowerCase().includes(search.toLowerCase());
+    const filteredChildren = node.children
+        .map((c) => filterTree(c, search))
+        .filter((c): c is SchemaTreeNode => null !== c);
+
+    if (matches || 0 < filteredChildren.length) {
+        return {
+            ...node,
+            children: filteredChildren,
+        };
+    }
+
+    return null;
+};
+
+/**
  * Renders a single node in the schema tree, recursively.
  *
  * @param root0
@@ -76,7 +103,17 @@ const SchemaTreeNodeItem = ({
                 >
                     {hasChildren ?
                         (
-                            <CollapsibleTrigger render={<button className="w-4 text-muted-foreground hover:text-foreground" />}>
+                            <CollapsibleTrigger
+                                nativeButton={false}
+                                render={
+                                    <div
+                                        className={
+                                            "w-4 cursor-pointer" +
+                                            " text-muted-foreground" +
+                                            " hover:text-foreground"
+                                        }/>
+                                }
+                            >
                                 {isOpen ?
                                     "▼" :
                                     "▶"}
@@ -140,6 +177,7 @@ const SchemaTab = ({dataset}: {dataset: string}) => {
             return res.json() as Promise<SchemaTreeResponse>;
         },
         enabled: 0 < dataset.length,
+        refetchInterval: false,
     });
 
     const {data: logtypeData} = useQuery({
@@ -157,6 +195,7 @@ const SchemaTab = ({dataset}: {dataset: string}) => {
             return res.json() as unknown as Promise<LogtypeStatsResponse>;
         },
         enabled: 0 < dataset.length,
+        refetchInterval: false,
     });
 
     if (isLoading) {
@@ -202,7 +241,17 @@ const SchemaTab = ({dataset}: {dataset: string}) => {
 
             <ScrollArea className={"h-[calc(100vh-280px)]"}>
                 <div className={"space-y-0.5"}>
-                    <SchemaTreeNodeItem node={data.tree}/>
+                    {(() => {
+                        const filtered = search ?
+                            filterTree(data.tree, search) :
+                            data.tree;
+
+                        return filtered ?
+                            <SchemaTreeNodeItem node={filtered}/> :
+                            <p className={"px-2 py-4 text-sm text-muted-foreground"}>
+                                No matching nodes.
+                            </p>;
+                    })()}
                 </div>
             </ScrollArea>
         </div>

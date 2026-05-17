@@ -18,6 +18,7 @@ export interface SharedNodeWarning {
  * @return Array of shared-node warnings (currently always empty).
  */
 const analyzeSharedNodes = (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _logtypes: LogtypeEntry[],
 ): SharedNodeWarning[] => {
     // Variable/type metadata is not yet available in the logtype-stats API.

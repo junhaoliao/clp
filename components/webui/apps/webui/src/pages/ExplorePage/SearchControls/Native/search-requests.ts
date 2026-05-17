@@ -112,6 +112,7 @@ const handleQuerySubmit = (payload: QueryJobCreation) => {
         })
         .catch((err: unknown) => {
             console.error("Failed to submit query:", err);
+            store.updateSearchUiState(SEARCH_UI_STATE.FAILED);
         });
 };
 

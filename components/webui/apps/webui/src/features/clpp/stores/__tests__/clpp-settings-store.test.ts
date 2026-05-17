@@ -12,6 +12,7 @@ describe("ClppSettingsStore", () => {
     beforeEach(() => {
         useClppSettingsStore.setState({
             defaultSchemaId: null,
+            experimentalMode: false,
         });
     });
 
@@ -30,9 +31,26 @@ describe("ClppSettingsStore", () => {
         expect(useClppSettingsStore.getState().defaultSchemaId).toBeNull();
     });
 
+    it("should start with experimental mode off", () => {
+        expect(useClppSettingsStore.getState().experimentalMode).toBe(false);
+    });
+
+    it("should enable experimental mode", () => {
+        useClppSettingsStore.getState().setExperimentalMode(true);
+        expect(useClppSettingsStore.getState().experimentalMode).toBe(true);
+    });
+
+    it("should disable experimental mode", () => {
+        useClppSettingsStore.getState().setExperimentalMode(true);
+        useClppSettingsStore.getState().setExperimentalMode(false);
+        expect(useClppSettingsStore.getState().experimentalMode).toBe(false);
+    });
+
     it("should reset all settings", () => {
         useClppSettingsStore.getState().setDefaultSchemaId("schema-456");
+        useClppSettingsStore.getState().setExperimentalMode(true);
         useClppSettingsStore.getState().reset();
         expect(useClppSettingsStore.getState().defaultSchemaId).toBeNull();
+        expect(useClppSettingsStore.getState().experimentalMode).toBe(false);
     });
 });

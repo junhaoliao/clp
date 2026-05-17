@@ -22,6 +22,13 @@ const POLL_INTERVAL_MS = 500;
 const POLL_BATCH_SIZE = 100;
 const SEARCH_MAX_NUM_RESULTS = 1000;
 
+/**
+ * Maximum safe timestamp in milliseconds that won't overflow int64 when
+ * converted to nanoseconds (multiplied by 1,000,000) in C++.
+ * INT64_MAX / 1e6 ≈ 9223372036854 (year ~2263).
+ */
+const MAX_SAFE_TIMESTAMP_MS = Math.floor(Number.MAX_SAFE_INTEGER / 1_000_000);
+
 /** MongoDB document type (avoid DOM Document collision) */
 type MongoDoc = Record<string, unknown>;
 
@@ -69,10 +76,22 @@ export async function executeClpQueryStreaming (
         opts.datasets :
         [CLP_DEFAULT_DATASET_NAME];
 
+    // Cap timestamps to avoid int64 overflow in C++ AddTimestampConditions.
+    // When converted to nanoseconds (multiplied by 1e6), values exceeding
+    // MAX_SAFE_TIMESTAMP_MS would overflow int64, producing negative values
+    // that cause EvaluateTimestampIndex to skip all archives. Passing null
+    // means "no bound" (equivalent to the Fastify path's null timestamps).
+    const beginTimestamp = opts.timeRange.from >= 0 && opts.timeRange.from <= MAX_SAFE_TIMESTAMP_MS ?
+        opts.timeRange.from :
+        null;
+    const endTimestamp = opts.timeRange.to >= 0 && opts.timeRange.to <= MAX_SAFE_TIMESTAMP_MS ?
+        opts.timeRange.to :
+        null;
+
     const args = {
-        begin_timestamp: opts.timeRange.from,
+        begin_timestamp: beginTimestamp,
         datasets,
-        end_timestamp: opts.timeRange.to,
+        end_timestamp: endTimestamp,
         ignore_case: opts.ignoreCase,
         max_num_results: SEARCH_MAX_NUM_RESULTS,
         query_string: opts.queryString,
@@ -353,6 +372,13 @@ async function updateSearchSignalWhenJobsFinish (
     } catch {
     // Collection may have been dropped
         return;
+    }
+
+    // Tolerate partial failures — some archives may lack CLPP metadata (e.g.,
+    // compressed with standard CLP). If results were still produced by the
+    // successful tasks, clear the error so the UI shows them.
+    if (null !== errorMsg && errorMsg.includes("unexpected status") && 0 < numResultsInCollection) {
+        errorMsg = null;
     }
 
     await metadataCollection.updateOne(

@@ -4,12 +4,15 @@ import {persist} from "zustand/middleware";
 
 interface ClppSettingsState {
     defaultSchemaId: string | null;
-    setDefaultSchemaId: (id: string | null) => void;
+    experimentalMode: boolean;
     reset: () => void;
+    setDefaultSchemaId: (id: string | null) => void;
+    setExperimentalMode: (enabled: boolean) => void;
 }
 
 const initialState = {
     defaultSchemaId: null,
+    experimentalMode: false,
 };
 
 export const useClppSettingsStore = create<ClppSettingsState>()(
@@ -17,6 +20,7 @@ export const useClppSettingsStore = create<ClppSettingsState>()(
         (set) => ({
             ...initialState,
             setDefaultSchemaId: (id) => set({defaultSchemaId: id}),
+            setExperimentalMode: (enabled) => set({experimentalMode: enabled}),
             reset: () => set(initialState),
         }),
         {name: "clpp-settings"},

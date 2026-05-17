@@ -11,7 +11,10 @@ import {
 import {SETTINGS_STORAGE_ENGINE} from "../../../config";
 
 
-type ClpSPayload = Pick<CompressionJobCreation, "dataset" | "schemaContent" | "timestampKey" | "unstructured">;
+type ClpSPayload = Pick<
+    CompressionJobCreation,
+    "dataset" | "schemaContent" | "timestampKey" | "unstructured"
+>;
 
 type S3PathsPayload = Pick<S3CompressionJobCreation, "keyPrefix" | "keys">;
 
@@ -41,17 +44,18 @@ const applyClpSFields = (
     payload: ClpSPayload,
     values: ClpSFormValues,
 ) => {
-    if ("undefined" === typeof values.dataset || 0 === values.dataset.length) {
-        payload.dataset = CLP_DEFAULT_DATASET_NAME;
-    } else {
+    if ("string" === typeof values.dataset && 0 < values.dataset.length) {
         payload.dataset = values.dataset;
+    } else {
+        payload.dataset = CLP_DEFAULT_DATASET_NAME;
     }
     if (true === values.unstructured) {
         payload.unstructured = true;
-        if ("string" === typeof values.schemaContent && 0 < values.schemaContent.length) {
-            payload.schemaContent = values.schemaContent;
-        }
-    } else if ("undefined" !== typeof values.timestampKey) {
+    }
+    if ("string" === typeof values.schemaContent && 0 < values.schemaContent.length) {
+        payload.schemaContent = values.schemaContent;
+    }
+    if (true !== values.unstructured && "undefined" !== typeof values.timestampKey) {
         payload.timestampKey = values.timestampKey;
     }
 };

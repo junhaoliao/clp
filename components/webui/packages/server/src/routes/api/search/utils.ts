@@ -72,6 +72,17 @@ const updateSearchSignalWhenJobsFinish = async ({
         return;
     }
 
+    // Tolerate partial failures — some archives may lack CLPP metadata (e.g.,
+    // compressed with standard CLP). If results were still produced by the
+    // successful tasks, clear the error so the UI shows them.
+    if (null !== errorMsg && errorMsg.includes("unexpected status") && 0 < numResultsInCollection) {
+        logger.info(
+            {searchJobId, numResultsInCollection},
+            "Tolerating partial search failure with results available."
+        );
+        errorMsg = null;
+    }
+
     const filter = {
         _id: searchJobId.toString(),
         lastSignal: SEARCH_SIGNAL.RESP_QUERYING,

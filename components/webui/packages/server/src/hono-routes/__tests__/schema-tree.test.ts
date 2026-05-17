@@ -141,3 +141,64 @@ describe("buildSchemaTree — edge cases", () => {
         expect(result.children.find((c) => "5" === c.key)).toBeDefined();
     });
 });
+
+describe("buildSchemaTree — LogTypeID filtering", () => {
+    it("should exclude LogTypeID nodes (NodeType 102) from the tree", () => {
+        const docs = [
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 10, children: [1, 2]},
+                    {id: 1, parentId: 0, key: "message", type: 100, count: 10, children: []},
+                    {id: 2, parentId: 0, key: "log_type", type: 102, count: 10, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        expect(result.key).toBe("root");
+        expect(result.children).toHaveLength(1);
+        expect(result.children[0]?.key).toBe("message");
+    });
+
+    it("should prune object nodes that become empty after LogTypeID exclusion", () => {
+        const docs = [
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 10, children: [1, 2]},
+                    {id: 1, parentId: 0, key: "metadata", type: 5, count: 0, children: [3]},
+                    {id: 2, parentId: 0, key: "message", type: 100, count: 10, children: []},
+                    {id: 3, parentId: 1, key: "log_type", type: 102, count: 10, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        expect(result.key).toBe("root");
+        // "metadata" object node had only a LogTypeID child, so it gets pruned
+        expect(result.children).toHaveLength(1);
+        expect(result.children[0]?.key).toBe("message");
+    });
+
+    it("should keep non-LogTypeID int nodes alongside LogTypeID nodes", () => {
+        const docs = [
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 10, children: [1, 2, 3]},
+                    {id: 1, parentId: 0, key: "count", type: 0, count: 5, children: []},
+                    {id: 2, parentId: 0, key: "log_type", type: 102, count: 10, children: []},
+                    {id: 3, parentId: 0, key: "message", type: 100, count: 10, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        expect(result.children).toHaveLength(2);
+        const keys = result.children.map((c) => c.key);
+        expect(keys).toContain("count");
+        expect(keys).toContain("message");
+        expect(keys).not.toContain("log_type");
+    });
+});
