@@ -17,14 +17,17 @@ const PopoverAnchor = Popover.Trigger;
  * @param root0.className
  * @param root0.align
  * @param root0.sideOffset
+ * @param root0.initialFocus
  */
 const PopoverContent = ({
     className,
     align = "center",
     sideOffset = 4,
+    initialFocus,
     ...props
 }: React.ComponentProps<typeof Popover.Positioner> & {
     align?: "center" | "start" | "end";
+    initialFocus?: React.ComponentProps<typeof Popover.Popup>["initialFocus"];
     sideOffset?: number;
 }) => {
     return (
@@ -36,6 +39,7 @@ const PopoverContent = ({
                 {...props}
             >
                 <Popover.Popup
+                    initialFocus={initialFocus}
                     className={cn(
                         "w-72 rounded-md border bg-popover p-4",
                         "text-popover-foreground shadow-md outline-none",

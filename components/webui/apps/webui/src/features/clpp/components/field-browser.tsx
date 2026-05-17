@@ -1,51 +1,32 @@
 import {useState} from "react";
 
 import {useQuery} from "@tanstack/react-query";
-import type {AppType} from "@webui/server/hono-app";
+import {type AppType} from "@webui/server/hono-app";
 import {hc} from "hono/client";
 
-import {Badge} from "@/components/ui/badge";
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {Separator} from "@/components/ui/separator";
-import {WildcardOnNumericBadge} from "@/features/clpp/components/wildcard-on-numeric-badge";
+import {
+    type FieldItem,
+    FieldRow,
+} from "@/features/clpp/components/field-row";
 import type {SchemaTreeResponse} from "@/features/clpp/types";
 
 
 type SchemaTreeNode = {
+    children: SchemaTreeNode[];
+    count: number;
     id: string;
     key: string;
     type: "string" | "int" | "float" | "object";
-    count: number;
-    children: SchemaTreeNode[];
 };
 
 const api = hc<AppType>("/");
-type FieldItem = {
-    name: string;
-    type: "string" | "int" | "float" | "object";
-    count: number;
-    isSharedNode: boolean;
-};
 
-const TYPE_ICONS: Record<string, string> = {
-    string: "Aa",
-    int: "#",
-    float: "~",
-    object: "{}",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-    string: "text-green-600",
-    int: "text-blue-600",
-    float: "text-purple-600",
-    object: "text-gray-600",
-};
+// Internal CLPP identifiers that should not appear as user-facing fields.
+// Per design doc §9.2, log type IDs are NOT shown as field names.
+const EXCLUDED_FIELD_KEYS = new Set(["log_type"]);
 
 /**
  * Flattens the schema tree into a list of field items.
@@ -59,123 +40,43 @@ const flattenTree = (
     node: SchemaTreeNode,
     parentPath: string = "",
     isShared: boolean = false,
+    isRoot: boolean = true,
 ): FieldItem[] => {
-    const path = parentPath ?
-        `${parentPath}.${node.key}` :
-        node.key;
+    // Skip the root "root" key and empty keys (CLPP variable-position
+    // containers) to produce clean field names like "message" instead
+    // of "root..message".
+    const isSkippedKey = isRoot || !node.key;
+    const path = isSkippedKey ?
+        parentPath :
+        (parentPath ? `${parentPath}.${node.key}` : node.key);
     const items: FieldItem[] = [];
 
-    if ("object" !== node.type) {
+    if ("object" !== node.type && !EXCLUDED_FIELD_KEYS.has(node.key)) {
         items.push({
-            name: path,
-            type: node.type,
             count: node.count,
             isSharedNode: isShared,
+            name: path,
+            type: node.type,
         });
     }
 
     for (const child of node.children) {
-        items.push(...flattenTree(child, path, isShared));
+        items.push(...flattenTree(child, path, isShared, false));
     }
 
     return items;
 };
 
 /**
- * A single field row with expand/collapse for top values.
- *
- * @param root0
- * @param root0.field
- * @param root0.isSelected
- * @param root0.onToggleSelect
- * @return A collapsible field row component.
- */
-const FieldRow = ({isSelected, onToggleSelect, field}: {
-    field: FieldItem;
-    isSelected: boolean;
-    onToggleSelect: (name: string) => void;
-}) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-        <Collapsible
-            open={isOpen}
-            onOpenChange={setIsOpen}
-        >
-            <div className={"flex items-center gap-1.5 rounded-sm px-2 py-1 hover:bg-muted/50"}>
-                <CollapsibleTrigger render={<button className="w-3 text-[10px] text-muted-foreground hover:text-foreground" />}>
-                    {isOpen ?
-                        "▼" :
-                        "▶"}
-                </CollapsibleTrigger>
-                <span className={`text-xs font-medium ${TYPE_COLORS[field.type] ?? ""}`}>
-                    {TYPE_ICONS[field.type] ?? "?"}
-                </span>
-                <span
-                    className={`flex-1 cursor-pointer truncate text-xs${isSelected ?
-                        " font-bold" :
-                        ""}`}
-                    onClick={() => {
-                        onToggleSelect(field.name);
-                    }}
-                >
-                    {field.name}
-                </span>
-                {field.isSharedNode && (
-                    <span
-                        className={"text-[10px] text-yellow-600"}
-                        title={"Shared node — may cause ambiguous queries"}
-                    >
-                        [!]
-                    </span>
-                )}
-                {("int" === field.type || "float" === field.type) && (
-                    <WildcardOnNumericBadge
-                        fieldName={field.name}
-                        fieldType={field.type}/>
-                )}
-                <span className={"text-[10px] text-muted-foreground"}>
-                    {field.count.toLocaleString()}
-                </span>
-            </div>
-            <CollapsibleContent>
-                <div className={"ml-6 border-l px-2 py-1 text-xs text-muted-foreground"}>
-                    <p>
-                        Type:
-                        {field.type}
-                    </p>
-                    <p>
-                        Count:
-                        {field.count.toLocaleString()}
-                    </p>
-                    {field.isSharedNode && (
-                        <p className={"text-yellow-700"}>
-                            Warning: shared node
-                            {" "}
-                            — deduplication trap
-                        </p>
-                    )}
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-};
-
-/**
  * Kibana Discover-style field browser sidebar.
  *
- * Two sections:
- * - "Selected fields": fields that appear as columns in the results table
- * - "Available fields": all other fields from the schema tree
- *
- * Always shows standard indexed fields plus "LOGTYPE FIELDS [CLPP]"
- * from Schema Tree API when available.
+ * Two sections: "Selected fields" and "Available fields".
  *
  * @param root0
+ * @param root0.dataset
  * @param root0.selectedFields
  * @param root0.onToggleField
- * @param root0.dataset
- * @return The field browser sidebar component.
+ * @return JSX element
  */
 const FieldBrowser = ({
     dataset,
@@ -183,14 +84,13 @@ const FieldBrowser = ({
     onToggleField,
 }: {
     dataset: string;
-    selectedFields: string[];
     onToggleField: (name: string) => void;
+    selectedFields: string[];
 }) => {
     const [search, setSearch] = useState("");
 
     const {data: treeData} = useQuery({
-        queryKey: ["schema-tree",
-            dataset],
+        enabled: 0 < dataset.length,
         queryFn: async () => {
             const res = await api.api["schema-tree"].$get({
                 query: {dataset},
@@ -202,30 +102,47 @@ const FieldBrowser = ({
 
             return res.json() as Promise<SchemaTreeResponse>;
         },
-        enabled: 0 < dataset.length,
+        queryKey: ["schema-tree",
+            dataset],
+        refetchInterval: false,
     });
 
-    const standardFields: FieldItem[] = [
-        {name: "timestamp", type: "string", count: 0, isSharedNode: false},
-        {name: "service", type: "string", count: 0, isSharedNode: false},
-        {name: "level", type: "string", count: 0, isSharedNode: false},
-    ];
-
-    const clppFields: FieldItem[] = treeData?.tree ?
-        flattenTree(treeData.tree) :
-        [];
-
-    const allFields = [
-        ...standardFields,
-        ...clppFields,
-    ];
+    const mkStd = (n: string): FieldItem => ({
+        count: 0,
+        isSharedNode: false,
+        name: n,
+        type: "string",
+    });
+    const treeFields = treeData?.tree ? flattenTree(treeData.tree) : [];
+    const staticFields = [mkStd("timestamp"), mkStd("service"), mkStd("level")];
+    // Deduplicate by name: merge counts for same-named tree fields, then add
+    // static fields not already present.
+    const fieldsByName = new Map<string, FieldItem>();
+    for (const f of treeFields) {
+        const existing = fieldsByName.get(f.name);
+        if (existing) {
+            existing.count += f.count;
+        } else {
+            fieldsByName.set(f.name, {...f});
+        }
+    }
+    for (const f of staticFields) {
+        if (!fieldsByName.has(f.name)) {
+            fieldsByName.set(f.name, f);
+        }
+    }
+    const allFields = Array.from(fieldsByName.values());
 
     const filtered = allFields.filter(
         (f) => f.name.toLowerCase().includes(search.toLowerCase()),
     );
 
-    const selected = filtered.filter((f) => selectedFields.includes(f.name));
-    const available = filtered.filter((f) => !selectedFields.includes(f.name));
+    const selected = filtered.filter(
+        (f) => selectedFields.includes(f.name),
+    );
+    const available = filtered.filter(
+        (f) => !selectedFields.includes(f.name),
+    );
 
     return (
         <div className={"flex h-full w-60 flex-col border-r bg-background"}>
@@ -243,11 +160,12 @@ const FieldBrowser = ({
                 {0 < selected.length && (
                     <div>
                         <p
-                            className={"px-2 py-1 text-[10px] " +
-                                "font-semibold uppercase " +
-                                "text-muted-foreground"}
+                            className={
+                                "px-2 py-1 text-[10px] font-semibold" +
+                            " uppercase text-muted-foreground"
+                            }
                         >
-                            Selected Fields
+                            {`Selected Fields (${selected.length})`}
                         </p>
                         {selected.map((f) => (
                             <FieldRow
@@ -261,8 +179,13 @@ const FieldBrowser = ({
                 )}
 
                 <div>
-                    <p className={"px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground"}>
-                        Available Fields
+                    <p
+                        className={
+                            "px-2 py-1 text-[10px] font-semibold" +
+                        " uppercase text-muted-foreground"
+                        }
+                    >
+                        {`Available Fields (${available.length})`}
                     </p>
                     {available.map((f) => (
                         <FieldRow
@@ -272,25 +195,9 @@ const FieldBrowser = ({
                             onToggleSelect={onToggleField}/>
                     ))}
                 </div>
-
-                {0 < clppFields.length && (
-                    <>
-                        <Separator className={"my-1"}/>
-                        <div className={"px-2 py-1"}>
-                            <Badge
-                                className={"text-[10px]"}
-                                variant={"outline"}
-                            >
-                                LOGTYPE FIELDS [CLPP]
-                            </Badge>
-                        </div>
-                    </>
-                )}
             </ScrollArea>
         </div>
     );
 };
-
-
 export {FieldBrowser};
 export default FieldBrowser;

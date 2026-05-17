@@ -2,6 +2,8 @@ import {Hono} from "hono";
 
 import {dashboardRoutes} from "./hono-routes/dashboards.js";
 import {datasourceRoutes} from "./hono-routes/datasource.js";
+import {fieldValuesRoutes} from "./hono-routes/field-values.js";
+import {logtypeExamplesRoutes} from "./hono-routes/logtype-examples.js";
 import {logtypeStatsRoutes} from "./hono-routes/logtype-stats.js";
 import {schemaRoutes} from "./hono-routes/schemas.js";
 import {schemaTreeRoutes} from "./hono-routes/schema-tree.js";
@@ -236,6 +238,8 @@ export const honoApp = new Hono()
     })
     .route("/api/dashboards", dashboardRoutes)
     .route("/api/datasource", datasourceRoutes)
+    .route("/api/field-values", fieldValuesRoutes)
+    .route("/api/logtype-examples", logtypeExamplesRoutes)
     .route("/api/logtype-stats", logtypeStatsRoutes)
     .route("/api/schemas", schemaRoutes)
     .route("/api/schema-tree", schemaTreeRoutes);

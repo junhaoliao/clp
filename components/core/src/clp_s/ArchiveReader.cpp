@@ -153,67 +153,77 @@ auto ArchiveReader::read_metadata() -> ystdlib::error_handling::Result<void> {
     auto table_metadata_reader = m_archive_reader_adaptor->checkout_reader_for_section(
             constants::cArchiveTableMetadataFile
     );
-    m_table_metadata_decompressor.open(*table_metadata_reader, cDecompressorFileReadBufferCapacity);
+    try {
+        m_table_metadata_decompressor.open(*table_metadata_reader, cDecompressorFileReadBufferCapacity);
 
-    YSTDLIB_ERROR_HANDLING_TRYV(m_stream_reader.read_metadata(m_table_metadata_decompressor));
+        YSTDLIB_ERROR_HANDLING_TRYV(m_stream_reader.read_metadata(m_table_metadata_decompressor));
 
-    uint64_t num_separate_column_schemas{0};
-    if (auto const error{
-                m_table_metadata_decompressor.try_read_numeric_value(num_separate_column_schemas)
-        };
-        ErrorCodeSuccess != error)
-    {
-        throw OperationFailed(error, __FILENAME__, __LINE__);
-    }
-
-    if (0 != num_separate_column_schemas) {
-        throw OperationFailed(ErrorCodeUnsupported, __FILENAME__, __LINE__);
-    }
-
-    uint64_t num_schemas{0};
-    if (auto const error{m_table_metadata_decompressor.try_read_numeric_value(num_schemas)};
-        ErrorCodeSuccess != error)
-    {
-        throw OperationFailed(error, __FILENAME__, __LINE__);
-    }
-    if (0 == num_schemas) {
-        return ystdlib::error_handling::success();
-    }
-
-    auto [prev_schema_id,
-          prev_metadata]{YSTDLIB_ERROR_HANDLING_TRYX(read_single_schema_metadata())};
-    m_schema_ids.push_back(prev_schema_id);
-    for (uint64_t i{1}; i < num_schemas; ++i) {
-        auto const [schema_id, metadata]{
-                YSTDLIB_ERROR_HANDLING_TRYX(read_single_schema_metadata())
-        };
-        m_schema_ids.push_back(schema_id);
-
-        if (metadata.stream_id() != prev_metadata.stream_id()) {
-            prev_metadata.set_uncompressed_size(
-                    m_stream_reader.get_uncompressed_stream_size(prev_metadata.stream_id())
-                    - prev_metadata.stream_offset()
-            );
-        } else if (metadata.stream_offset() < prev_metadata.stream_offset()) {
-            throw OperationFailed(ErrorCodeCorrupt, __FILENAME__, __LINE__);
-        } else {
-            prev_metadata.set_uncompressed_size(
-                    metadata.stream_offset() - prev_metadata.stream_offset()
-            );
+        uint64_t num_separate_column_schemas{0};
+        if (auto const error{
+                    m_table_metadata_decompressor.try_read_numeric_value(num_separate_column_schemas)
+            };
+            ErrorCodeSuccess != error)
+        {
+            throw OperationFailed(error, __FILENAME__, __LINE__);
         }
+
+        if (0 != num_separate_column_schemas) {
+            throw OperationFailed(ErrorCodeUnsupported, __FILENAME__, __LINE__);
+        }
+
+        uint64_t num_schemas{0};
+        if (auto const error{m_table_metadata_decompressor.try_read_numeric_value(num_schemas)};
+            ErrorCodeSuccess != error)
+        {
+            throw OperationFailed(error, __FILENAME__, __LINE__);
+        }
+        if (0 == num_schemas) {
+            m_table_metadata_decompressor.close();
+            m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveTableMetadataFile);
+            return ystdlib::error_handling::success();
+        }
+
+        auto [prev_schema_id,
+              prev_metadata]{YSTDLIB_ERROR_HANDLING_TRYX(read_single_schema_metadata())};
+        m_schema_ids.push_back(prev_schema_id);
+        for (uint64_t i{1}; i < num_schemas; ++i) {
+            auto const [schema_id, metadata]{
+                    YSTDLIB_ERROR_HANDLING_TRYX(read_single_schema_metadata())
+            };
+            m_schema_ids.push_back(schema_id);
+
+            if (metadata.stream_id() != prev_metadata.stream_id()) {
+                prev_metadata.set_uncompressed_size(
+                        m_stream_reader.get_uncompressed_stream_size(prev_metadata.stream_id())
+                        - prev_metadata.stream_offset()
+                );
+            } else if (metadata.stream_offset() < prev_metadata.stream_offset()) {
+                throw OperationFailed(ErrorCodeCorrupt, __FILENAME__, __LINE__);
+            } else {
+                prev_metadata.set_uncompressed_size(
+                        metadata.stream_offset() - prev_metadata.stream_offset()
+                );
+            }
+            m_id_to_schema_metadata[prev_schema_id] = prev_metadata;
+
+            prev_schema_id = schema_id;
+            prev_metadata = metadata;
+        }
+        prev_metadata.set_uncompressed_size(
+                m_stream_reader.get_uncompressed_stream_size(prev_metadata.stream_id())
+                - prev_metadata.stream_offset()
+        );
         m_id_to_schema_metadata[prev_schema_id] = prev_metadata;
+        m_table_metadata_decompressor.close();
 
-        prev_schema_id = schema_id;
-        prev_metadata = metadata;
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveTableMetadataFile);
+    } catch (std::exception const&) {
+        try {
+            m_table_metadata_decompressor.close();
+        } catch (...) {}
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveTableMetadataFile);
+        throw;
     }
-    prev_metadata.set_uncompressed_size(
-            m_stream_reader.get_uncompressed_stream_size(prev_metadata.stream_id())
-            - prev_metadata.stream_offset()
-    );
-    m_id_to_schema_metadata[prev_schema_id] = prev_metadata;
-    m_table_metadata_decompressor.close();
-
-    m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveTableMetadataFile);
 
     return ystdlib::error_handling::success();
 }
@@ -556,14 +566,22 @@ auto ArchiveReader::read_logtype_metadata()
         return clpp::ClppErrorCode{clpp::ClppErrorCodeEnum::BadParam};
     }
     ZstdDecompressor decompressor{};
-    decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
+    try {
+        decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 
-    clpp::LogTypeMetadataArray metadata;
-    YSTDLIB_ERROR_HANDLING_TRYX(metadata.decompress(decompressor));
+        clpp::LogTypeMetadataArray metadata;
+        YSTDLIB_ERROR_HANDLING_TRYX(metadata.decompress(decompressor));
 
-    decompressor.close();
-    m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeMetadataFile);
-    return metadata;
+        decompressor.close();
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeMetadataFile);
+        return metadata;
+    } catch (std::exception const&) {
+        try {
+            decompressor.close();
+        } catch (...) {}
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeMetadataFile);
+        throw;
+    }
 }
 
 auto ArchiveReader::read_logtype_stats() -> ystdlib::error_handling::Result<void> {
@@ -582,13 +600,21 @@ auto ArchiveReader::read_logtype_stats() -> ystdlib::error_handling::Result<void
         return clpp::ClppErrorCode{clpp::ClppErrorCodeEnum::BadParam};
     }
     ZstdDecompressor decompressor{};
-    decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
+    try {
+        decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 
-    YSTDLIB_ERROR_HANDLING_TRYX(m_logtype_stats->decompress(decompressor));
+        YSTDLIB_ERROR_HANDLING_TRYX(m_logtype_stats->decompress(decompressor));
 
-    decompressor.close();
-    m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeStatsFile);
-    return ystdlib::error_handling::success();
+        decompressor.close();
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeStatsFile);
+        return ystdlib::error_handling::success();
+    } catch (std::exception const&) {
+        try {
+            decompressor.close();
+        } catch (...) {}
+        m_archive_reader_adaptor->checkin_reader_for_section(constants::cArchiveLogTypeStatsFile);
+        throw;
+    }
 }
 
 auto ArchiveReader::read_log_surgeon_schema() -> ystdlib::error_handling::Result<std::string> {

@@ -27,14 +27,17 @@ const QueryInterpretationPanel = ({query}: {query?: string}) => {
         <Card>
             <Collapsible>
                 <CardHeader className={"cursor-pointer py-2"}>
-                    <CollapsibleTrigger render={<div className="flex items-center justify-between" />}>
-                            <CardTitle className={"text-sm"}>Query Interpretation</CardTitle>
-                            <Badge
-                                className={"text-[10px]"}
-                                variant={"outline"}
-                            >
-                                CLPP
-                            </Badge>
+                    <CollapsibleTrigger
+                        nativeButton={false}
+                        render={<div className={"flex items-center justify-between"}/>}
+                    >
+                        <CardTitle className={"text-sm"}>Query Interpretation</CardTitle>
+                        <Badge
+                            className={"text-[10px]"}
+                            variant={"outline"}
+                        >
+                            CLPP
+                        </Badge>
                     </CollapsibleTrigger>
                 </CardHeader>
                 <CollapsibleContent>

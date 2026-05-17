@@ -314,10 +314,24 @@ auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
                     }
             );
         } catch (std::exception const& e) {
-            SPDLOG_ERROR("Failed to open archive - {}", e.what());
-            return 2;
+            SPDLOG_WARN("Failed to open archive {} - {}; skipping", input_path.path, e.what());
+            continue;
         }
-        archive_reader->read_dictionaries_and_metadata();
+        try {
+            archive_reader->read_dictionaries_and_metadata();
+        } catch (std::exception const& e) {
+            SPDLOG_WARN(
+                    "Failed to read dictionaries/metadata for archive {} - {}; skipping",
+                    input_path.path,
+                    e.what()
+            );
+            try {
+                archive_reader->close();
+            } catch (std::exception const& close_ex) {
+                SPDLOG_WARN("Failed to close archive {} - {}", input_path.path, close_ex.what());
+            }
+            continue;
+        }
         if (CommandLineArguments::cSchemaTreeQuery == query) {
             auto const& schema_tree = archive_reader->get_schema_tree();
             auto const& nodes = schema_tree->get_nodes();
@@ -348,12 +362,12 @@ auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
                 if (i >= logtype_stats.size()) {
                     break;
                 }
-                auto message{fmt::format(
-                        "{{\"id\":{},\"count\":{},\"log_type\":\"{}\"}}\n",
-                        i,
-                        logtype_stats.at(i).get_count(),
-                        logtype_dict->get_entry(i).get_value()
-                )};
+                nlohmann::json entry = {
+                        {"id", i},
+                        {"count", logtype_stats.at(i).get_count()},
+                        {"log_type", logtype_dict->get_entry(i).get_value()},
+                };
+                auto message{fmt::format("{}\n", entry.dump())};
                 output_handler.value()->write(message);
             }
         }

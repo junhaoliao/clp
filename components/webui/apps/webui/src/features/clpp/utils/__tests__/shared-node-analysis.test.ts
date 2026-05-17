@@ -14,8 +14,8 @@ describe("analyzeSharedNodes", () => {
 
     it("should return empty array when variable metadata is unavailable", () => {
         const logtypes = [
-            {id: 0, count: 1, log_type: "test message"},
-            {id: 1, count: 2, log_type: "another message"},
+            {id: 0, count: 1, log_type: "test message", archive_id: "a1"},
+            {id: 1, count: 2, log_type: "another message", archive_id: "a1"},
         ];
 
         expect(analyzeSharedNodes(logtypes)).toEqual([]);

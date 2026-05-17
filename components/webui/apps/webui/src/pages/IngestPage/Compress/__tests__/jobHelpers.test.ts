@@ -88,7 +88,7 @@ describe("applyClpSFields", () => {
             unstructured: true,
         });
         expect(payload.schemaContent).toBe(":timestamp:string\n:level:string");
-        expect(payload.unstructured).toBeUndefined();
+        expect(payload.unstructured).toBe(true);
     });
 
     it("should not set schemaContent when it is empty string", () => {

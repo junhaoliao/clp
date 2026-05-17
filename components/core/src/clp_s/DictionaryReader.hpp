@@ -129,18 +129,27 @@ void DictionaryReader<DictionaryIdType, EntryType>::read_entries(bool lazy) {
     constexpr size_t cDecompressorFileReadBufferCapacity = 64 * 1024;  // 64 KiB
     auto dictionary_reader = m_adaptor.checkout_reader_for_section(m_dictionary_path);
 
-    uint64_t num_dictionary_entries;
-    dictionary_reader->read_numeric_value(num_dictionary_entries, false);
-    m_dictionary_decompressor.open(*dictionary_reader, cDecompressorFileReadBufferCapacity);
+    try {
+        uint64_t num_dictionary_entries;
+        dictionary_reader->read_numeric_value(num_dictionary_entries, false);
+        m_dictionary_decompressor.open(*dictionary_reader, cDecompressorFileReadBufferCapacity);
 
-    // Read dictionary entries
-    m_entries.resize(num_dictionary_entries);
-    for (size_t i = 0; i < num_dictionary_entries; ++i) {
-        auto& entry = m_entries[i];
-        entry.read_from_file(m_dictionary_decompressor, i, lazy);
+        // Read dictionary entries
+        m_entries.resize(num_dictionary_entries);
+        for (size_t i = 0; i < num_dictionary_entries; ++i) {
+            auto& entry = m_entries[i];
+            entry.read_from_file(m_dictionary_decompressor, i, lazy);
+        }
+
+        m_dictionary_decompressor.close();
+    } catch (std::exception const&) {
+        try {
+            m_dictionary_decompressor.close();
+        } catch (...) {}
+        m_adaptor.checkin_reader_for_section(m_dictionary_path);
+        throw;
     }
 
-    m_dictionary_decompressor.close();
     m_adaptor.checkin_reader_for_section(m_dictionary_path);
 }
 

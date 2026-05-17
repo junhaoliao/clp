@@ -72,8 +72,11 @@ const SchemaLibrary = () => {
                     <div className={"space-y-2"}>
                         {schemas.map((schema) => (
                             <div
-                                className={"flex items-center justify-between rounded-md border p-3"}
                                 key={schema.id}
+                                className={
+                                    "flex items-center justify-between" +
+                                    " rounded-md border p-3"
+                                }
                             >
                                 <div className={"min-w-0 flex-1"}>
                                     <p className={"truncate text-sm font-medium"}>

@@ -4,15 +4,14 @@ import {
 } from "react";
 
 import {useQuery} from "@tanstack/react-query";
-import type {AppType} from "@webui/server/hono-app";
-import {hc} from "hono/client";
-
-import SchemaMonacoEditor from "@/features/clpp/components/schema-monaco-editor";
-
+import {type AppType} from "@webui/server/hono-app";
 import {
     Form,
     Select,
 } from "antd";
+import {hc} from "hono/client";
+
+import SchemaMonacoEditor from "@/features/clpp/components/schema-monaco-editor";
 
 
 type SchemaRecord = {
@@ -28,24 +27,24 @@ type SchemaOption = {
     value: string;
 };
 
-const LOG_CONVERTOR_OPTION: SchemaOption = {label: "Log Convertor", value: "__log_convertor__"};
+const DEFAULT_OPTION: SchemaOption = {label: "Default", value: "__default__"};
 const CUSTOM_OPTION: SchemaOption = {label: "Custom", value: "__custom__"};
 
 const api = hc<AppType>("/");
 
-const UNSTRUCTURED_LOGS_PROCESSOR_TOOLTIP =
-    "Choose how unstructured (text) logs are processed. " +
-    "\"Log Convertor\" converts text to structured KV-IR first, then clp-s compresses it. " +
-    "A saved schema or a custom schema tells clp-s how to parse the text directly.";
+const SCHEMA_TOOLTIP =
+    "Choose a log-surgeon schema for JSON log compression. " +
+    "\"Default\" uses the built-in schema. " +
+    "A saved schema or a custom schema tells clp-s how to parse and type JSON fields.";
 
 /**
- * Renders a single "Unstructured logs processor" form item: a Select dropdown
- * to pick a processing mode (Log Convertor, a saved schema, or Custom), and a
- * Monaco editor that only appears when "Custom" is selected.
+ * Renders a "Schema" form item for JSON-mode compression: a Select dropdown
+ * to pick a schema (Default, Custom, or a saved schema), and a Monaco editor
+ * that appears when "Custom" or a saved schema is selected.
  */
 const ClppSchemaFormItems = () => {
     const form = Form.useFormInstance();
-    const [selectedValue, setSelectedValue] = useState<string>(LOG_CONVERTOR_OPTION.value);
+    const [selectedValue, setSelectedValue] = useState<string>(DEFAULT_OPTION.value);
 
     const {data: schemas = []} = useQuery({
         queryKey: ["schemas"],
@@ -56,7 +55,7 @@ const ClppSchemaFormItems = () => {
     });
 
     const options: SchemaOption[] = [
-        LOG_CONVERTOR_OPTION,
+        DEFAULT_OPTION,
         CUSTOM_OPTION,
         ...schemas.map((s) => ({label: s.name, value: s.id})),
     ];
@@ -64,7 +63,7 @@ const ClppSchemaFormItems = () => {
     const handleChange = useCallback((value: string) => {
         setSelectedValue(value);
 
-        if (LOG_CONVERTOR_OPTION.value === value) {
+        if (DEFAULT_OPTION.value === value) {
             form.setFieldValue("schemaContent", void 0); // eslint-disable-line no-void
         } else if (CUSTOM_OPTION.value === value) {
             form.setFieldValue("schemaContent", "");
@@ -74,21 +73,21 @@ const ClppSchemaFormItems = () => {
                 form.setFieldValue("schemaContent", schema.content);
             }
         }
-    }, [schemas, form]);
+    }, [schemas,
+        form]);
 
-    const showEditor = CUSTOM_OPTION.value === selectedValue;
+    const showEditor = DEFAULT_OPTION.value !== selectedValue;
 
     return (
         <>
             <Form.Item
-                label={"Unstructured logs processor"}
-                tooltip={UNSTRUCTURED_LOGS_PROCESSOR_TOOLTIP}
+                label={"Schema"}
+                tooltip={SCHEMA_TOOLTIP}
             >
                 <Select
-                    onChange={handleChange}
                     options={options}
                     value={selectedValue}
-                />
+                    onChange={handleChange}/>
             </Form.Item>
             {showEditor && (
                 <Form.Item

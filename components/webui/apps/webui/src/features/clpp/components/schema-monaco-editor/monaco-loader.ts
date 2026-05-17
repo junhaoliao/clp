@@ -8,6 +8,11 @@ import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
 
 self.MonacoEnvironment = {
+    /**
+     * Creates a new editor web worker.
+     *
+     * @return Editor worker instance.
+     */
     getWorker () {
         return new EditorWorker();
     },

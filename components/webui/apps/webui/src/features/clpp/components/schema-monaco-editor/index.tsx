@@ -40,6 +40,7 @@ const DEFAULT_HEIGHT = "160px";
  * @param root0.isReadOnly
  * @param root0.onChange
  * @param root0.value
+ * @return JSX element
  */
 const SchemaMonacoEditor = ({
     className,

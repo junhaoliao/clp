@@ -47,13 +47,13 @@ const ClppSchemaFormItems = (await import("../ClppSchemaFormItems")).default;
 
 
 describe("ClppSchemaFormItems", () => {
-    it("should render the unstructured logs schema label", () => {
+    it("should render the Schema form label", () => {
         render(
             <Form>
                 <ClppSchemaFormItems/>
             </Form>,
         );
-        expect(screen.getByText("Unstructured logs processor")).toBeTruthy();
+        expect(screen.getByText("Schema")).toBeTruthy();
     });
 
     it("should render the Ant Design Select", () => {
