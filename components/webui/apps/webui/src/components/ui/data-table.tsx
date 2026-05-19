@@ -1,11 +1,15 @@
-import {useState} from "react";
+import {Fragment, useState} from "react";
 
 import {
     type ColumnDef,
+    type ExpandedState,
+    type OnChangeFn,
     flexRender,
     getCoreRowModel,
+    getExpandedRowModel,
     getPaginationRowModel,
     getSortedRowModel,
+    type Row,
     type SortingState,
     useReactTable,
 } from "@tanstack/react-table";
@@ -23,8 +27,11 @@ import {
 type DataTableProps<TData, TValue> = {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
+    getRowCanExpand?: (row: Row<TData>) => boolean;
     getRowId?: (row: TData) => string;
+    onExpandedChange?: OnChangeFn<ExpandedState>;
     pageSize?: number;
+    renderSubComponent?: (row: Row<TData>) => React.ReactNode;
 };
 
 /**
@@ -42,21 +49,35 @@ type DataTableProps<TData, TValue> = {
 const DataTable = <TData, TValue>({
     columns,
     data,
+    getRowCanExpand,
     getRowId,
+    onExpandedChange,
     pageSize = 20,
+    renderSubComponent,
 }: DataTableProps<TData, TValue>) => {
     const [sorting, setSorting] = useState<SortingState>([]);
+    const [expanded, setExpanded] = useState<ExpandedState>({});
+
+    const handleExpandedChange: OnChangeFn<ExpandedState> = onExpandedChange ?
+        (updater) => {
+            setExpanded(updater);
+            onExpandedChange(updater);
+        } :
+        setExpanded;
 
     const table = useReactTable({
         columns: columns,
         data: data,
         getCoreRowModel: getCoreRowModel(),
+        getExpandedRowModel: getExpandedRowModel(),
+        ...(getRowCanExpand ? {getRowCanExpand} : {}),
         getPaginationRowModel: getPaginationRowModel(),
         ...(getRowId ? {getRowId} : {}),
         getSortedRowModel: getSortedRowModel(),
         initialState: {pagination: {pageSize}},
+        onExpandedChange: handleExpandedChange,
         onSortingChange: setSorting,
-        state: {sorting},
+        state: {expanded, sorting},
     });
 
     const {rows} = table.getRowModel();
@@ -64,20 +85,36 @@ const DataTable = <TData, TValue>({
     const totalRows = table.getFilteredRowModel().rows.length;
     const isPlural = 1 !== totalRows;
 
+    // Compute total min-width from column sizes so the table can exceed its
+    // container width when many columns are selected, enabling horizontal scroll.
+    const totalMinWidth = table
+        .getVisibleLeafColumns()
+        .reduce((sum, col) => sum + col.getSize(), 0);
+
     return (
         <div className={"space-y-2"}>
-            <div className={"rounded-md border min-w-0"}>
-                <Table className={"table-fixed"}>
+            <div className={"rounded-md border overflow-x-auto"}>
+                <Table
+                    className={"table-fixed"}
+                    style={{minWidth: `${totalMinWidth}px`}}
+                >
+                    <colgroup>
+                        {table.getHeaderGroups().map((headerGroup) =>
+                            headerGroup.headers.map((header) => (
+                                <col
+                                    key={header.id}
+                                    style={header.getSize() ?
+                                        {width: `${header.getSize()}px`} :
+                                        undefined}
+                                />
+                            )),
+                        )}
+                    </colgroup>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        style={header.getSize() ?
-                                            {width: header.getSize()} :
-                                            undefined}
-                                    >
+                                    <TableHead key={header.id}>
                                         {header.isPlaceholder ?
                                             null :
                                             flexRender(
@@ -92,21 +129,28 @@ const DataTable = <TData, TValue>({
                     <TableBody>
                         {hasRows ?
                             rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            style={cell.column.getSize() ?
-                                                {width: cell.column.getSize()} :
-                                                undefined}
-                                        >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext(),
-                                            )}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
+                                <Fragment key={row.id}>
+                                    <TableRow>
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell key={cell.id}>
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext(),
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                    {row.getIsExpanded() && renderSubComponent && (
+                                        <TableRow key={`${row.id}-expanded`}>
+                                            <TableCell
+                                                className={"p-0 overflow-visible"}
+                                                colSpan={row.getVisibleCells().length}
+                                            >
+                                                {renderSubComponent(row)}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </Fragment>
                             )) :
                             (
                                 <TableRow>

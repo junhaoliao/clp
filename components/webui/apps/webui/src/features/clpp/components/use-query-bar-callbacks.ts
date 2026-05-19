@@ -48,8 +48,11 @@ const onKey = (e: React.KeyboardEvent, s: BarState) => {
         e.preventDefault();
         const item = s.items[s.activeIndex];
         if (item) {
-            s.setQuery(s.apply(item, s.query));
-            s.setShowDropdown(false);
+            const newQuery = s.apply(item, s.query);
+            s.setQuery(newQuery);
+            const ctx = parseQueryContext(newQuery);
+            s.update(ctx);
+            s.setShowDropdown("none" !== ctx.type);
             s.inputRef.current?.focus();
         }
     } else if ("Escape" === e.key) {
@@ -90,8 +93,11 @@ const onFocus = (s: BarState) => {
  * @param s
  */
 const onSelect = (sel: CompletionItem, s: BarState) => {
-    s.setQuery(s.apply(sel, s.query));
-    s.setShowDropdown(false);
+    const newQuery = s.apply(sel, s.query);
+    s.setQuery(newQuery);
+    const ctx = parseQueryContext(newQuery);
+    s.update(ctx);
+    s.setShowDropdown("none" !== ctx.type);
     s.inputRef.current?.focus();
 };
 

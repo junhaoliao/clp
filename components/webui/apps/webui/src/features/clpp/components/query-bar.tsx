@@ -165,10 +165,26 @@ const QueryBar = ({
         >
             <Popover
                 open={showDropdown}
-                onOpenChange={(open: boolean) => {
-                    if (!open) {
-                        setShowDropdown(false);
+                onOpenChange={(open: boolean, eventDetails: {reason: string}) => {
+                    if (open) {
+                        setShowDropdown(true);
+
+                        return;
                     }
+
+                    // When the trigger (the input wrapper) is clicked, the
+                    // Popover.Trigger toggles. If the input already had focus
+                    // (handleFocus opened the dropdown before the click event),
+                    // the toggle fires onOpenChange(false) with reason
+                    // "trigger-press" and immediately dismisses the dropdown.
+                    // Ignore trigger-press close events so the dropdown stays
+                    // open while the input is focused. The dropdown is instead
+                    // closed via useClickOutside (clicks outside the query bar)
+                    // or the Escape key handler.
+                    if ("trigger-press" === eventDetails.reason) {
+                        return;
+                    }
+                    setShowDropdown(false);
                 }}
             >
                 <PopoverTrigger
@@ -176,13 +192,28 @@ const QueryBar = ({
                     render={<div className={"relative flex-1"}/>}
                 >
                     <Input
-                        className={"h-9 text-sm font-mono"}
+                        className={`h-9 text-sm font-mono${0 < query.length ? " pr-8" : ""}`}
                         placeholder={placeholder}
                         ref={inputRef}
                         value={query}
                         onChange={handleInputChange}
                         onFocus={handleFocus}
-                        onKeyDown={handleKeyDown}/>
+                        onKeyDown={handleKeyDown}
+                    />
+                    {0 < query.length && (
+                        <button
+                            className={
+                                "absolute right-2 top-1/2 -translate-y-1/2" +
+                                " text-muted-foreground hover:text-foreground"
+                            }
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleClear();
+                            }}
+                        >
+                            <X className={"h-4 w-4"}/>
+                        </button>
+                    )}
                 </PopoverTrigger>
                 <PopoverContent
                     align={"start"}
@@ -204,14 +235,6 @@ const QueryBar = ({
             >
                 <SearchIcon className={"h-4 w-4"}/>
             </Button>
-            {0 < query.length && (
-                <button
-                    className={"text-muted-foreground hover:text-foreground"}
-                    onClick={handleClear}
-                >
-                    <X className={"h-4 w-4"}/>
-                </button>
-            )}
         </div>
     );
 };

@@ -1,7 +1,12 @@
 import {useState} from "react";
 
 import {useQuery} from "@tanstack/react-query";
-import {type ColumnDef} from "@tanstack/react-table";
+import {
+    type ColumnDef,
+    type ExpandedState,
+    type Row,
+    type Updater,
+} from "@tanstack/react-table";
 import {type AppType} from "@webui/server/hono-app";
 import {hc} from "hono/client";
 import {
@@ -10,7 +15,7 @@ import {
     PlusIcon,
 } from "lucide-react";
 
-import {ExpandedRows} from "./patterns-expanded-rows";
+import {ExpandedRowContent} from "./patterns-expanded-rows";
 import {useLogtypeExamples} from "./use-logtype-examples";
 
 import {Button} from "@/components/ui/button";
@@ -37,16 +42,60 @@ type PatternsDataTableProps = {
  *
  * @param onAdd
  * @param onRemove
- * @param expandedIds
- * @param toggleExpanded
  * @return Column definitions.
  */
 const buildColumns = (
     onAdd: (logtypeId: number) => void,
     onRemove: (logtypeId: number) => void,
-    expandedIds: Set<string>,
-    toggleExpanded: (key: string) => void,
 ): ColumnDef<LogtypeEntry>[] => [
+    {
+        cell: ({row}) => (
+            <div className={"flex gap-0.5"}>
+                <Button
+                    aria-label={"Add filter for this pattern"}
+                    className={"h-5 w-5"}
+                    size={"icon"}
+                    variant={"ghost"}
+                    onClick={() => {
+                        onAdd(row.original.id);
+                    }}
+                >
+                    <PlusIcon className={"h-3 w-3"}/>
+                </Button>
+                <Button
+                    aria-label={"Exclude this pattern"}
+                    className={"h-5 w-5"}
+                    size={"icon"}
+                    variant={"ghost"}
+                    onClick={() => {
+                        onRemove(row.original.id);
+                    }}
+                >
+                    <MinusIcon className={"h-3 w-3"}/>
+                </Button>
+                <Button
+                    aria-label={"Toggle row details"}
+                    className={"h-5 w-5"}
+                    size={"icon"}
+                    variant={"ghost"}
+                    onClick={row.getToggleExpandedHandler()}
+                >
+                    <ChevronDownIcon
+                        className={
+                            "h-3 w-3 transition-transform" +
+                            ` ${row.getIsExpanded() ?
+                                "rotate-180" :
+                                ""}`
+                        }
+                    />
+                </Button>
+            </div>
+        ),
+        enableSorting: false,
+        header: "Actions",
+        id: "actions",
+        size: 76,
+    },
     {
         accessorKey: "count",
         cell: ({row}) => row.original.count.toLocaleString(),
@@ -55,7 +104,7 @@ const buildColumns = (
                 column={column}
                 title={"Count"}/>
         ),
-        size: 80,
+        size: 60,
     },
     {
         accessorKey: "log_type",
@@ -65,60 +114,7 @@ const buildColumns = (
             </span>
         ),
         enableSorting: false,
-        header: "Example",
-    },
-    {
-        cell: ({row}) => {
-            const ck = logtypeCompositeKey(row.original);
-
-            return (
-                <div className={"flex gap-1"}>
-                    <Button
-                        aria-label={"Add filter for this pattern"}
-                        className={"h-6 w-6"}
-                        size={"icon"}
-                        variant={"ghost"}
-                        onClick={() => {
-                            onAdd(row.original.id);
-                        }}
-                    >
-                        <PlusIcon className={"h-3.5 w-3.5"}/>
-                    </Button>
-                    <Button
-                        aria-label={"Exclude this pattern"}
-                        className={"h-6 w-6"}
-                        size={"icon"}
-                        variant={"ghost"}
-                        onClick={() => {
-                            onRemove(row.original.id);
-                        }}
-                    >
-                        <MinusIcon className={"h-3.5 w-3.5"}/>
-                    </Button>
-                    <Button
-                        aria-label={"Toggle row details"}
-                        className={"h-6 w-6"}
-                        size={"icon"}
-                        variant={"ghost"}
-                        onClick={() => {
-                            toggleExpanded(ck);
-                        }}
-                    >
-                        <ChevronDownIcon
-                            className={
-                                "h-3.5 w-3.5 transition-transform" +
-                                ` ${expandedIds.has(ck) ?
-                                    "rotate-180" :
-                                    ""}`
-                            }/>
-                    </Button>
-                </div>
-            );
-        },
-        enableSorting: false,
-        header: "Actions",
-        id: "actions",
-        size: 100,
+        header: "Pattern",
     },
 ];
 
@@ -192,27 +188,41 @@ const PatternsDataTable = ({
             search.toLowerCase(),
         ));
 
-    const toggleExpanded = (key: string) => {
-        setExpandedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-
-            return next;
-        });
-    };
-
     const columns = buildColumns(
         onAddPatternFilter ?? (() => {
         }),
         onRemovePatternFilter ?? (() => {
         }),
-        expandedIds,
-        toggleExpanded,
     );
+
+    const handleExpandedChange = (updater: Updater<ExpandedState>) => {
+        // Resolve the updater to get the new expanded state, then sync
+        // expandedIds so the examples query can fetch data for expanded rows.
+        setExpandedIds((prev) => {
+            const prevState: ExpandedState = Object.fromEntries(
+                [...prev].map((id) => [id, true]),
+            );
+            const resolved: ExpandedState = typeof updater === "function" ?
+                updater(prevState) :
+                updater;
+
+            return new Set(
+                Object.entries(resolved)
+                    .filter(([, v]) => v)
+                    .map(([k]) => k),
+            );
+        });
+    };
+
+    const renderSubComponent = (row: Row<LogtypeEntry>) => {
+        const ck = logtypeCompositeKey(row.original);
+
+        return (
+            <ExpandedRowContent
+                entry={row.original}
+                examples={examplesMap.get(ck) ?? []}/>
+        );
+    };
 
     return (
         <div className={"flex flex-col gap-4"}>
@@ -238,20 +248,14 @@ const PatternsDataTable = ({
                 </p>
             </div>
 
-            <div className={"rounded-md border"}>
-                <DataTable
-                    columns={columns}
-                    data={filtered}
-                    getRowId={(row) => logtypeCompositeKey(row)}
-                    pageSize={20}/>
-            </div>
-
-            {0 < expandedIds.size && (
-                <ExpandedRows
-                    examplesMap={examplesMap}
-                    expandedIds={expandedIds}
-                    filtered={filtered}/>
-            )}
+            <DataTable
+                columns={columns}
+                data={filtered}
+                getRowCanExpand={() => true}
+                getRowId={(row) => logtypeCompositeKey(row)}
+                onExpandedChange={handleExpandedChange}
+                pageSize={20}
+                renderSubComponent={renderSubComponent}/>
         </div>
     );
 };

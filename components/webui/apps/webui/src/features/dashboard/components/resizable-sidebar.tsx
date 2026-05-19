@@ -68,7 +68,7 @@ export const ResizableSidebar = ({children, defaultWidth = 280, side}: Resizable
         >
             {isRight && (
                 <div
-                    className={"w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
+                    className={"w-1 ml-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
                     onMouseDown={handleMouseDown}/>
             )}
             <div className={"flex-1 overflow-auto"}>
@@ -76,7 +76,7 @@ export const ResizableSidebar = ({children, defaultWidth = 280, side}: Resizable
             </div>
             {!isRight && (
                 <div
-                    className={"w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
+                    className={"w-1 mr-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
                     onMouseDown={handleMouseDown}/>
             )}
         </div>

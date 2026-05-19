@@ -26,12 +26,17 @@ import {
 const data = {
     navMain: [
         {
+            title: "Dashboard",
+            to: "/dashboards",
+            icon: LayoutDashboard,
+        },
+        {
             title: "Ingest",
             to: "/ingest",
             icon: Upload,
         },
         {
-            title: "Ingest (new)",
+            title: "Ingest new",
             to: "/ingest-new",
             icon: Upload,
         },
@@ -39,11 +44,6 @@ const data = {
             title: "Explore",
             to: "/search",
             icon: Search,
-        },
-        {
-            title: "Dashboards",
-            to: "/dashboards",
-            icon: LayoutDashboard,
         },
     ],
     navSecondary: [

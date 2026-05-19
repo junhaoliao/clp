@@ -202,3 +202,126 @@ describe("buildSchemaTree — LogTypeID filtering", () => {
         expect(keys).not.toContain("log_type");
     });
 });
+
+describe("buildSchemaTree — event count propagation from logtype stats", () => {
+    it("should propagate logtype stat event counts through the tree", () => {
+        const docs = [
+            // Logtype stat documents (without _schema_tree marker)
+            {id: 10, count: 5000, log_type: "INFO *"},
+            {id: 20, count: 3000, log_type: "ERROR *"},
+            // Schema tree document
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 1, children: [1, 2]},
+                    {id: 1, parentId: 0, key: "message", type: 100, count: 1, children: [3, 4]},
+                    {id: 2, parentId: 0, key: "level", type: 2, count: 1, children: []},
+                    {id: 3, parentId: 1, key: "10", type: 102, count: 1, children: []},
+                    {id: 4, parentId: 1, key: "20", type: 102, count: 1, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        // Root count = sum of all LogTypeID descendant counts
+        expect(result.count).toBe(8000);
+        // "message" node: parent of both LogTypeID nodes → 5000 + 3000
+        const messageNode = result.children.find((c) => "message" === c.key);
+        expect(messageNode?.count).toBe(8000);
+        // "level" node: sibling with no LogTypeID descendants, inherits
+        // parent's count via top-down propagation
+        const levelNode = result.children.find((c) => "level" === c.key);
+        expect(levelNode?.count).toBe(8000);
+        // LogTypeID nodes should be excluded from children
+        const keys = result.children.flatMap((c) => c.children?.map((cc) => cc.key) ?? []);
+        expect(keys).not.toContain("10");
+        expect(keys).not.toContain("20");
+    });
+
+    it("should fall back to raw.count when no logtype stats are available", () => {
+        const docs = [
+            // No logtype stat documents — only schema tree
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 42, children: [1]},
+                    {id: 1, parentId: 0, key: "message", type: 100, count: 7, children: [2]},
+                    {id: 2, parentId: 1, key: "5", type: 102, count: 3, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        // Without logtype stats, raw.count values are used as-is
+        expect(result.count).toBe(42);
+        const messageNode = result.children.find((c) => "message" === c.key);
+        expect(messageNode?.count).toBe(7);
+    });
+
+    it("should handle logtype stats with IDs not present in the tree", () => {
+        const docs = [
+            // Logtype stat with ID 99 — no matching LogTypeID node in tree
+            {id: 99, count: 9999, log_type: "ORPHAN *"},
+            // Logtype stat with ID 10 — matches tree
+            {id: 10, count: 100, log_type: "MATCHED *"},
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 1, children: [1]},
+                    {id: 1, parentId: 0, key: "msg", type: 100, count: 1, children: [2]},
+                    {id: 2, parentId: 1, key: "10", type: 102, count: 1, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        // Only logtype ID 10 matches → count = 100
+        expect(result.count).toBe(100);
+        const msgNode = result.children.find((c) => "msg" === c.key);
+        expect(msgNode?.count).toBe(100);
+    });
+
+    it("should sum counts when multiple logtype stats share the same ID", () => {
+        const docs = [
+            // Two archives reporting counts for the same logtype dictionary ID
+            {id: 5, count: 200, log_type: "INFO *", archive_id: "a1"},
+            {id: 5, count: 300, log_type: "INFO *", archive_id: "a2"},
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 1, children: [1]},
+                    {id: 1, parentId: 0, key: "body", type: 100, count: 1, children: [2]},
+                    {id: 2, parentId: 1, key: "5", type: 102, count: 1, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        expect(result.count).toBe(500);
+    });
+
+    it("should propagate counts top-down to siblings without LogTypeID descendants", () => {
+        const docs = [
+            {id: 10, count: 5000, log_type: "INFO *"},
+            {
+                _schema_tree: true,
+                nodes: [
+                    {id: 0, parentId: -1, key: "root", type: 5, count: 1, children: [1, 2, 3]},
+                    {id: 1, parentId: 0, key: "message", type: 100, count: 1, children: [4]},
+                    {id: 2, parentId: 0, key: "timestamp", type: 2, count: 1, children: []},
+                    {id: 3, parentId: 0, key: "service", type: 2, count: 1, children: []},
+                    {id: 4, parentId: 1, key: "10", type: 102, count: 1, children: []},
+                ],
+            },
+        ];
+
+        const result = buildSchemaTree(docs);
+        // Bottom-up: root=5000, message=5000
+        // Top-down: timestamp and service (count=0, parent=5000) → 5000
+        expect(result.count).toBe(5000);
+        const tsNode = result.children.find((c) => "timestamp" === c.key);
+        expect(tsNode?.count).toBe(5000);
+        const svcNode = result.children.find((c) => "service" === c.key);
+        expect(svcNode?.count).toBe(5000);
+    });
+});

@@ -90,6 +90,7 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
             ),
             enableSorting: false,
             header: "Body",
+            size: 300,
         },
     ];
 

@@ -1,5 +1,4 @@
 import {
-    logtypeCompositeKey,
     type LogtypeEntry,
     type LogtypeExample,
 } from "@/features/clpp/types";
@@ -60,69 +59,56 @@ const ExampleEvents = ({examples}: {examples: LogtypeExample[]}) => {
 };
 
 /**
- * Expanded details for selected logtype entries.
+ * Expanded details for a single logtype entry, rendered inline beneath the row.
  *
  * @param root0
- * @param root0.examplesMap
- * @param root0.filtered
- * @param root0.expandedIds
+ * @param root0.entry
+ * @param root0.examples
  * @return JSX element
  */
-const ExpandedRows = ({examplesMap, filtered, expandedIds}: {
-    examplesMap: Map<string, LogtypeExample[]>;
-    filtered: LogtypeEntry[];
-    expandedIds: Set<string>;
+const ExpandedRowContent = ({entry, examples}: {
+    entry: LogtypeEntry;
+    examples: LogtypeExample[];
 }) => (
-    <div className={"space-y-2"}>
-        {filtered
-            .filter((lt) => expandedIds.has(logtypeCompositeKey(lt)))
-            .map((lt) => {
-                const ck = logtypeCompositeKey(lt);
-
-                return (
-                    <div
-                        key={ck}
-                        className={
-                            "ml-6 border-l px-4 py-2 text-xs" +
-                            " space-y-2 bg-muted/30 rounded-r-md"
-                        }
-                    >
-                        <p>
-                            <span className={"font-semibold"}>Tokens:</span>
-                            {" "}
-                            {extractTokens(lt.log_type).join(", ") || "none"}
-                        </p>
-                        <p>
-                            <span className={"font-semibold"}>Regex:</span>
-                            {" "}
-                            <code className={"text-foreground"}>
-                                {lt.log_type}
-                            </code>
-                        </p>
-                        <p className={"text-muted-foreground"}>
-                            <span className={"font-semibold text-foreground"}>
-                                ID:
-                            </span>
-                            {" "}
-                            {lt.id}
-                            {lt.archive_id && (
-                                <>
-                                    {" "}
-                                    | Archive:
-                                    {" "}
-                                    <code className={"text-foreground"}>
-                                        {lt.archive_id}
-                                    </code>
-                                </>
-                            )}
-                        </p>
-                        <ExampleEvents
-                            examples={examplesMap.get(ck) ?? []}/>
-                    </div>
-                );
-            })}
+    <div
+        className={
+            "ml-6 border-l px-4 py-2 text-xs" +
+            " space-y-2 bg-muted/30 rounded-r-md"
+        }
+    >
+        <p>
+            <span className={"font-semibold"}>Tokens:</span>
+            {" "}
+            {extractTokens(entry.log_type).join(", ") || "none"}
+        </p>
+        <p>
+            <span className={"font-semibold"}>Regex:</span>
+            {" "}
+            <code className={"text-foreground"}>
+                {entry.log_type}
+            </code>
+        </p>
+        <p className={"text-muted-foreground"}>
+            <span className={"font-semibold text-foreground"}>
+                ID:
+            </span>
+            {" "}
+            {entry.id}
+            {entry.archive_id && (
+                <>
+                    {" "}
+                    | Archive:
+                    {" "}
+                    <code className={"text-foreground"}>
+                        {entry.archive_id}
+                    </code>
+                </>
+            )}
+        </p>
+        <ExampleEvents
+            examples={examples}/>
     </div>
 );
 
 
-export {ExpandedRows};
+export {ExpandedRowContent};

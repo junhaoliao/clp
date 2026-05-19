@@ -62,6 +62,11 @@ const parseQueryContext = (text: string): QueryContext => {
         return {type: "field-list"};
     }
 
+    // Standalone wildcard — match-all query, no completions needed.
+    if ("*" === trimmed) {
+        return {type: "none"};
+    }
+
     if (trimmed.endsWith(":")) {
         const fieldPart = trimmed.split(/\s+/).pop() ?? "";
         const field = fieldPart.slice(0, -1);
@@ -80,7 +85,16 @@ const parseQueryContext = (text: string): QueryContext => {
         return {type: "connectors"};
     }
 
-    const lastToken = trimmed.split(/\s+/).pop() ?? "";
+    const tokens = trimmed.split(/\s+/);
+    const lastToken = tokens.pop() ?? "";
+
+    // If the preceding token ends with ":" the last token is a field value
+    // (e.g., "level: INFO"). No further completions until the user types
+    // a space to trigger the connectors context.
+    const prevToken = tokens.pop() ?? "";
+    if (prevToken.endsWith(":")) {
+        return {type: "none"};
+    }
 
     if (!lastToken.includes(":")) {
         return {prefix: lastToken, type: "field-prefix"};
@@ -196,7 +210,12 @@ const applyCompletion = (
         return `${trimmed} ${item.label} `;
     }
 
-    return `${trimmed}${item.label} `;
+    // syntax-hint type (e.g., "*" or field values in field-values context).
+    // The trimmed query ends with ":" (e.g., "field:"); insert the value
+    // with a space separator but without a trailing space so that
+    // parseQueryContext does not detect a complete clause + space (which
+    // would show the connectors dropdown and intercept Enter).
+    return `${trimmed} ${item.label}`;
 };
 
 /**

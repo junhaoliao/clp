@@ -107,16 +107,8 @@ const FieldBrowser = ({
         refetchInterval: false,
     });
 
-    const mkStd = (n: string): FieldItem => ({
-        count: 0,
-        isSharedNode: false,
-        name: n,
-        type: "string",
-    });
     const treeFields = treeData?.tree ? flattenTree(treeData.tree) : [];
-    const staticFields = [mkStd("timestamp"), mkStd("service"), mkStd("level")];
-    // Deduplicate by name: merge counts for same-named tree fields, then add
-    // static fields not already present.
+    // Deduplicate by name: merge counts for same-named tree fields.
     const fieldsByName = new Map<string, FieldItem>();
     for (const f of treeFields) {
         const existing = fieldsByName.get(f.name);
@@ -124,11 +116,6 @@ const FieldBrowser = ({
             existing.count += f.count;
         } else {
             fieldsByName.set(f.name, {...f});
-        }
-    }
-    for (const f of staticFields) {
-        if (!fieldsByName.has(f.name)) {
-            fieldsByName.set(f.name, f);
         }
     }
     const allFields = Array.from(fieldsByName.values());

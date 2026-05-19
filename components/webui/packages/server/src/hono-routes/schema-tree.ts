@@ -74,44 +74,58 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
     }
 
     if (schemaTreeDoc?.nodes && 0 < schemaTreeDoc.nodes.length) {
-        // NodeType 102 = LogTypeID (internal dictionary IDs, not user-facing).
-        // Per design doc §9.2, these should not appear in field lists.
         const LOGTYPE_ID_NODE_TYPE = 102;
-        const excludedIds = new Set<number>();
 
-        for (const raw of schemaTreeDoc.nodes) {
-            if (LOGTYPE_ID_NODE_TYPE === raw.type) {
-                excludedIds.add(raw.id);
+        // Step 1: Build logtype dictionary ID → total event count map from
+        // logtype stat documents (those WITHOUT the _schema_tree marker).
+        const logtypeCountMap = new Map<number, number>();
+        for (const doc of logtypeDocs) {
+            if (true === doc["_schema_tree"]) {
+                continue;
+            }
+            const id = doc["id"] as number | undefined;
+            const count = doc["count"] as number | undefined;
+            if (undefined !== id && undefined !== count) {
+                logtypeCountMap.set(id, (logtypeCountMap.get(id) ?? 0) + count);
             }
         }
 
-        // Reconstruct tree from serialized nodes, excluding LogTypeID nodes
+        const hasLogtypeStats = 0 < logtypeCountMap.size;
+
+        // Step 2: Identify LogTypeID nodes (still excluded from final output,
+        // but kept temporarily as bridges between tree nodes and event counts).
+        const logtypeIdNodeIds = new Set<number>();
+        for (const raw of schemaTreeDoc.nodes) {
+            if (LOGTYPE_ID_NODE_TYPE === raw.type) {
+                logtypeIdNodeIds.add(raw.id);
+            }
+        }
+
+        // Build node map including ALL nodes (LogTypeID nodes kept
+        // temporarily for count propagation).
         const nodeMap = new Map<number, SchemaTreeNode>();
-        const childrenMap = new Map<number, SchemaTreeNode[]>();
         const rootIds: number[] = [];
 
         for (const raw of schemaTreeDoc.nodes) {
-            if (excludedIds.has(raw.id)) {
-                continue;
-            }
-
             const node: SchemaTreeNode = {
                 children: [],
-                count: raw.count,
+                // Use 0 when logtype stats are available (we'll propagate
+                // real counts); fall back to raw.count for backward compat.
+                count: hasLogtypeStats ? 0 : raw.count,
                 id: `var-${raw.id}-${raw.type}`,
                 key: raw.key,
                 type: NODE_TYPE_MAP[raw.type] ?? "object",
             };
-
             nodeMap.set(raw.id, node);
             if (-1 === raw.parentId) {
                 rootIds.push(raw.id);
             }
         }
 
-        // Build parent-child relationships, skipping excluded parents
+        // Build parent-child relationships for ALL nodes
+        const childrenMap = new Map<number, SchemaTreeNode[]>();
         for (const raw of schemaTreeDoc.nodes) {
-            if (-1 === raw.parentId || excludedIds.has(raw.id)) {
+            if (-1 === raw.parentId) {
                 continue;
             }
 
@@ -126,8 +140,6 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
             childrenMap.get(raw.parentId)!.push(node);
         }
 
-        // Assign children to nodes, pruning object-type nodes that have no
-        // children after LogTypeID exclusion
         for (const [parentId, children] of childrenMap) {
             const parentNode = nodeMap.get(parentId);
             if (parentNode) {
@@ -135,13 +147,95 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
             }
         }
 
+        // Step 3: Assign actual event counts to LogTypeID nodes from
+        // logtype stats. Their key is the string-formatted logtype
+        // dictionary ID (e.g., "42").
+        if (hasLogtypeStats) {
+            for (const logtypeIdNodeId of logtypeIdNodeIds) {
+                const node = nodeMap.get(logtypeIdNodeId);
+                if (!node) {
+                    continue;
+                }
+                const logtypeDictId = parseInt(node.key, 10);
+                if (Number.isNaN(logtypeDictId)) {
+                    continue;
+                }
+                node.count = logtypeCountMap.get(logtypeDictId) ?? 0;
+            }
+
+            // Step 4: Propagate event counts upward via post-order traversal.
+            // Each internal node's count = sum of children's counts.
+            const propagateCountsUp = (node: SchemaTreeNode): number => {
+                if (0 === node.children.length) {
+                    return node.count;
+                }
+                let total = 0;
+                for (const child of node.children) {
+                    total += propagateCountsUp(child);
+                }
+                node.count = total;
+
+                return total;
+            };
+
+            for (const rootId of rootIds) {
+                const rootNode = nodeMap.get(rootId);
+                if (rootNode) {
+                    propagateCountsUp(rootNode);
+                }
+            }
+        }
+
+        // Step 5: Remove LogTypeID nodes from parents' children arrays.
+        const logtypeIdNodeSet = new Set<SchemaTreeNode>();
+        for (const logtypeIdNodeId of logtypeIdNodeIds) {
+            const node = nodeMap.get(logtypeIdNodeId);
+            if (node) {
+                logtypeIdNodeSet.add(node);
+            }
+            nodeMap.delete(logtypeIdNodeId);
+        }
+
+        for (const [parentId, children] of childrenMap) {
+            const parentNode = nodeMap.get(parentId);
+            if (parentNode) {
+                parentNode.children = children.filter(
+                    (child) => !logtypeIdNodeSet.has(child),
+                );
+            }
+        }
+
+        // Step 6: Propagate counts downward. After bottom-up propagation,
+        // only ancestors of LogTypeID nodes have non-zero counts. Sibling
+        // fields (e.g., logLevel, timestamp) remain at 0 because they
+        // have no LogTypeID descendants. Top-down pass: any node whose
+        // parent has a non-zero count but whose own count is still 0
+        // inherits the parent's count — it appears in the same events.
+        if (hasLogtypeStats) {
+            const propagateCountsDown = (node: SchemaTreeNode) => {
+                for (const child of node.children) {
+                    if (0 === child.count && 0 < node.count) {
+                        child.count = node.count;
+                    }
+                    propagateCountsDown(child);
+                }
+            };
+
+            for (const rootId of rootIds) {
+                const rootNode = nodeMap.get(rootId);
+                if (rootNode) {
+                    propagateCountsDown(rootNode);
+                }
+            }
+        }
+
         // Prune empty object nodes whose only children were LogTypeID nodes
         const pruneEmptyObjects = (node: SchemaTreeNode): boolean => {
             node.children = node.children.filter((child) => pruneEmptyObjects(child));
+
             return !("object" === node.type && 0 === node.children.length);
         };
 
-        // Assign children and prune
         for (const rootId of rootIds) {
             const rootNode = nodeMap.get(rootId);
             if (rootNode) {
