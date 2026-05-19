@@ -79,11 +79,12 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
                     column={column}
                     title={"Timestamp"}/>
             ),
+            size: 180,
         },
         {
             accessorKey: "body",
             cell: ({row}) => (
-                <div className={"truncate max-w-[600px] text-xs font-mono"}>
+                <div className={"truncate text-xs font-mono"}>
                     {row.original.body}
                 </div>
             ),
@@ -104,7 +105,7 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
                 const value = row.original[field];
 
                 return (
-                    <span className={"truncate text-xs"}>
+                    <span className={"truncate text-xs whitespace-nowrap"}>
                         {hasValue(value) ?
                             formatUnknown(value) :
                             "—"}
@@ -113,6 +114,7 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
             },
             enableSorting: false,
             header: field,
+            size: 140,
         });
     }
 

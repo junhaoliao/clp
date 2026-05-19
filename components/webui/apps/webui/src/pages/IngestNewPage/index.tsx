@@ -4,6 +4,7 @@ import {CLP_STORAGE_ENGINES} from "@webui/common/config";
 import {RefreshCw} from "lucide-react";
 
 import {Button} from "@/components/ui/button";
+import {ClppStatsRow} from "@/features/clpp/components/clpp-stats-row";
 import {DashboardGrid} from "@/features/dashboard/components/dashboard-grid";
 import {useDashboardLayoutStore} from "@/features/dashboard/stores/layout-store";
 import {useHeaderActions} from "@/hooks/use-header-actions";
@@ -86,12 +87,15 @@ const IngestNewPage = () => {
         );
     }
 
+    const dataset: string = datasetNames[0] ?? "";
+
     return (
         <div className={"flex flex-col h-full overflow-auto"}>
             <div className={"bg-muted/30"}>
                 <DashboardGrid
                     isEditing={false}
                     panels={dashboard.panels}/>
+                {isClpS && <ClppStatsRow dataset={dataset}/>}
             </div>
 
             <Compress/>

@@ -34,8 +34,7 @@ import {FieldBrowser} from "@/features/clpp/components/field-browser";
 import {LogsDataTable} from "@/features/clpp/components/logs-data-table";
 import {PatternsDataTable} from "@/features/clpp/components/patterns-data-table";
 import {QueryBar} from "@/features/clpp/components/query-bar";
-import {QueryInterpretationPanel} from "@/features/clpp/components/query-interpretation-panel";
-import {useClppSettingsStore} from "@/features/clpp/stores/clpp-settings-store";
+import {ResizableSidebar} from "@/features/dashboard/components/resizable-sidebar";
 import type {SchemaTreeResponse} from "@/features/clpp/types";
 
 
@@ -94,9 +93,6 @@ const ExplorePage = () => {
     const selectedDatasets = useSearchStore(
         (state) => state.selectedDatasets,
     );
-    const isExperimentalMode = useClppSettingsStore(
-        (s) => s.experimentalMode,
-    );
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     const {
         addPatternFilter: handleAddPatternFilter,
@@ -121,33 +117,12 @@ const ExplorePage = () => {
         });
     };
 
-    // In experimental mode, SearchResultsVirtualTable is not mounted (ExploreTabs
-    // renders LogsDataTable instead), so its useSearchResults/useCursor hooks
-    // never run. This hook subscribes to Socket.IO results and syncs them to the
-    // store only when experimental mode is active.
-    useExperimentalSearchResults(isExperimentalMode);
+    useExperimentalSearchResults(true);
 
     const searchResults = useSearchStore(
         (state) => state.searchResults,
     );
     const logEventData = toLogEvents(searchResults ?? []);
-
-    const logsDataTable = isExperimentalMode ?
-        (
-            <LogsDataTable
-                data={logEventData}
-                selectedFields={selectedFields}/>
-        ) :
-        null;
-
-    const patternsDataTable = isExperimentalMode ?
-        (
-            <PatternsDataTable
-                dataset={dataset}
-                onAddPatternFilter={handleAddPatternFilter}
-                onRemovePatternFilter={handleRemovePatternFilter}/>
-        ) :
-        null;
 
     return (
         <>
@@ -155,41 +130,44 @@ const ExplorePage = () => {
                 <ProgressBar/>
             )}
             <div className={"flex h-full"}>
-                {isExperimentalMode && (
+                <ResizableSidebar side="left">
                     <FieldBrowser
                         dataset={dataset}
                         selectedFields={selectedFields}
                         onToggleField={toggleField}/>
-                )}
+                </ResizableSidebar>
                 <div className={"flex flex-1 flex-col min-h-0"}>
-                    {isExperimentalMode && (
-                        <div className={"flex items-center gap-2 px-3 py-2"}>
-                            {CLP_STORAGE_ENGINES.CLP_S ===
-                              SETTINGS_STORAGE_ENGINE && (
-                                <div className={"flex items-center gap-1.5 shrink-0"}>
-                                    <span className={"text-xs font-medium text-muted-foreground"}>
-                                        Dataset
-                                    </span>
-                                    <DatasetSelect isMultiSelect={false}/>
-                                </div>
-                            )}
-                            <div className={"flex-1"}>
-                                <QueryBar
-                                    dataset={dataset}
-                                    externalValue={kqlQueryString}
-                                    fieldNames={fieldOptions}
-                                    onQuerySubmit={handleQuerySubmit}/>
+                    <div className={"flex items-center gap-2 px-3 py-2"}>
+                        {CLP_STORAGE_ENGINES.CLP_S ===
+                          SETTINGS_STORAGE_ENGINE && (
+                            <div className={"flex items-center gap-1.5 shrink-0"}>
+                                <span className={"text-xs font-medium text-muted-foreground"}>
+                                    Dataset
+                                </span>
+                                <DatasetSelect isMultiSelect={false}/>
                             </div>
+                        )}
+                        <div className={"flex-1"}>
+                            <QueryBar
+                                dataset={dataset}
+                                externalValue={kqlQueryString}
+                                fieldNames={fieldOptions}
+                                onQuerySubmit={handleQuerySubmit}/>
                         </div>
-                    )}
-                    {isExperimentalMode && (
-                        <QueryInterpretationPanel query={kqlQueryString}/>
-                    )}
+                    </div>
                     <ExploreTabs
                         dataset={dataset}
-                        isExperimentalMode={isExperimentalMode}
-                        logsDataTable={logsDataTable}
-                        patternsDataTable={patternsDataTable}
+                        logsDataTable={
+                            <LogsDataTable
+                                data={logEventData}
+                                selectedFields={selectedFields}/>
+                        }
+                        patternsDataTable={
+                            <PatternsDataTable
+                                dataset={dataset}
+                                onAddPatternFilter={handleAddPatternFilter}
+                                onRemovePatternFilter={handleRemovePatternFilter}/>
+                        }
                     >
                         <div className={styles["searchPageContainer"]}>
                             <SearchControls/>

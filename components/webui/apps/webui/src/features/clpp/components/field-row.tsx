@@ -2,8 +2,6 @@ import {useState} from "react";
 
 import {X} from "lucide-react";
 
-import {WildcardOnNumericBadge} from "@/features/clpp/components/wildcard-on-numeric-badge";
-
 
 type FieldItem = {
     isSharedNode: boolean;
@@ -114,11 +112,6 @@ const FieldRow = ({isSelected, onToggleSelect, field}: {
                 >
                     [!]
                 </span>
-            )}
-            {("int" === field.type || "float" === field.type) && (
-                <WildcardOnNumericBadge
-                    fieldName={field.name}
-                    fieldType={field.type}/>
             )}
             <span className={"text-[10px] text-muted-foreground shrink-0"}>
                 {field.count.toLocaleString()}

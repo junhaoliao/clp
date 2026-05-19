@@ -145,7 +145,7 @@ const FieldBrowser = ({
     );
 
     return (
-        <div className={"flex h-full w-60 flex-col border-r bg-background"}>
+        <div className={"flex h-full flex-col bg-background"}>
             <div className={"p-2"}>
                 <Input
                     className={"h-7 text-xs"}

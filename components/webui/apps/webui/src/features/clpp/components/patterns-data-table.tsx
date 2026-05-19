@@ -55,11 +55,12 @@ const buildColumns = (
                 column={column}
                 title={"Count"}/>
         ),
+        size: 80,
     },
     {
         accessorKey: "log_type",
         cell: ({row}) => (
-            <span className={"truncate max-w-[400px] text-xs font-mono"}>
+            <span className={"truncate text-xs font-mono"}>
                 {row.original.log_type}
             </span>
         ),
@@ -117,6 +118,7 @@ const buildColumns = (
         enableSorting: false,
         header: "Actions",
         id: "actions",
+        size: 100,
     },
 ];
 

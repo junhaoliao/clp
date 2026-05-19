@@ -66,13 +66,18 @@ const DataTable = <TData, TValue>({
 
     return (
         <div className={"space-y-2"}>
-            <div className={"rounded-md border"}>
-                <Table>
+            <div className={"rounded-md border min-w-0"}>
+                <Table className={"table-fixed"}>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id}>
+                                    <TableHead
+                                        key={header.id}
+                                        style={header.getSize() ?
+                                            {width: header.getSize()} :
+                                            undefined}
+                                    >
                                         {header.isPlaceholder ?
                                             null :
                                             flexRender(
@@ -89,7 +94,12 @@ const DataTable = <TData, TValue>({
                             rows.map((row) => (
                                 <TableRow key={row.id}>
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell
+                                            key={cell.id}
+                                            style={cell.column.getSize() ?
+                                                {width: cell.column.getSize()} :
+                                                undefined}
+                                        >
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext(),

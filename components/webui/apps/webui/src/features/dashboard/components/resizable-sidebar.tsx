@@ -63,7 +63,7 @@ export const ResizableSidebar = ({children, defaultWidth = 280, side}: Resizable
 
     return (
         <div
-            className={"flex shrink-0 border-l bg-background overflow-auto"}
+            className={`flex shrink-0 bg-background overflow-auto ${isRight ? "border-l" : "border-r"}`}
             style={{width}}
         >
             {isRight && (

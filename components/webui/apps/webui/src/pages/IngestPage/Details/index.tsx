@@ -19,7 +19,6 @@ import {
 } from "./sql";
 import TimeRange from "./TimeRange";
 
-import {useClppSettingsStore} from "@/features/clpp/stores/clpp-settings-store";
 import type {SchemaTreeNode} from "@/features/clpp/types";
 
 import {countSharedNodes} from "./shared-node-count";
@@ -34,9 +33,6 @@ const api = hc<AppType>("/");
  * @return
  */
 const Details = () => {
-    const isExperimentalMode = useClppSettingsStore(
-        (s) => s.experimentalMode,
-    );
     const {data: datasetNames = [], isSuccess: isSuccessDatasetNames} = useQuery({
         queryKey: ["datasets"],
         queryFn: fetchDatasetNames,
@@ -61,7 +57,7 @@ const Details = () => {
     // Query CLPP logtype stats for the first dataset as representative
     const firstDataset: string = datasetNames[0] ?? "";
     const {data: logtypeStatsData, isPending: isLogtypeStatsPending} = useQuery({
-        enabled: isExperimentalMode && 0 < firstDataset.length,
+        enabled: 0 < firstDataset.length,
         queryFn: async () => {
             const res = await api.api["logtype-stats"].$get({
                 query: {dataset: firstDataset},
@@ -80,7 +76,7 @@ const Details = () => {
 
     // Query schema tree for the first dataset
     const {data: schemaTreeData, isPending: isSchemaTreePending} = useQuery({
-        enabled: isExperimentalMode && 0 < firstDataset.length,
+        enabled: 0 < firstDataset.length,
         queryFn: async () => {
             const res = await api.api["schema-tree"].$get({
                 query: {dataset: firstDataset},
@@ -132,19 +128,17 @@ const Details = () => {
                 beginDate={dayjs.utc(details.begin_timestamp)}
                 endDate={dayjs.utc(details.end_timestamp)}
                 isLoading={isPending}/>
-            {isExperimentalMode && (
-                <div className={styles["detailsGrid"]}>
-                    <Logtypes
-                        isLoading={isClppLoading}
-                        numLogtypes={numLogtypes}/>
-                    <Schema
-                        hasSchema={hasSchema}
-                        isLoading={isClppLoading}/>
-                    <SharedNodes
-                        isLoading={isClppLoading}
-                        numSharedNodes={numSharedNodes}/>
-                </div>
-            )}
+            <div className={styles["detailsGrid"]}>
+                <Logtypes
+                    isLoading={isClppLoading}
+                    numLogtypes={numLogtypes}/>
+                <Schema
+                    hasSchema={hasSchema}
+                    isLoading={isClppLoading}/>
+                <SharedNodes
+                    isLoading={isClppLoading}
+                    numSharedNodes={numSharedNodes}/>
+            </div>
         </div>
     );
 };

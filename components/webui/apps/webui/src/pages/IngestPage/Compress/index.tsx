@@ -46,8 +46,6 @@ import S3InputFormItems from "./S3InputFormItems";
 import ScannerAdvancedFormItems from "./ScannerAdvancedFormItems";
 import SubmitFormItem from "./SubmitFormItem";
 
-import {useClppSettingsStore} from "@/features/clpp/stores/clpp-settings-store";
-
 
 type FormValues = {
     bucket?: string;
@@ -161,9 +159,6 @@ const Compress = () => {
     const [form] = Form.useForm<FormValues>();
     const ingestMode = Form.useWatch("ingestMode", form);
     const unstructured = Form.useWatch<boolean>("unstructured", form);
-    const isExperimentalMode = useClppSettingsStore(
-        (s) => s.experimentalMode,
-    );
 
     const isScanner = isS3Input && INGEST_MODE_SCANNER === ingestMode;
     const queryClient = useQueryClient();
@@ -266,7 +261,7 @@ const Compress = () => {
                     <S3InputFormItems isScanner={isScanner}/> :
                     <PathsSelectFormItem/>}
                 {showClpSFields && <ClpSFormItems/>}
-                {showClpSFields && !unstructured && isExperimentalMode &&
+                {showClpSFields && !unstructured &&
                     <ClppSchemaFormItems/>}
                 {isScanner && <ScannerAdvancedFormItems/>}
                 <SubmitFormItem isSubmitting={isSubmitting}/>
