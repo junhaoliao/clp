@@ -110,19 +110,19 @@ await test("No uncaught console errors on main pages", async () => {
   page.on("pageerror", (err) => {
     consoleErrors.push(err.message);
   });
-  
+
   for (const path of ["/", "/settings", "/search", "/ingest"]) {
     await page.goto(`${BASE_URL}${path}`, { waitUntil: "networkidle", timeout: 15000 });
     await page.waitForTimeout(1000);
   }
-  
+
   // Filter out known acceptable errors (React dev tools, HMR, etc.)
-  const realErrors = consoleErrors.filter(e => 
-    !e.includes("Download the React DevTools") && 
+  const realErrors = consoleErrors.filter(e =>
+    !e.includes("Download the React DevTools") &&
     !e.includes("HMR") &&
     !e.includes("[HMR]")
   );
-  
+
   if (0 < realErrors.length) {
     throw new Error(`Console errors: ${realErrors.slice(0, 3).join("; ")}`);
   }
