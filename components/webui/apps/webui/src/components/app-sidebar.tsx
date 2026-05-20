@@ -36,11 +36,6 @@ const data = {
             icon: Upload,
         },
         {
-            title: "Ingest new",
-            to: "/ingest-new",
-            icon: Upload,
-        },
-        {
             title: "Explore",
             to: "/search",
             icon: Search,

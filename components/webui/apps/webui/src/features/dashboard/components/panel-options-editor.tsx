@@ -198,7 +198,7 @@ export const PanelOptionsEditor = () => {
     const plugin = getPanelPlugin(panel.type);
 
     return (
-        <div className={"p-4 space-y-4"}>
+        <div className={"p-4 space-y-4 h-full overflow-y-auto"}>
             <div className={"flex items-center justify-between"}>
                 <h3 className={"text-sm font-semibold"}>
                     {plugin?.meta.name ?? panel.type}

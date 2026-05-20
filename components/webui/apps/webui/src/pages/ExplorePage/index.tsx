@@ -129,7 +129,7 @@ const ExplorePage = () => {
             {SETTINGS_QUERY_ENGINE === CLP_QUERY_ENGINES.PRESTO && (
                 <ProgressBar/>
             )}
-            <div className={"flex h-full"}>
+            <div className={"flex flex-1 min-h-0"}>
                 <ResizableSidebar side="left">
                     <FieldBrowser
                         dataset={dataset}

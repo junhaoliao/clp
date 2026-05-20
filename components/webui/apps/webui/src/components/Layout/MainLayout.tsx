@@ -35,8 +35,7 @@ import {
 
 const routeTitles: Record<string, string> = {
     "/dashboards": "Dashboards",
-    "/ingest": "Ingest",
-    "/ingest-new": "Ingest Overview",
+    "/ingest": "Ingest Overview",
     "/search": "Explore",
     "/settings": "Settings",
 };

@@ -4,7 +4,7 @@ import {hc} from "hono/client";
 
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {countSharedNodes} from "@/pages/IngestPage/Details/shared-node-count";
+import {countSharedNodes} from "@/pages/IngestPage/shared-node-count";
 import type {SchemaTreeResponse} from "@/features/clpp/types";
 
 

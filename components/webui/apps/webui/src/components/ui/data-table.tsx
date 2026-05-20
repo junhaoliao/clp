@@ -92,10 +92,9 @@ const DataTable = <TData, TValue>({
         .reduce((sum, col) => sum + col.getSize(), 0);
 
     return (
-        <div className={"space-y-2"}>
-            <div className={"rounded-md border overflow-x-auto"}>
+        <div className={"flex flex-col h-full"}>
+            <div className={"flex-1 min-h-0 rounded-md border overflow-auto"}>
                 <Table
-                    className={"table-fixed"}
                     style={{minWidth: `${totalMinWidth}px`}}
                 >
                     <colgroup>
@@ -165,7 +164,7 @@ const DataTable = <TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <div className={"flex items-center justify-between px-2"}>
+            <div className={"flex items-center justify-between px-2 shrink-0"}>
                 <p className={"text-sm text-muted-foreground"}>
                     {totalRows}
                     {" "}

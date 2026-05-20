@@ -132,7 +132,7 @@ const FieldBrowser = ({
     );
 
     return (
-        <div className={"flex h-full flex-col bg-background"}>
+        <div className={"flex flex-1 min-h-0 flex-col bg-background"}>
             <div className={"p-2"}>
                 <Input
                     className={"h-7 text-xs"}
@@ -143,7 +143,7 @@ const FieldBrowser = ({
                     }}/>
             </div>
 
-            <ScrollArea className={"flex-1"}>
+            <ScrollArea className={"flex-1 min-h-0"}>
                 {0 < selected.length && (
                     <div>
                         <p

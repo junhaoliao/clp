@@ -7,7 +7,6 @@ import MainLayout from "./components/Layout/MainLayout";
 import {DashboardListPage} from "./pages/DashboardListPage";
 import {DashboardPage} from "./pages/DashboardPage";
 import ExplorePage from "./pages/ExplorePage";
-import IngestNewPage from "./pages/IngestNewPage";
 import IngestPage from "./pages/IngestPage";
 import QueryStatus from "./pages/LogViewerLoadingPage/QueryStatus";
 import SettingsPage from "./pages/SettingsPage";
@@ -25,7 +24,6 @@ const router = createBrowserRouter([
                     to={"/ingest"}/>,
             },
             {path: "ingest", Component: IngestPage},
-            {path: "ingest-new", Component: IngestNewPage},
             {path: "search", Component: ExplorePage},
             {path: "settings", Component: SettingsPage},
             {path: "dashboards", Component: DashboardListPage},

@@ -109,12 +109,13 @@ const buildColumns = (
     {
         accessorKey: "log_type",
         cell: ({row}) => (
-            <span className={"truncate text-xs font-mono"}>
+            <span className={"whitespace-nowrap text-xs font-mono"}>
                 {row.original.log_type}
             </span>
         ),
         enableSorting: false,
         header: "Pattern",
+        size: 400,
     },
 ];
 
@@ -225,8 +226,8 @@ const PatternsDataTable = ({
     };
 
     return (
-        <div className={"flex flex-col gap-4"}>
-            <div className={"flex items-center gap-4"}>
+        <div className={"flex flex-col h-full gap-4"}>
+            <div className={"flex items-center gap-4 shrink-0"}>
                 <Input
                     className={"h-8 text-xs max-w-xs"}
                     placeholder={"Filter logtypes..."}
