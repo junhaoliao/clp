@@ -71,6 +71,7 @@ def _make_core_clp_s_command_and_env_vars(
 ) -> tuple[list[str] | None, dict[str, str] | None]:
     command = [
         str(clp_home / "bin" / "clp-s"),
+        "--experimental",
         "s",
     ]
     if StorageType.S3 == worker_config.archive_output.storage.type:

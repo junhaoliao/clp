@@ -81,17 +81,6 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
             ),
             size: 180,
         },
-        {
-            accessorKey: "body",
-            cell: ({row}) => (
-                <div className={"truncate text-xs font-mono"}>
-                    {row.original.body}
-                </div>
-            ),
-            enableSorting: false,
-            header: "Body",
-            size: 300,
-        },
     ];
 
     // Dynamic columns from selectedFields (excluding timestamp and body)
@@ -118,6 +107,18 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
             size: 140,
         });
     }
+
+    columns.push({
+        accessorKey: "body",
+        cell: ({row}) => (
+            <div className={"text-xs font-mono"}>
+                {row.original.body}
+            </div>
+        ),
+        enableSorting: false,
+        header: "Body",
+        size: 1,
+    })
 
     return columns;
 };

@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,11 @@ from job_orchestration.scheduler.scheduler_data import QueryTaskResult, QueryTas
 
 # Setup logging
 logger = get_task_logger(__name__)
+
+LOG_SHAPE_PATTERN = re.compile(
+    r'\{"id":(?P<id>\d+),"count":(?P<count>\d+),"@shape":"(?P<shape>(?:\\.|[^"])*)"\}',
+    re.DOTALL,
+)
 
 
 def _make_clp_s_logtype_stats_command_and_env_vars(
@@ -68,14 +74,14 @@ def _make_clp_s_logtype_stats_command_and_env_vars(
         archives_dir = worker_config.archive_output.get_directory() / dataset
         # fmt: off
         command.extend((
+            str(archives_dir),
             "--archive-id",
             archive_id,
-            str(archives_dir),
         ))
         # fmt: on
         env_vars = None
 
-    command.append("stats.logtypes")
+    command.append("stats.log_shapes")
     return command, env_vars
 
 
@@ -113,9 +119,9 @@ def _make_clp_s_schema_tree_command_and_env_vars(
         archives_dir = worker_config.archive_output.get_directory() / dataset
         # fmt: off
         command.extend((
+            str(archives_dir),
             "--archive-id",
             archive_id,
-            str(archives_dir),
         ))
         # fmt: on
         env_vars = None
@@ -132,19 +138,42 @@ def _store_logtype_stats_results(
     stdout_data: str,
 ) -> bool:
     logtypes = []
-    for line in stdout_data.strip().splitlines():
-        line = line.strip()
-        if 0 == len(line):
-            continue
+
+    for match in LOG_SHAPE_PATTERN.finditer(stdout_data):
+        shape = match.group("shape")
         try:
-            record = json.loads(line)
-            record["archive_id"] = archive_id
-            if dataset is not None:
-                record["dataset"] = dataset
-            logtypes.append(record)
+            escaped_shape = shape.replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r")
+            shape = json.loads(f'"{escaped_shape}"')
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse logtype stats line: {line}")
-            continue
+            pass
+
+        record = {
+            "id": int(match.group("id")),
+            "count": int(match.group("count")),
+            "@shape": shape,
+            "log_type": shape,
+            "archive_id": archive_id,
+        }
+        if dataset is not None:
+            record["dataset"] = dataset
+        logtypes.append(record)
+
+    if 0 == len(logtypes):
+        for line in stdout_data.strip().splitlines():
+            line = line.strip()
+            if 0 == len(line):
+                continue
+            try:
+                record = json.loads(line)
+                if "@shape" in record and "log_type" not in record:
+                    record["log_type"] = record["@shape"]
+                record["archive_id"] = archive_id
+                if dataset is not None:
+                    record["dataset"] = dataset
+                logtypes.append(record)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse logtype stats line: {line}")
+                continue
 
     if 0 == len(logtypes):
         logger.info(f"No logtype stats results for archive {archive_id}")
@@ -274,33 +303,5 @@ def logtype_stats(
             dataset=dataset,
             stdout_data=stdout_data,
         )
-
-        # Also fetch and store the schema tree from this archive
-        schema_tree_command, schema_tree_env_vars = (
-            _make_clp_s_schema_tree_command_and_env_vars(
-                clp_home=clp_home,
-                worker_config=worker_config,
-                archive_id=archive_id,
-                dataset=dataset or "default",
-            )
-        )
-        if schema_tree_command:
-            schema_tree_results, schema_tree_stdout = run_query_task(
-                sql_adapter=sql_adapter,
-                logger=logger,
-                clp_logs_dir=clp_logs_dir,
-                task_command=schema_tree_command,
-                env_vars=schema_tree_env_vars,
-                task_name="schema_tree",
-                job_id=job_id,
-                task_id=task_id,
-                start_time=start_time,
-            )
-            if QueryTaskStatus.SUCCEEDED == schema_tree_results.status:
-                _store_schema_tree_results(
-                    results_cache_uri=results_cache_uri,
-                    collection_name=job_id,
-                    stdout_data=schema_tree_stdout,
-                )
 
     return task_results.model_dump()

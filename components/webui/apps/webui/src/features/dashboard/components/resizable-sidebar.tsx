@@ -63,7 +63,7 @@ export const ResizableSidebar = ({children, defaultWidth = 280, side}: Resizable
 
     return (
         <div
-            className={`flex shrink-0 bg-background overflow-auto ${isRight ? "border-l" : "border-r"}`}
+            className={`flex shrink-0 bg-background overflow-hidden ${isRight ? "border-l" : "border-r"}`}
             style={{width}}
         >
             {isRight && (
@@ -71,7 +71,7 @@ export const ResizableSidebar = ({children, defaultWidth = 280, side}: Resizable
                     className={"w-1 ml-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 shrink-0 transition-colors"}
                     onMouseDown={handleMouseDown}/>
             )}
-            <div className={"flex-1 overflow-auto"}>
+            <div className={"flex-1 min-h-0 flex flex-col overflow-auto"}>
                 {children}
             </div>
             {!isRight && (

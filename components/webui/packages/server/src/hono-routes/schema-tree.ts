@@ -262,6 +262,55 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
         }
     }
 
+    // Fallback: infer token fields from log-shape strings produced by
+    // `clp-s --experimental s ... stats.log_shapes`.
+    const tokenCounts = new Map<string, number>();
+    for (const doc of logtypeDocs) {
+        const logType = doc["log_type"];
+        if ("string" !== typeof logType) {
+            continue;
+        }
+
+        const count = "number" === typeof doc["count"] ?
+            doc["count"] :
+            1;
+        const tokens = new Set<string>();
+        for (const match of logType.matchAll(/%([^%]+)%/g)) {
+            const token = match[1];
+            if ("string" !== typeof token || 0 === token.length) {
+                continue;
+            }
+
+            const parts = token.split(".");
+            tokens.add(parts[parts.length - 1] ?? token);
+        }
+
+        for (const token of tokens) {
+            tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + count);
+        }
+    }
+
+    if (0 < tokenCounts.size) {
+        return {
+            children: [...tokenCounts.entries()]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, count]) => ({
+                    children: [],
+                    count,
+                    id: `shape-token-${key}`,
+                    key,
+                    type: "string",
+                })),
+            count: logtypeDocs.reduce<number>(
+                (sum, doc) => sum + ("number" === typeof doc["count"] ? doc["count"] : 0),
+                0
+            ),
+            id: "root",
+            key: "root",
+            type: "object",
+        };
+    }
+
     // Fallback: old variable-position-based approach (produces empty tree)
     const variablesByPosition: Map<number, Map<string, number>> = new Map();
 

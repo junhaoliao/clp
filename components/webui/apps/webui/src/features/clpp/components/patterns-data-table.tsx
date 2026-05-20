@@ -109,7 +109,7 @@ const buildColumns = (
     {
         accessorKey: "log_type",
         cell: ({row}) => (
-            <span className={"whitespace-nowrap text-xs font-mono"}>
+            <span className={"text-xs font-mono"}>
                 {row.original.log_type}
             </span>
         ),

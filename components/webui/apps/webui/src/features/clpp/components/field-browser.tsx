@@ -143,7 +143,7 @@ const FieldBrowser = ({
                     }}/>
             </div>
 
-            <ScrollArea className={"flex-1 min-h-0"}>
+            <ScrollArea className={"flex-1 min-h-0 pr-2"}>
                 {0 < selected.length && (
                     <div>
                         <p

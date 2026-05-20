@@ -93,6 +93,7 @@ def _make_clp_s_command_and_env_vars(
     extract_json_config = ExtractJsonJobConfig.model_validate(job_config)
     command = [
         str(clp_home / "bin" / "clp-s"),
+        "--experimental",
         "x",
     ]
 
