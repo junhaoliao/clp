@@ -73,7 +73,7 @@ class TestMakeClpSLogtypeStatsCommand:
         assert str(Path("/data/archives/test-ds")) in command
         assert "--archive-id" in command
         assert "abc-123" in command
-        assert "stats.logtypes" in command
+        assert "stats.log_shapes" in command
         assert env_vars is None
 
     @patch("job_orchestration.executor.query.logtype_stats_task.generate_s3_url")
@@ -110,7 +110,7 @@ class TestMakeClpSLogtypeStatsCommand:
         assert "s3://my-bucket/prefix/test-ds/abc-123" in command
         assert "--auth" in command
         assert "s3" in command
-        assert "stats.logtypes" in command
+        assert "stats.log_shapes" in command
         assert env_vars is not None
         assert "AWS_ACCESS_KEY_ID" in env_vars
 

@@ -33,7 +33,7 @@ const NODE_TYPE_MAP: Record<number, string> = {
     12: "float", // FormattedFloat
     13: "float", // DictionaryFloat
     14: "string", // Timestamp
-    100: "string", // LogMessage
+    100: "object", // LogMessage
     101: "string", // LogType
     102: "int", // LogTypeID
     103: "object", // ParentRule
@@ -44,8 +44,8 @@ const NODE_TYPE_MAP: Record<number, string> = {
  * Builds a schema tree from logtype stats documents.
  *
  * If a `_schema_tree` marker document is present (produced by `clp-s s stats.schema_tree`),
- * reconstructs the tree from the serialized node list. Otherwise falls back to the old
- * variable-position-based approach (which produces an empty tree when variable data is unavailable).
+ * reconstructs the tree from the serialized node list. Otherwise falls back to the legacy
+ * variable-position-based approach used by older log type stats.
  *
  * @param logtypeDocs Raw documents from the MongoDB collection
  * @return Schema tree root node
@@ -76,6 +76,13 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
     if (schemaTreeDoc?.nodes && 0 < schemaTreeDoc.nodes.length) {
         const LOGTYPE_ID_NODE_TYPE = 102;
 
+        const schemaNodes = schemaTreeDoc.nodes.filter(
+            (node) => "number" === typeof node.id &&
+                "number" === typeof node.parentId &&
+                "string" === typeof node.key &&
+                "number" === typeof node.type,
+        );
+
         // Step 1: Build logtype dictionary ID → total event count map from
         // logtype stat documents (those WITHOUT the _schema_tree marker).
         const logtypeCountMap = new Map<number, number>();
@@ -95,7 +102,7 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
         // Step 2: Identify LogTypeID nodes (still excluded from final output,
         // but kept temporarily as bridges between tree nodes and event counts).
         const logtypeIdNodeIds = new Set<number>();
-        for (const raw of schemaTreeDoc.nodes) {
+        for (const raw of schemaNodes) {
             if (LOGTYPE_ID_NODE_TYPE === raw.type) {
                 logtypeIdNodeIds.add(raw.id);
             }
@@ -106,7 +113,7 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
         const nodeMap = new Map<number, SchemaTreeNode>();
         const rootIds: number[] = [];
 
-        for (const raw of schemaTreeDoc.nodes) {
+        for (const raw of schemaNodes) {
             const node: SchemaTreeNode = {
                 children: [],
                 // Use 0 when logtype stats are available (we'll propagate
@@ -124,7 +131,7 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
 
         // Build parent-child relationships for ALL nodes
         const childrenMap = new Map<number, SchemaTreeNode[]>();
-        for (const raw of schemaTreeDoc.nodes) {
+        for (const raw of schemaNodes) {
             if (-1 === raw.parentId) {
                 continue;
             }
@@ -260,55 +267,6 @@ export const buildSchemaTree = (logtypeDocs: Record<string, unknown>[]) => {
                 type: "object",
             };
         }
-    }
-
-    // Fallback: infer token fields from log-shape strings produced by
-    // `clp-s --experimental s ... stats.log_shapes`.
-    const tokenCounts = new Map<string, number>();
-    for (const doc of logtypeDocs) {
-        const logType = doc["log_type"];
-        if ("string" !== typeof logType) {
-            continue;
-        }
-
-        const count = "number" === typeof doc["count"] ?
-            doc["count"] :
-            1;
-        const tokens = new Set<string>();
-        for (const match of logType.matchAll(/%([^%]+)%/g)) {
-            const token = match[1];
-            if ("string" !== typeof token || 0 === token.length) {
-                continue;
-            }
-
-            const parts = token.split(".");
-            tokens.add(parts[parts.length - 1] ?? token);
-        }
-
-        for (const token of tokens) {
-            tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + count);
-        }
-    }
-
-    if (0 < tokenCounts.size) {
-        return {
-            children: [...tokenCounts.entries()]
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([key, count]) => ({
-                    children: [],
-                    count,
-                    id: `shape-token-${key}`,
-                    key,
-                    type: "string",
-                })),
-            count: logtypeDocs.reduce<number>(
-                (sum, doc) => sum + ("number" === typeof doc["count"] ? doc["count"] : 0),
-                0
-            ),
-            id: "root",
-            key: "root",
-            type: "object",
-        };
     }
 
     // Fallback: old variable-position-based approach (produces empty tree)

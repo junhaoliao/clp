@@ -110,6 +110,7 @@ class SearchJobConfig(QueryJobConfig):
     end_timestamp: int | None = None
     ignore_case: bool = False
     path_filter: str | None = None
+    projection: list[str] | None = None
     # Tuple of (host, port)
     network_address: tuple[str, int] | None = None
     aggregation_config: AggregationConfig | None = None

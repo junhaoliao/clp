@@ -13,16 +13,23 @@ import {handleQuerySubmit} from "../../../SearchControls/Native/search-requests"
 import {TIME_RANGE_OPTION} from "../../../SearchControls/TimeRangeInput/utils";
 import useSearchStore, {SEARCH_STATE_DEFAULT} from "../../../SearchState/index";
 import {SEARCH_UI_STATE} from "../../../SearchState/typings";
+import {buildSearchProjection} from "../../../useKqlQuery";
 import {computeTimelineConfig} from "../utils";
 import {useAggregationResults} from "./useAggregationResults";
 
 
+interface NativeResultsTimelineProps {
+    projection?: string[];
+}
+
 /**
  * Renders timeline visualization of search results.
  *
+ * @param root0
+ * @param root0.projection
  * @return
  */
-const NativeResultsTimeline = () => {
+const NativeResultsTimeline = ({projection = []}: NativeResultsTimelineProps) => {
     const queryIsCaseSensitive = useSearchStore((state) => state.queryIsCaseSensitive);
     const queryString = useSearchStore((state) => state.queryString);
     const searchUiState = useSearchStore((state) => state.searchUiState);
@@ -63,6 +70,7 @@ const NativeResultsTimeline = () => {
         handleQuerySubmit({
             datasets: selectedDatasets,
             ignoreCase: false === queryIsCaseSensitive,
+            projection: buildSearchProjection(projection),
             queryString: queryString,
             timeRangeBucketSizeMillis: newTimelineConfig.bucketDuration.asMilliseconds(),
             timestampBegin: newTimeRange[0].valueOf(),
@@ -72,6 +80,7 @@ const NativeResultsTimeline = () => {
         queryIsCaseSensitive,
         queryString,
         selectedDatasets,
+        projection,
     ]);
 
     useEffect(() => {

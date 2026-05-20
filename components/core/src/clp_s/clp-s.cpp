@@ -308,7 +308,9 @@ bool search_archive(
 
 auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
     auto const& query = cli_args.get_query();
-    if (CommandLineArguments::cLogShapeStatsQuery != query) {
+    if (CommandLineArguments::cLogShapeStatsQuery != query
+        && CommandLineArguments::cSchemaTreeStatsQuery != query)
+    {
         return -1;
     }
     auto output_handler{cli_args.create_output_handler()};
@@ -343,6 +345,20 @@ auto handle_experimental_queries(CommandLineArguments const& cli_args) -> int {
                 )};
                 output_handler.value()->write(message);
             }
+        } else if (CommandLineArguments::cSchemaTreeStatsQuery == query) {
+            auto nodes = nlohmann::json::array();
+            for (auto const& node : archive_reader->get_schema_tree()->get_nodes()) {
+                nodes.push_back({
+                        {"id", node.get_id()},
+                        {"parentId", node.get_parent_id()},
+                        {"key", std::string{node.get_key_name()}},
+                        {"type", static_cast<int>(node.get_type())},
+                        {"count", node.get_count()},
+                        {"children", node.get_children_ids()},
+                });
+            }
+            output_handler.value()->write(nodes.dump());
+            output_handler.value()->write("\n");
         }
         if (auto ec{output_handler.value()->flush()}; clp_s::ErrorCode::ErrorCodeSuccess != ec) {
             SPDLOG_ERROR("Failed to flush output handler. Error code: {}", std::to_string(ec));

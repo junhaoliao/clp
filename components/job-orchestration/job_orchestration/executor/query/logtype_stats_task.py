@@ -189,6 +189,8 @@ def _store_logtype_stats_results(
 def _store_schema_tree_results(
     results_cache_uri: str,
     collection_name: str,
+    archive_id: str,
+    dataset: str | None,
     stdout_data: str,
 ) -> bool:
     for line in stdout_data.strip().splitlines():
@@ -213,8 +215,11 @@ def _store_schema_tree_results(
 
     schema_tree_doc = {
         "_schema_tree": True,
+        "archive_id": archive_id,
         "nodes": nodes,
     }
+    if dataset is not None:
+        schema_tree_doc["dataset"] = dataset
 
     with pymongo.MongoClient(results_cache_uri) as mongo_client:
         collection = mongo_client.get_default_database()[collection_name]
@@ -303,5 +308,39 @@ def logtype_stats(
             dataset=dataset,
             stdout_data=stdout_data,
         )
+
+        schema_tree_command, schema_tree_env_vars = _make_clp_s_schema_tree_command_and_env_vars(
+            clp_home=clp_home,
+            worker_config=worker_config,
+            archive_id=archive_id,
+            dataset=dataset or "default",
+        )
+        if not schema_tree_command:
+            logger.error(f"Error creating {task_name} schema tree command")
+            return report_task_failure(
+                sql_adapter=sql_adapter,
+                task_id=task_id,
+                start_time=start_time,
+            )
+
+        task_results, schema_tree_stdout_data = run_query_task(
+            sql_adapter=sql_adapter,
+            logger=logger,
+            clp_logs_dir=clp_logs_dir,
+            task_command=schema_tree_command,
+            env_vars=schema_tree_env_vars,
+            task_name="schema_tree_stats",
+            job_id=job_id,
+            task_id=task_id,
+            start_time=start_time,
+        )
+        if QueryTaskStatus.SUCCEEDED == task_results.status:
+            _store_schema_tree_results(
+                results_cache_uri=results_cache_uri,
+                collection_name=job_id,
+                archive_id=archive_id,
+                dataset=dataset,
+                stdout_data=schema_tree_stdout_data,
+            )
 
     return task_results.model_dump()

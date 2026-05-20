@@ -70,6 +70,7 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
                 timestampBegin,
                 timestampEnd,
                 ignoreCase,
+                projection,
                 timeRangeBucketSizeMillis,
                 queryString,
             } = request.body as QueryJobCreation;
@@ -82,6 +83,9 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
                 end_timestamp: timestampEnd,
                 ignore_case: ignoreCase,
                 max_num_results: SEARCH_MAX_NUM_RESULTS,
+                projection: projection && 0 < projection.length ?
+                    projection :
+                    null,
                 query_string: queryString,
             };
 
@@ -102,6 +106,7 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
                         aggregation_config: {
                             count_by_time_bucket_size: timeRangeBucketSizeMillis,
                         },
+                        projection: null,
                     },
                     QUERY_JOB_TYPE.SEARCH_OR_AGGREGATION
                 );

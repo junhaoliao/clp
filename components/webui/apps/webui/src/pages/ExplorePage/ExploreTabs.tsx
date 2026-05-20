@@ -18,7 +18,7 @@ const TAB_ITEMS = [
 type TabValue = (typeof TAB_ITEMS)[number]["value"];
 
 interface ExploreTabsProps {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     dataset: string;
     logsDataTable?: React.ReactNode;
     patternsDataTable?: React.ReactNode;

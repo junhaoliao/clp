@@ -188,6 +188,10 @@ def _make_command_and_env_vars(
         if dataset is not None:
             command.extend(("--dataset", dataset))
 
+        if search_config.projection is not None and 0 < len(search_config.projection):
+            command.append("--projection")
+            command.extend(search_config.projection)
+
     return command, env_vars
 
 

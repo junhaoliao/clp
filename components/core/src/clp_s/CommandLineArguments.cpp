@@ -1081,8 +1081,8 @@ auto CommandLineArguments::validate_experimental() const -> void {
     if (m_log_surgeon_schema_path.has_value()) {
         throw std::invalid_argument("Set --experimental to parse text with log-surgeon.");
     }
-    if (cLogShapeStatsQuery == m_query) {
-        throw std::invalid_argument("Set --experimental to access the log shape stats.");
+    if (cLogShapeStatsQuery == m_query || cSchemaTreeStatsQuery == m_query) {
+        throw std::invalid_argument("Set --experimental to access the requested CLPP stats.");
     }
 }
 

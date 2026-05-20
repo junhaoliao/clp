@@ -48,6 +48,46 @@ const formatUnknown = (value: unknown): string => {
 };
 
 /**
+ * Gets a field value from either a flattened dot-path or a nested object.
+ *
+ * @param obj
+ * @param path
+ * @return Field value, if present.
+ */
+const getFieldValue = (obj: Record<string, unknown>, path: string): unknown => {
+    if (Object.hasOwn(obj, path)) {
+        return obj[path];
+    }
+
+    if (path.startsWith("message.")) {
+        const shapeSuffix = path.slice("message.".length);
+        const shapePath = `message@shape.${shapeSuffix}`;
+        if (Object.hasOwn(obj, shapePath)) {
+            return obj[shapePath];
+        }
+
+        const shapeRoot = obj["message@shape"];
+        if (null !== shapeRoot && "object" === typeof shapeRoot) {
+            return getFieldValue(shapeRoot as Record<string, unknown>, shapeSuffix);
+        }
+    }
+
+    let cursor: unknown = obj;
+    for (const part of path.split(".")) {
+        if (null === cursor || "object" !== typeof cursor) {
+            return undefined;
+        }
+        const record = cursor as Record<string, unknown>;
+        if (!Object.hasOwn(record, part)) {
+            return undefined;
+        }
+        cursor = record[part];
+    }
+
+    return cursor;
+};
+
+/**
  * Builds column definitions for the Logs data table.
  *
  * Default columns: Timestamp (sortable) + Body (truncated).
@@ -92,7 +132,7 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
         columns.push({
             accessorKey: field,
             cell: ({row}) => {
-                const value = row.original[field];
+                const value = getFieldValue(row.original, field);
 
                 return (
                     <span className={"truncate text-xs whitespace-nowrap"}>
@@ -118,7 +158,7 @@ const buildColumns = (selectedFields: string[]): ColumnDef<LogEvent>[] => {
         enableSorting: false,
         header: "Body",
         size: 1,
-    })
+    });
 
     return columns;
 };

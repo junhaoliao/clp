@@ -13,12 +13,10 @@ import {
     SETTINGS_STORAGE_ENGINE,
 } from "../../config";
 import ExploreTabs from "./ExploreTabs";
-import styles from "./index.module.css";
 import {ProgressBar} from "./ProgressBar";
-import SearchControls from "./SearchControls";
 import DatasetSelect from "./SearchControls/Dataset/DatasetSelect";
-import SearchResultsTable from "./SearchResults/SearchResultsTable";
 import SearchResultsTimeline from "./SearchResults/SearchResultsTimeline";
+import TimeRangeInput from "./SearchControls/TimeRangeInput";
 import {
     flattenFieldNames,
     toLogEvents,
@@ -99,7 +97,7 @@ const ExplorePage = () => {
         queryString: kqlQueryString,
         removePatternFilter: handleRemovePatternFilter,
         submitQuery: handleQuerySubmit,
-    } = useKqlQuery();
+    } = useKqlQuery(selectedFields);
 
     const dataset: string = selectedDatasets[0] ?? "";
     const fieldOptions = useFieldOptions(dataset);
@@ -137,7 +135,7 @@ const ExplorePage = () => {
                         onToggleField={toggleField}/>
                 </ResizableSidebar>
                 <div className={"flex flex-1 flex-col min-h-0"}>
-                    <div className={"flex items-center gap-2 px-3 py-2"}>
+                    <div className={"flex flex-wrap items-center gap-2 px-3 py-2"}>
                         {CLP_STORAGE_ENGINES.CLP_S ===
                           SETTINGS_STORAGE_ENGINE && (
                             <div className={"flex items-center gap-1.5 shrink-0"}>
@@ -147,7 +145,10 @@ const ExplorePage = () => {
                                 <DatasetSelect isMultiSelect={false}/>
                             </div>
                         )}
-                        <div className={"flex-1"}>
+                        <div className={"shrink-0"}>
+                            <TimeRangeInput/>
+                        </div>
+                        <div className={"min-w-80 flex-1"}>
                             <QueryBar
                                 dataset={dataset}
                                 externalValue={kqlQueryString}
@@ -158,9 +159,21 @@ const ExplorePage = () => {
                     <ExploreTabs
                         dataset={dataset}
                         logsDataTable={
-                            <LogsDataTable
-                                data={logEventData}
-                                selectedFields={selectedFields}/>
+                            <div className={"flex h-full min-h-0 flex-col gap-3"}>
+                                {(SETTINGS_QUERY_ENGINE !==
+                                  CLP_QUERY_ENGINES.PRESTO ||
+                                  PRESTO_SQL_INTERFACE.GUIDED ===
+                                  sqlInterface) && (
+                                    <div className={"shrink-0"}>
+                                        <SearchResultsTimeline projection={selectedFields}/>
+                                    </div>
+                                )}
+                                <div className={"min-h-0 flex-1"}>
+                                    <LogsDataTable
+                                        data={logEventData}
+                                        selectedFields={selectedFields}/>
+                                </div>
+                            </div>
                         }
                         patternsDataTable={
                             <PatternsDataTable
@@ -168,17 +181,7 @@ const ExplorePage = () => {
                                 onAddPatternFilter={handleAddPatternFilter}
                                 onRemovePatternFilter={handleRemovePatternFilter}/>
                         }
-                    >
-                        <div className={styles["searchPageContainer"]}>
-                            <SearchControls/>
-                            {(SETTINGS_QUERY_ENGINE !==
-                              CLP_QUERY_ENGINES.PRESTO ||
-                              PRESTO_SQL_INTERFACE.GUIDED ===
-                              sqlInterface) &&
-                              <SearchResultsTimeline/>}
-                            <SearchResultsTable/>
-                        </div>
-                    </ExploreTabs>
+                    />
                 </div>
             </div>
         </>
