@@ -43,8 +43,12 @@ const SCHEMA_TOOLTIP =
  * that appears when "Custom" or a saved schema is selected.
  */
 const ClppSchemaFormItems = () => {
+    const [selectedValue, setSelectedValue] = useState<string>(CUSTOM_OPTION.value);
     const form = Form.useFormInstance();
-    const [selectedValue, setSelectedValue] = useState<string>(DEFAULT_OPTION.value);
+    // Initialize schemaContent to empty string so the editor is functional on first render
+    if (CUSTOM_OPTION.value === selectedValue && void 0 === form.getFieldValue("schemaContent")) {
+        form.setFieldValue("schemaContent", "");
+    }
 
     const {data: schemas = []} = useQuery({
         queryKey: ["schemas"],
