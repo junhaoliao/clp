@@ -349,17 +349,24 @@ auto SchemaMatch::populate_column_mapping(
                     {
                         return std::make_tuple(true, std::move(result));
                     }
+                    // resolve_clpp_query returned nullptr — e.g., non-CLPP archive
+                    // without parent_rule_shapes. Don't register this as a column
+                    // since ClppDecomposeT isn't handled without CLPP decomposition.
+                    // Fall through to push children so the wildcard can match nested
+                    // fields under this structural container.
+                } else {
+                    auto [descriptors_it, _] = m_column_to_descriptor.try_emplace(cur_node_id);
+                    descriptors_it->second.emplace(column);
+                    matched = true;
                     continue;
                 }
-                auto [descriptors_it, _] = m_column_to_descriptor.try_emplace(cur_node_id);
-                descriptors_it->second.emplace(column);
             } else {
                 auto [node_ids_it, _]
                         = m_unresolved_descriptor_to_descriptor.try_emplace(column.get());
                 node_ids_it->second.emplace(cur_node_id);
+                matched = true;
+                continue;
             }
-            matched = true;
-            continue;
         }
 
         // Allow matching a wildcard zero times
@@ -829,8 +836,6 @@ auto SchemaMatch::resolve_clpp_query(
         SchemaNode::id_t root_node_id,
         std::shared_ptr<ast::Expression> const& expr
 ) -> std::shared_ptr<ast::Expression> {
-    m_clpp_decomposed_query = true;
-
     // TODO clpp: this check is dumb, but fixing it requires fixing the archive reading.
     // This is the first place we know we need the contents of the dict (to avoid reading it
     // unnecessarily), but it may be called multiple times and read_entries doesn't seem to track if
@@ -853,6 +858,7 @@ auto SchemaMatch::resolve_clpp_query(
             return nullptr;
         }
         register_clpp_column(column, root_node_id, matched_schema_ids);
+        m_clpp_decomposed_query = true;
         return expr;
     }
 
@@ -865,7 +871,7 @@ auto SchemaMatch::resolve_clpp_query(
 
     auto dq{lookup_decomposed_query(qualified_name, query)};
     if (dq.has_error()) {
-        throw std::runtime_error(fmt::format("clpp query decomposition failed for {}", query));
+        return nullptr;
     }
 
     auto results{ast::OrExpr::create()};
@@ -895,6 +901,7 @@ auto SchemaMatch::resolve_clpp_query(
     if (results->get_op_list().empty()) {
         return nullptr;
     }
+    m_clpp_decomposed_query = true;
     return results;
 }
 }  // namespace clp_s::search

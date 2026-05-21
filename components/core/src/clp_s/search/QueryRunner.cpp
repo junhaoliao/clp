@@ -278,25 +278,45 @@ bool QueryRunner::evaluate_wildcard_filter(FilterExpr* expr, int32_t schema) {
             subtree_type.has_value() && constants::cMetadataSubtreeType == subtree_type.value()
     };
     if (column->matches_type(LiteralType::ClpStringT)) {
-        auto* q = m_expr_clp_query.at(expr);
-        for (auto const& entry : m_clp_string_readers) {
-            if (false == matches_metadata && m_metadata_columns.contains(entry.first)) {
-                continue;
+        auto ecq_it = m_expr_clp_query.find(expr);
+        if (m_expr_clp_query.end() != ecq_it && nullptr != ecq_it->second) {
+            auto* q = ecq_it->second;
+            for (auto const& entry : m_clp_string_readers) {
+                if (false == matches_metadata && m_metadata_columns.contains(entry.first)) {
+                    continue;
+                }
+                if (evaluate_clp_string_filter(op, q, entry.second)) {
+                    return true;
+                }
             }
-            if (evaluate_clp_string_filter(op, q, entry.second)) {
-                return true;
+        } else {
+            // GrepCore unavailable — log_dict fallback
+            auto elm_it = m_expr_log_match_map.find(expr);
+            if (m_expr_log_match_map.end() != elm_it && nullptr != elm_it->second) {
+                auto* matching_logtypes = elm_it->second;
+                for (auto const& entry : m_clp_string_readers) {
+                    if (false == matches_metadata && m_metadata_columns.contains(entry.first)) {
+                        continue;
+                    }
+                    if (evaluate_clp_string_logtype_filter(op, matching_logtypes, entry.second)) {
+                        return true;
+                    }
+                }
             }
         }
     }
 
     if (column->matches_type(LiteralType::VarStringT)) {
-        std::unordered_set<int64_t>* matching_vars = m_expr_var_match_map[expr];
-        for (auto const& entry : m_var_string_readers) {
-            if (false == matches_metadata && m_metadata_columns.contains(entry.first)) {
-                continue;
-            }
-            if (evaluate_var_string_filter(op, entry.second, matching_vars)) {
-                return true;
+        auto evm_it = m_expr_var_match_map.find(expr);
+        if (m_expr_var_match_map.end() != evm_it && nullptr != evm_it->second) {
+            std::unordered_set<int64_t>* matching_vars = evm_it->second;
+            for (auto const& entry : m_var_string_readers) {
+                if (false == matches_metadata && m_metadata_columns.contains(entry.first)) {
+                    continue;
+                }
+                if (evaluate_var_string_filter(op, entry.second, matching_vars)) {
+                    return true;
+                }
             }
         }
     }
@@ -364,20 +384,39 @@ bool QueryRunner::evaluate_filter(FilterExpr* expr, int32_t schema) {
             return evaluate_int_filter(expr->get_operation(), column_id, literal);
         case LiteralType::FloatT:
             return evaluate_float_filter(expr->get_operation(), column_id, literal);
-        case LiteralType::ClpStringT:
-            q = m_expr_clp_query.at(expr);
-            return evaluate_clp_string_filter(
-                    expr->get_operation(),
-                    q,
-                    m_clp_string_readers[column_id]
-            );
-        case LiteralType::VarStringT:
-            matching_vars = m_expr_var_match_map.at(expr);
+        case LiteralType::ClpStringT: {
+            auto it = m_expr_clp_query.find(expr);
+            if (m_expr_clp_query.end() != it && nullptr != it->second) {
+                q = it->second;
+                return evaluate_clp_string_filter(
+                        expr->get_operation(),
+                        q,
+                        m_clp_string_readers[column_id]
+                );
+            }
+            // GrepCore unavailable — log_dict fallback
+            auto elm_it = m_expr_log_match_map.find(expr);
+            if (m_expr_log_match_map.end() != elm_it && nullptr != elm_it->second) {
+                return evaluate_clp_string_logtype_filter(
+                        expr->get_operation(),
+                        elm_it->second,
+                        m_clp_string_readers[column_id]
+                );
+            }
+            return expr->get_operation() == FilterOperation::NEQ;
+        }
+        case LiteralType::VarStringT: {
+            auto it = m_expr_var_match_map.find(expr);
+            if (m_expr_var_match_map.end() == it) {
+                return false;
+            }
+            matching_vars = it->second;
             return evaluate_var_string_filter(
                     expr->get_operation(),
                     m_var_string_readers[column_id],
                     matching_vars
             );
+        }
         case LiteralType::BooleanT:
             return evaluate_bool_filter(expr->get_operation(), column_id, literal);
         case LiteralType::ArrayT:
@@ -562,6 +601,31 @@ bool QueryRunner::evaluate_clp_string_filter(
         }
 
         if ((op == FilterOperation::EQ) == matched) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool QueryRunner::evaluate_clp_string_logtype_filter(
+        FilterOperation op,
+        std::unordered_set<clp::logtype_dictionary_id_t>* matching_logtypes,
+        std::vector<ClpStringColumnReader*> const& readers
+) const {
+    if (FilterOperation::EXISTS == op || FilterOperation::NEXISTS == op) {
+        return true;
+    }
+
+    if (FilterOperation::EQ != op && FilterOperation::NEQ != op) {
+        return false;
+    }
+
+    for (ClpStringColumnReader* reader : readers) {
+        ++m_str_col_checks;
+        int64_t logtype_id = reader->get_encoded_id(m_cur_message);
+        bool matched = matching_logtypes->count(logtype_id) > 0;
+
+        if ((FilterOperation::EQ == op) == matched) {
             return true;
         }
     }
@@ -961,30 +1025,29 @@ void QueryRunner::populate_string_queries(std::shared_ptr<Expression> const& exp
              || filter->get_operation() == FilterOperation::NEXISTS))
     {
         if (filter->get_column()->matches_type(LiteralType::ClpStringT)) {
-            return;
-            // std::string query_string;
-            // filter->get_operand()->as_clp_string(query_string, filter->get_operation());
-
-            // if (m_clpp_string_query_map.contains(query_string)) {
-            //     return;
-            // }
-
-            // search on log type dictionary
-            // clp::epochtime_t placeholder_timestamp{};
-            // log_surgeon::lexers::ByteLexer placeholder_lexer;
-            // m_string_query_map.emplace(
-            //         query_string,
-            //         clp::GrepCore::process_raw_query(
-            //                 *m_log_dict,
-            //                 *m_var_dict,
-            //                 query_string,
-            //                 placeholder_timestamp,
-            //                 placeholder_timestamp,
-            //                 m_ignore_case,
-            //                 placeholder_lexer,
-            //                 true
-            //         )
-            // );
+            // GrepCore is currently disabled — use log_dict fallback for
+            // ClpStringT wildcard search.  Match the wildcard pattern against
+            // log-dict entry values (which contain the static template text).
+            std::string query_string;
+            filter->get_operand()->as_clp_string(query_string, filter->get_operation());
+            if (!query_string.empty() && !m_string_log_match_map.count(query_string)) {
+                auto& matching_logs = m_string_log_match_map[query_string];
+                if (ast::has_unescaped_wildcards(query_string)) {
+                    for (auto const& entry : m_log_dict->get_entries()) {
+                        if (clp::string_utils::wildcard_match_unsafe(
+                                    entry.get_value(),
+                                    query_string,
+                                    !m_ignore_case
+                            ))
+                        {
+                            matching_logs.emplace(entry.get_id());
+                        }
+                    }
+                }
+                // Exact-match (no wildcards) against log-dict entries is
+                // unreliable because templates contain variable placeholders,
+                // so we leave the set empty and rely on VarStringT path.
+            }
         }
 
         if (filter->get_column()->matches_type(LiteralType::VarStringT)) {
@@ -1174,19 +1237,34 @@ EvaluatedValue QueryRunner::constant_propagate(std::shared_ptr<Expression> const
                 return EvaluatedValue::False;
             }
             if (filter->get_column()->matches_type(LiteralType::ClpStringT)) {
-                auto& query_processing_result = m_string_query_map.at(filter_string);
-                if (query_processing_result.has_value()) {
-                    m_expr_clp_query[expr.get()] = &(query_processing_result.value());
-                    matches_clp_string = true;
+                auto sq_it = m_string_query_map.find(filter_string);
+                if (m_string_query_map.end() == sq_it) {
+                    // GrepCore unavailable — try log_dict fallback
+                    auto slm_it = m_string_log_match_map.find(filter_string);
+                    if (m_string_log_match_map.end() != slm_it) {
+                        m_expr_log_match_map[expr.get()] = &slm_it->second;
+                        matches_clp_string = !slm_it->second.empty();
+                    } else {
+                        m_expr_clp_query[expr.get()] = nullptr;
+                    }
                 } else {
-                    m_expr_clp_query[expr.get()] = nullptr;
+                    auto& query_processing_result = sq_it->second;
+                    if (query_processing_result.has_value()) {
+                        m_expr_clp_query[expr.get()] = &(query_processing_result.value());
+                        matches_clp_string = true;
+                    } else {
+                        m_expr_clp_query[expr.get()] = nullptr;
+                    }
                 }
                 has_clp_string = wildcard->matches_type(LiteralType::ClpStringT);
             }
             if (filter->get_column()->matches_type(LiteralType::VarStringT)) {
-                m_expr_var_match_map[expr.get()] = &m_string_var_match_map.at(filter_string);
-                has_var_string = wildcard->matches_type(LiteralType::VarStringT);
-                matches_var_string = !m_expr_var_match_map.at(expr.get())->empty();
+                auto sv_it = m_string_var_match_map.find(filter_string);
+                if (m_string_var_match_map.end() != sv_it) {
+                    m_expr_var_match_map[expr.get()] = &sv_it->second;
+                    has_var_string = wildcard->matches_type(LiteralType::VarStringT);
+                    matches_var_string = !m_expr_var_match_map.at(expr.get())->empty();
+                }
             }
 
             if (filter->get_operation() == FilterOperation::EQ) {
@@ -1222,36 +1300,46 @@ EvaluatedValue QueryRunner::constant_propagate(std::shared_ptr<Expression> const
             }
             return EvaluatedValue::Unknown;
         } else if (filter->get_column()->matches_type(LiteralType::ClpStringT)) {
-            return EvaluatedValue::Unknown;
+            // ClpStringT search via GrepCore is currently disabled — try
+            // log_dict fallback for evaluation at message level.
+            m_expr_clp_query[expr.get()] = nullptr;
             std::string filter_string;
-            filter->get_operand()->as_clp_string(filter_string, filter->get_operation());
-
-            // set up string query for this filter
-            auto& query_processing_result = m_string_query_map.at(filter_string);
-            if (query_processing_result.has_value()) {
-                m_expr_clp_query[expr.get()] = &(query_processing_result.value());
-                return EvaluatedValue::Unknown;
-            } else {
-                m_expr_clp_query[expr.get()] = nullptr;
-                // If filter can not match then return it's guaranteed value based on
-                // whether the filter is inverted and whether the operation was == or !=
-                if (filter->get_operation() == FilterOperation::EQ) {
-                    return filter->is_inverted() ? EvaluatedValue::True : EvaluatedValue::False;
-                } else if (filter->get_operation() == FilterOperation::NEQ) {
-                    return filter->is_inverted() ? EvaluatedValue::False : EvaluatedValue::True;
+            if (filter->get_operand()->as_clp_string(filter_string, filter->get_operation())) {
+                auto slm_it = m_string_log_match_map.find(filter_string);
+                if (m_string_log_match_map.end() != slm_it) {
+                    m_expr_log_match_map[expr.get()] = &slm_it->second;
+                    if (slm_it->second.empty()) {
+                        // No logtype matches — for EQ the filter can't match
+                        if (filter->get_operation() == FilterOperation::EQ) {
+                            return filter->is_inverted() ? EvaluatedValue::True
+                                                         : EvaluatedValue::False;
+                        }
+                    }
                 }
-                // FIXME: throw
-                return EvaluatedValue::False;
             }
+            return EvaluatedValue::Unknown;
         } else if (filter->get_column()->matches_type(LiteralType::VarStringT)) {
             std::string filter_string;
-            filter->get_operand()->as_var_string(filter_string, filter->get_operation());
+            bool const as_var_ok{
+                    filter->get_operand()->as_var_string(filter_string, filter->get_operation())
+            };
 
             // set up string query for this filter
-            m_expr_var_match_map[expr.get()] = &m_string_var_match_map.at(filter_string);
+            auto sv_it = m_string_var_match_map.find(filter_string);
+            if (!as_var_ok || m_string_var_match_map.end() == sv_it) {
+                SPDLOG_DEBUG(
+                        "constant_propagate: m_string_var_match_map missing key '{}' (as_var_ok={}), "
+                        "map_size={}",
+                        filter_string,
+                        as_var_ok,
+                        m_string_var_match_map.size()
+                );
+                return EvaluatedValue::False;
+            }
+            m_expr_var_match_map[expr.get()] = &sv_it->second;
 
             // use string queries to potentially propagate known result
-            if (m_expr_var_match_map.at(expr.get())->empty()) {
+            if (m_expr_var_match_map[expr.get()]->empty()) {
                 // If filter can not match then return it's guaranteed value based on
                 // whether the filter is inverted and whether the operation was == or !=
                 if (filter->get_operation() == FilterOperation::EQ) {

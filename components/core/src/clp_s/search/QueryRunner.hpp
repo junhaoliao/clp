@@ -139,8 +139,10 @@ private:
 
     std::map<std::string, std::optional<clp::Query>> m_string_query_map;
     std::map<std::string, std::unordered_set<int64_t>> m_string_var_match_map;
+    std::unordered_map<std::string, std::unordered_set<clp::logtype_dictionary_id_t>> m_string_log_match_map;
     std::unordered_map<ast::Expression*, clp::Query*> m_expr_clp_query;
     std::unordered_map<ast::Expression*, std::unordered_set<int64_t>*> m_expr_var_match_map;
+    std::unordered_map<ast::Expression*, std::unordered_set<clp::logtype_dictionary_id_t>*> m_expr_log_match_map;
     std::unordered_map<int32_t, std::vector<ClpStringColumnReader*>> m_clp_string_readers;
     std::unordered_map<int32_t, std::vector<VariableStringColumnReader*>> m_var_string_readers;
     std::unordered_map<int32_t, TimestampColumnReader*> m_timestamp_readers;
@@ -256,6 +258,20 @@ private:
     auto evaluate_clp_string_filter(
             ast::FilterOperation op,
             clp::Query* q,
+            std::vector<ClpStringColumnReader*> const& readers
+    ) const -> bool;
+
+    /**
+     * Evaluates a clp string filter expression using logtype ID matching
+     * (fallback when GrepCore is disabled).
+     * @param op
+     * @param matching_logtypes
+     * @param readers
+     * @return true if the expression evaluates to true, false otherwise
+     */
+    auto evaluate_clp_string_logtype_filter(
+            ast::FilterOperation op,
+            std::unordered_set<clp::logtype_dictionary_id_t>* matching_logtypes,
             std::vector<ClpStringColumnReader*> const& readers
     ) const -> bool;
 

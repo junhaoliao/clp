@@ -11,6 +11,7 @@
 #include <spdlog/spdlog.h>
 #include <ystdlib/error_handling/Result.hpp>
 
+#include <clp/FileReader.hpp>
 #include <clp/ir/types.hpp>
 #include <clp/type_utils.hpp>
 #include <clp_s/archive_constants.hpp>
@@ -551,9 +552,32 @@ std::shared_ptr<char[]> ArchiveReader::read_stream(size_t stream_id, bool reuse_
 auto ArchiveReader::read_log_shape_stats()
         -> ystdlib::error_handling::Result<clpp::LogShapeStatArray> {
     constexpr size_t cDecompressorFileReadBufferCapacity{64UL * 1024};
-    auto reader{m_archive_reader_adaptor->checkout_reader_for_section(
-            constants::cArchiveLogShapeStatsFile
-    )};
+    std::unique_ptr<clp::ReaderInterface> reader;
+    try {
+        reader = m_archive_reader_adaptor->checkout_reader_for_section(
+                constants::cArchiveLogShapeStatsFile
+        );
+    } catch (clp::FileReader::OperationFailed const& e) {
+        if (clp::ErrorCode_FileNotFound != e.get_error_code()) {
+            throw;
+        }
+        // checkout_reader_for_section sets m_current_reader_holder before creating the
+        // FileReader, so we must checkin to reset the holder even though the checkout failed.
+        m_archive_reader_adaptor->checkin_reader_for_section(
+                constants::cArchiveLogShapeStatsFile
+        );
+        // Archives created without CLPP support don't have this file
+        return clpp::LogShapeStatArray{};
+    } catch (ArchiveReaderAdaptor::OperationFailed const& e) {
+        if (ErrorCodeBadParam != e.get_error_code()) {
+            throw;
+        }
+        m_archive_reader_adaptor->checkin_reader_for_section(
+                constants::cArchiveLogShapeStatsFile
+        );
+        // Archives created without CLPP support don't have this file
+        return clpp::LogShapeStatArray{};
+    }
     ZstdDecompressor decompressor{};
     decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 
@@ -575,9 +599,32 @@ auto ArchiveReader::read_log_surgeon_schema() -> ystdlib::error_handling::Result
 auto ArchiveReader::read_parent_rule_shapes()
         -> ystdlib::error_handling::Result<clpp::ParentRuleShapesArray> {
     constexpr size_t cDecompressorFileReadBufferCapacity{64UL * 1024};
-    auto reader{m_archive_reader_adaptor->checkout_reader_for_section(
-            constants::cArchiveParentRuleShapesFile
-    )};
+    std::unique_ptr<clp::ReaderInterface> reader;
+    try {
+        reader = m_archive_reader_adaptor->checkout_reader_for_section(
+                constants::cArchiveParentRuleShapesFile
+        );
+    } catch (clp::FileReader::OperationFailed const& e) {
+        if (clp::ErrorCode_FileNotFound != e.get_error_code()) {
+            throw;
+        }
+        // checkout_reader_for_section sets m_current_reader_holder before creating the
+        // FileReader, so we must checkin to reset the holder even though the checkout failed.
+        m_archive_reader_adaptor->checkin_reader_for_section(
+                constants::cArchiveParentRuleShapesFile
+        );
+        // Archives created without CLPP support don't have this file
+        return clpp::ParentRuleShapesArray{};
+    } catch (ArchiveReaderAdaptor::OperationFailed const& e) {
+        if (ErrorCodeBadParam != e.get_error_code()) {
+            throw;
+        }
+        m_archive_reader_adaptor->checkin_reader_for_section(
+                constants::cArchiveParentRuleShapesFile
+        );
+        // Archives created without CLPP support don't have this file
+        return clpp::ParentRuleShapesArray{};
+    }
     ZstdDecompressor decompressor{};
     decompressor.open(*reader, cDecompressorFileReadBufferCapacity);
 

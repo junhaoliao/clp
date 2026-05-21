@@ -1306,7 +1306,9 @@ auto SchemaReader::reconstruct_log_shape(
 
     std::string_view template_to_scan{log_shape_template};
     if (false == parent_rule_fqn.empty()) {
-        if (nullptr == m_parent_rule_shapes) {
+        if (nullptr == m_parent_rule_shapes
+            || log_shape_id >= m_parent_rule_shapes->size())
+        {
             return {};
         }
         auto const& metadata{m_parent_rule_shapes->at(log_shape_id)};

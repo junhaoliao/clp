@@ -334,8 +334,11 @@ auto SchemaMatch::find_schemas_matching_predicate(
                 matched_shape_ids.emplace_back(log_shape.get_id());
             }
         } else {
-            // TODO clpp: clean up
-            auto shapes{m_archive_reader->get_parent_rule_shapes().at(log_shape.get_id())};
+            auto const& parent_rule_shapes{m_archive_reader->get_parent_rule_shapes()};
+            if (log_shape.get_id() >= parent_rule_shapes.size()) {
+                continue;
+            }
+            auto const& shapes{parent_rule_shapes.at(log_shape.get_id())};
             for (auto const& parent_match : shapes.get_parent_rule_shapes()) {
                 if (qualified_name == parent_match.m_name
                     && matcher(
