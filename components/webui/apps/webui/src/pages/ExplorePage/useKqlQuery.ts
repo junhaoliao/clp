@@ -15,9 +15,7 @@ import {SEARCH_UI_STATE} from "./SearchState/typings";
 
 
 type UseKqlQueryReturn = {
-    addPatternFilter: (logtypeId: number) => void;
     queryString: string;
-    removePatternFilter: (logtypeId: number) => void;
     submitQuery: (query: string) => void;
 };
 
@@ -130,34 +128,8 @@ const useKqlQuery = (selectedFields: string[] = []): UseKqlQueryReturn => {
         });
     };
 
-    const addPatternFilter = (logtypeId: number) => {
-        const clause = `logtype_id: ${logtypeId}`;
-        const newQuery = 0 < queryString.length ?
-            `${queryString} or ${clause}` :
-            clause;
-
-        setQueryString(newQuery);
-        submitSearch(newQuery, selectedFields).catch((err: unknown) => {
-            throw err;
-        });
-    };
-
-    const removePatternFilter = (logtypeId: number) => {
-        const clause = `not logtype_id: ${logtypeId}`;
-        const newQuery = 0 < queryString.length ?
-            `${queryString} and ${clause}` :
-            clause;
-
-        setQueryString(newQuery);
-        submitSearch(newQuery, selectedFields).catch((err: unknown) => {
-            throw err;
-        });
-    };
-
     return {
-        addPatternFilter,
         queryString,
-        removePatternFilter,
         submitQuery,
     };
 };

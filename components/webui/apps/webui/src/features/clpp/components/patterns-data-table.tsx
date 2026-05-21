@@ -9,11 +9,7 @@ import {
 } from "@tanstack/react-table";
 import {type AppType} from "@webui/server/hono-app";
 import {hc} from "hono/client";
-import {
-    ChevronDownIcon,
-    MinusIcon,
-    PlusIcon,
-} from "lucide-react";
+import {ChevronDownIcon} from "lucide-react";
 
 import {ExpandedRowContent} from "./patterns-expanded-rows";
 import {useLogtypeExamples} from "./use-logtype-examples";
@@ -33,46 +29,17 @@ const api = hc<AppType>("/");
 
 type PatternsDataTableProps = {
     dataset: string;
-    onAddPatternFilter?: (logtypeId: number) => void;
-    onRemovePatternFilter?: (logtypeId: number) => void;
 };
 
 /**
  * Builds column definitions for the Patterns data table.
  *
- * @param onAdd
- * @param onRemove
  * @return Column definitions.
  */
-const buildColumns = (
-    onAdd: (logtypeId: number) => void,
-    onRemove: (logtypeId: number) => void,
-): ColumnDef<LogtypeEntry>[] => [
+const buildColumns = (): ColumnDef<LogtypeEntry>[] => [
     {
         cell: ({row}) => (
             <div className={"flex gap-0.5"}>
-                <Button
-                    aria-label={"Add filter for this pattern"}
-                    className={"h-5 w-5"}
-                    size={"icon"}
-                    variant={"ghost"}
-                    onClick={() => {
-                        onAdd(row.original.id);
-                    }}
-                >
-                    <PlusIcon className={"h-3 w-3"}/>
-                </Button>
-                <Button
-                    aria-label={"Exclude this pattern"}
-                    className={"h-5 w-5"}
-                    size={"icon"}
-                    variant={"ghost"}
-                    onClick={() => {
-                        onRemove(row.original.id);
-                    }}
-                >
-                    <MinusIcon className={"h-3 w-3"}/>
-                </Button>
                 <Button
                     aria-label={"Toggle row details"}
                     className={"h-5 w-5"}
@@ -94,7 +61,7 @@ const buildColumns = (
         enableSorting: false,
         header: "Actions",
         id: "actions",
-        size: 76,
+        size: 28,
     },
     {
         accessorKey: "count",
@@ -124,14 +91,10 @@ const buildColumns = (
  *
  * @param root0
  * @param root0.dataset
- * @param root0.onAddPatternFilter
- * @param root0.onRemovePatternFilter
  * @return JSX element
  */
 const PatternsDataTable = ({
     dataset,
-    onAddPatternFilter,
-    onRemovePatternFilter,
 }: PatternsDataTableProps) => {
     const [search, setSearch] = useState("");
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -189,12 +152,7 @@ const PatternsDataTable = ({
             search.toLowerCase(),
         ));
 
-    const columns = buildColumns(
-        onAddPatternFilter ?? (() => {
-        }),
-        onRemovePatternFilter ?? (() => {
-        }),
-    );
+    const columns = buildColumns();
 
     const handleExpandedChange = (updater: Updater<ExpandedState>) => {
         // Resolve the updater to get the new expanded state, then sync

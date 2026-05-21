@@ -93,9 +93,7 @@ const ExplorePage = () => {
     );
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     const {
-        addPatternFilter: handleAddPatternFilter,
         queryString: kqlQueryString,
-        removePatternFilter: handleRemovePatternFilter,
         submitQuery: handleQuerySubmit,
     } = useKqlQuery(selectedFields);
 
@@ -177,9 +175,7 @@ const ExplorePage = () => {
                         }
                         patternsDataTable={
                             <PatternsDataTable
-                                dataset={dataset}
-                                onAddPatternFilter={handleAddPatternFilter}
-                                onRemovePatternFilter={handleRemovePatternFilter}/>
+                                dataset={dataset}/>
                         }
                     />
                 </div>
