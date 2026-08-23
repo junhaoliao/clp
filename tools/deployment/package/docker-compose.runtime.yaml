@@ -18,6 +18,12 @@ services:
       # Telemetry opt-out vars (forwarded so start_clp.py can respect them)
       CLP_DISABLE_TELEMETRY: "${CLP_DISABLE_TELEMETRY:-}"
       DO_NOT_TRACK: "${DO_NOT_TRACK:-}"
+
+      # Forwarded to the one-off setup process, which writes credentials only to the scoped
+      # service env files that need them.
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN:-}"
     volumes:
       # Docker daemon bridge
       - type: "bind"

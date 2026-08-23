@@ -196,6 +196,15 @@ aws_authentication:
 The environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` should be used to specify
 a set of [long-term IAM user credentials](index.md#long-term-iam-user-credentials).
 
+For package deployments using Docker Compose, set both variables in the environment before running
+`sbin/start-clp.sh`. The launcher forwards them only to services that access an S3 storage
+configured with `env_vars` authentication. `AWS_SESSION_TOKEN` is not supported by this
+authentication type.
+
+Helm cannot copy credentials from the shell that launches a release. Helm users should instead use
+the chart's credentials or profile configuration, or a cluster identity setup supported by the AWS
+SDK default credential provider chain.
+
 ### default
 
 Settings for this type are shown below.

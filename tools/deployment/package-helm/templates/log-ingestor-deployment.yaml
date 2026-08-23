@@ -64,6 +64,9 @@ spec:
               mountPath: "/etc/clp-config.yaml"
               subPath: "clp-config.yaml"
               readOnly: true
+            {{- if .Values.clpConfig.aws_config }}
+            - {{- include "clp.awsConfigVolumeMount" . | nindent 14 }}
+            {{- end }}
           command: [
             "/opt/clp/bin/log-ingestor",
             "--config", "/etc/clp-config.yaml",
@@ -82,4 +85,7 @@ spec:
         - name: "config"
           configMap:
             name: {{ include "clp.fullname" . }}-config
+        {{- if .Values.clpConfig.aws_config }}
+        - {{- include "clp.awsConfigVolume" . | nindent 10 }}
+        {{- end }}
 {{- end }}

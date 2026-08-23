@@ -44,6 +44,7 @@ from clp_py_utils.clp_config import (
     WEBUI_COMPONENT_NAME,
 )
 from clp_py_utils.core import resolve_host_path_in_container
+from clp_py_utils.s3_utils import generate_container_auth_options
 
 from clp_package_utils.general import (
     check_docker_dependencies,
@@ -71,6 +72,47 @@ THIRD_PARTY_SERVICE_GID = 999
 THIRD_PARTY_SERVICE_UID_GID = f"{THIRD_PARTY_SERVICE_UID}:{THIRD_PARTY_SERVICE_GID}"
 
 logger = logging.getLogger(__name__)
+
+AWS_CONTAINER_COMPONENT_NAMES = (
+    COMPRESSION_SCHEDULER_COMPONENT_NAME,
+    COMPRESSION_WORKER_COMPONENT_NAME,
+    GARBAGE_COLLECTOR_COMPONENT_NAME,
+    QUERY_WORKER_COMPONENT_NAME,
+    API_SERVER_COMPONENT_NAME,
+    LOG_INGESTOR_COMPONENT_NAME,
+)
+
+
+def _write_container_env_file(env_file_path: pathlib.Path, assignments: list[str]) -> None:
+    """Writes validated environment assignments to an owner-only file."""
+    if any(
+        "\n" in assignment or "\r" in assignment or "\0" in assignment for assignment in assignments
+    ):
+        raise ValueError("Container environment assignments cannot contain newlines or NUL bytes.")
+
+    env_file_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    env_file_path.parent.chmod(0o700)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    file_descriptor = os.open(env_file_path, flags, 0o600)
+    try:
+        os.fchmod(file_descriptor, 0o600)
+        with os.fdopen(file_descriptor, "w") as env_file:
+            file_descriptor = -1
+            for assignment in assignments:
+                env_file.write(f"{assignment}\n")
+    finally:
+        if file_descriptor >= 0:
+            os.close(file_descriptor)
+
+
+def _write_aws_container_env_files(clp_config: ClpConfig, container_env_dir: pathlib.Path) -> None:
+    """Writes scoped AWS credential environment files for Docker Compose services."""
+    for component_name in AWS_CONTAINER_COMPONENT_NAMES:
+        _, assignments = generate_container_auth_options(clp_config, component_name)
+        _write_container_env_file(
+            container_env_dir / f"{component_name}.aws.env",
+            assignments,
+        )
 
 
 class EnvVarsDict(dict[str, str | None]):
@@ -1039,6 +1081,7 @@ class DockerComposeController(BaseController):
         container_clp_config = generate_docker_compose_container_config(self._clp_config)
         num_workers = self._get_num_workers()
         dump_shared_container_config(container_clp_config, self._clp_config)
+        _write_aws_container_env_files(self._clp_config, self._conf_dir / "container-env")
 
         env_vars = EnvVarsDict()
 

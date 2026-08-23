@@ -10,6 +10,7 @@ from botocore.config import Config
 from job_orchestration.scheduler.job_config import S3InputConfig
 
 from clp_py_utils.clp_config import (
+    API_SERVER_COMPONENT_NAME,
     ARCHIVE_MANAGER_ACTION_NAME,
     AwsAuthentication,
     AwsAuthType,
@@ -18,13 +19,13 @@ from clp_py_utils.clp_config import (
     COMPRESSION_WORKER_COMPONENT_NAME,
     FsStorage,
     GARBAGE_COLLECTOR_COMPONENT_NAME,
-    QUERY_SCHEDULER_COMPONENT_NAME,
+    LOG_INGESTOR_COMPONENT_NAME,
     QUERY_WORKER_COMPONENT_NAME,
     S3Config,
     S3Credentials,
+    S3IngestionConfig,
     S3Storage,
     StorageType,
-    WEBUI_COMPONENT_NAME,
 )
 from clp_py_utils.core import FileMetadata
 
@@ -119,25 +120,24 @@ def generate_container_auth_options(
     :return: Tuple of (whether aws config mount is needed, credential env_vars to set).
     :raises: ValueError if environment variables are not set correctly.
     """
-    output_storages_by_component_type: list[S3Storage | FsStorage]
-    input_storage_needed = False
-
-    if container_type in (
-        COMPRESSION_SCHEDULER_COMPONENT_NAME,
-        COMPRESSION_WORKER_COMPONENT_NAME,
-    ):
-        output_storages_by_component_type = [clp_config.archive_output.storage]
-        input_storage_needed = True
+    storages: list[S3Storage | FsStorage | S3IngestionConfig]
+    if container_type == COMPRESSION_SCHEDULER_COMPONENT_NAME:
+        storages = [clp_config.logs_input]
+    elif container_type == COMPRESSION_WORKER_COMPONENT_NAME:
+        storages = [
+            clp_config.archive_output.storage,
+            clp_config.logs_input,
+        ]
     elif container_type in (ARCHIVE_MANAGER_ACTION_NAME,):
-        output_storages_by_component_type = [clp_config.archive_output.storage]
-    elif container_type in (WEBUI_COMPONENT_NAME,):
-        output_storages_by_component_type = [clp_config.stream_output.storage]
-    elif container_type in (
-        GARBAGE_COLLECTOR_COMPONENT_NAME,
-        QUERY_SCHEDULER_COMPONENT_NAME,
-        QUERY_WORKER_COMPONENT_NAME,
-    ):
-        output_storages_by_component_type = [
+        storages = [clp_config.archive_output.storage]
+    elif container_type == API_SERVER_COMPONENT_NAME:
+        storages = [clp_config.stream_output.storage]
+    elif container_type == LOG_INGESTOR_COMPONENT_NAME:
+        storages = [clp_config.logs_input]
+    elif container_type == GARBAGE_COLLECTOR_COMPONENT_NAME:
+        storages = [clp_config.archive_output.storage]
+    elif container_type == QUERY_WORKER_COMPONENT_NAME:
+        storages = [
             clp_config.archive_output.storage,
             clp_config.stream_output.storage,
         ]
@@ -146,20 +146,17 @@ def generate_container_auth_options(
     config_mount = False
     add_env_vars = False
 
-    for storage in output_storages_by_component_type:
+    for storage in storages:
         if StorageType.S3 == storage.type:
-            auth = storage.s3_config.aws_authentication
+            auth = (
+                storage.aws_authentication
+                if isinstance(storage, S3IngestionConfig)
+                else storage.s3_config.aws_authentication
+            )
             if AwsAuthType.profile == auth.type:
                 config_mount = True
             elif AwsAuthType.env_vars == auth.type:
                 add_env_vars = True
-
-    if input_storage_needed and StorageType.S3 == clp_config.logs_input.type:
-        auth = clp_config.logs_input.aws_authentication
-        if AwsAuthType.profile == auth.type:
-            config_mount = True
-        elif AwsAuthType.env_vars == auth.type:
-            add_env_vars = True
 
     credentials_env_vars = []
 
