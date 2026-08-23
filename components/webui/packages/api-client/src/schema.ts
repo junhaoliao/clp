@@ -355,6 +355,11 @@ export interface components {
             name: string;
             parent_path: string;
         };
+        /**
+         * @description Supported stream-extraction job types.
+         * @enum {string}
+         */
+        ExtractJobType: "ExtractIr" | "ExtractJson";
         /** @description Ingestion details statistics. */
         IngestionDetails: {
             /** Format: int64 */
@@ -403,11 +408,6 @@ export interface components {
              */
             time_range_end_millisecs?: number | null;
         };
-        /**
-         * @description Mirror of `job_orchestration.scheduler.constants.QueryJobType`. Must be kept in sync.
-         * @enum {string}
-         */
-        QueryJobType: "SearchOrAggregation" | "ExtractIr" | "ExtractJson";
         QueryResultsUri: {
             /** @description The uri to get the query results. */
             query_results_uri: string;
@@ -430,7 +430,7 @@ export interface components {
         StreamFileExtraction: {
             /** @description Dataset the stream belongs to (CLP-S only; `null` for the CLP storage engine). */
             dataset?: string | null;
-            extract_job_type: components["schemas"]["QueryJobType"];
+            extract_job_type: components["schemas"]["ExtractJobType"];
             /** Format: int64 */
             log_event_idx: number;
             stream_id: string;
@@ -483,12 +483,30 @@ export interface operations {
                     "application/json": components["schemas"]["CompressionJob"];
                 };
             };
-            /** @description Invalid dataset name */
+            /** @description Invalid compression request */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description An input path was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+            /** @description The request is missing an application/json content type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -541,7 +559,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             /** @description Dataset not found */
             404: {
@@ -633,7 +653,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -670,7 +692,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -705,7 +729,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -740,7 +766,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -775,7 +803,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             /** @description Path not found */
             404: {
@@ -831,6 +861,15 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["QueryResultsUri"];
+                };
+            };
+            /** @description Invalid query configuration */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
                 };
             };
             500: {
@@ -938,12 +977,30 @@ export interface operations {
                     "application/json": components["schemas"]["StreamFileMetadata"];
                 };
             };
-            /** @description Invalid dataset name or extract job type */
+            /** @description Invalid stream extraction request */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description The extraction job or stream metadata was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+            /** @description The request is missing an application/json content type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {
@@ -956,7 +1013,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
         };
     };
@@ -996,7 +1055,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
             500: {
                 headers: {

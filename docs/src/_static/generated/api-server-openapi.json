@@ -39,7 +39,27 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid compression request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An input path was not found"
+          },
+          "415": {
+            "description": "The request is missing an application/json content type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -95,7 +115,14 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid dataset name",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Dataset not found"
@@ -184,7 +211,14 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid dataset name",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -230,7 +264,14 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid dataset name",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -266,7 +307,14 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid dataset name",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -302,7 +350,14 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name"
+            "description": "Invalid dataset name",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -341,7 +396,14 @@
             }
           },
           "400": {
-            "description": "Path is outside the configured logs-input root"
+            "description": "Path is outside the configured logs-input root",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Path not found"
@@ -389,6 +451,16 @@
                 },
                 "example": {
                   "query_results_uri": "query_results/1"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query configuration",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -509,13 +581,40 @@
             }
           },
           "400": {
-            "description": "Invalid dataset name or extract job type"
+            "description": "Invalid stream extraction request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The extraction job or stream metadata was not found"
+          },
+          "415": {
+            "description": "The request is missing an application/json content type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
           },
           "504": {
-            "description": "Stream extraction timed out"
+            "description": "Stream extraction timed out",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -581,7 +680,14 @@
             }
           },
           "400": {
-            "description": "Invalid query parameters (e.g., time_range_begin_millisecs > time_range_end_millisecs, missing required fields)"
+            "description": "Invalid query parameters (e.g., time_range_begin_millisecs > time_range_end_millisecs, missing required fields)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": ""
@@ -792,6 +898,14 @@
           }
         }
       },
+      "ExtractJobType": {
+        "type": "string",
+        "description": "Supported stream-extraction job types.",
+        "enum": [
+          "ExtractIr",
+          "ExtractJson"
+        ]
+      },
       "IngestionDetails": {
         "type": "object",
         "description": "Ingestion details statistics.",
@@ -888,15 +1002,6 @@
         },
         "additionalProperties": false
       },
-      "QueryJobType": {
-        "type": "string",
-        "description": "Mirror of `job_orchestration.scheduler.constants.QueryJobType`. Must be kept in sync.",
-        "enum": [
-          "SearchOrAggregation",
-          "ExtractIr",
-          "ExtractJson"
-        ]
-      },
       "QueryResultsUri": {
         "type": "object",
         "required": [
@@ -965,7 +1070,7 @@
             "description": "Dataset the stream belongs to (CLP-S only; `null` for the CLP storage engine)."
           },
           "extract_job_type": {
-            "$ref": "#/components/schemas/QueryJobType"
+            "$ref": "#/components/schemas/ExtractJobType"
           },
           "log_event_idx": {
             "type": "integer",

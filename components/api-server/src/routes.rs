@@ -2,13 +2,13 @@ use axum::Json;
 use axum::extract::Path;
 use axum::extract::Query;
 use axum::extract::State;
+use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Sse;
 use axum::response::sse::Event;
 use axum::response::sse::KeepAlive;
 use axum::routing::get;
-use clp_rust_utils::job_config::QueryJobType;
 use futures::Stream;
 use futures::StreamExt;
 use serde::Deserialize;
@@ -32,6 +32,7 @@ use crate::metadata_client::CompressionJob;
 use crate::metadata_client::CompressionJobCreation;
 use crate::metadata_client::CompressionMetadata;
 use crate::metadata_client::DirEntry;
+use crate::metadata_client::ExtractJobType;
 use crate::metadata_client::IngestionDetails;
 use crate::metadata_client::MetadataClient;
 use crate::metadata_client::QuerySpeed;
@@ -115,8 +116,8 @@ mod api_doc {
     use super::CompressionMetadata;
     use super::CompressionUsage;
     use super::DirEntry;
+    use super::ExtractJobType;
     use super::IngestionDetails;
-    use super::QueryJobType;
     use super::QuerySpeed;
     use super::SpaceSavings;
     use super::StreamFileExtraction;
@@ -155,7 +156,7 @@ mod api_doc {
             CompressionJobCreation,
             CompressionMetadata,
             DirEntry,
-            QueryJobType,
+            ExtractJobType,
             IngestionDetails,
             QuerySpeed,
             SpaceSavings,
@@ -199,6 +200,12 @@ async fn health() -> String {
             body = QueryResultsUri,
             description = "The URI to fetch the results of the submitted query.",
             example = json!({"query_results_uri":"query_results/1"})
+        ),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid query configuration"
         ),
         (status = INTERNAL_SERVER_ERROR)
     )
@@ -322,9 +329,13 @@ async fn cancel_query(
     params(CompressionUsageParams),
     responses(
         (status = OK, body = Vec<CompressionUsage>),
-        (status = BAD_REQUEST, description = "Invalid query parameters \
-            (e.g., time_range_begin_millisecs > time_range_end_millisecs, \
-            missing required fields)"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid query parameters (e.g., time_range_begin_millisecs > \
+                time_range_end_millisecs, missing required fields)"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
@@ -383,7 +394,12 @@ async fn datasets(State(state): State<AppState>) -> Result<Json<Vec<String>>, Ha
     params(DatasetsParams),
     responses(
         (status = OK, body = TimeRange),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid dataset name"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
@@ -404,7 +420,12 @@ async fn time_range(
     params(DatasetsParams),
     responses(
         (status = OK, body = SpaceSavings),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid dataset name"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
@@ -427,7 +448,12 @@ async fn space_savings(
     params(DatasetsParams),
     responses(
         (status = OK, body = IngestionDetails),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid dataset name"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
@@ -462,7 +488,12 @@ struct QuerySpeedParams {
     params(QuerySpeedParams),
     responses(
         (status = OK, body = QuerySpeed),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid dataset name"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
@@ -485,7 +516,12 @@ async fn query_speed(
     description = "Gets the timestamp column names for a given dataset (CLP-S only).",
     responses(
         (status = OK, body = Vec<String>),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid dataset name"
+        ),
         (status = NOT_FOUND, description = "Dataset not found"),
         (status = INTERNAL_SERVER_ERROR)
     )
@@ -534,7 +570,12 @@ struct ListFilesParams {
     params(ListFilesParams),
     responses(
         (status = OK, body = Vec<DirEntry>),
-        (status = BAD_REQUEST, description = "Path is outside the configured logs-input root"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Path is outside the configured logs-input root"
+        ),
         (status = NOT_FOUND, description = "Path not found"),
         (status = INTERNAL_SERVER_ERROR)
     )
@@ -553,14 +594,27 @@ async fn list_files(
     request_body(content = CompressionJobCreation),
     responses(
         (status = CREATED, body = CompressionJob, description = "The created compression job."),
-        (status = BAD_REQUEST, description = "Invalid dataset name"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid compression request"
+        ),
+        (status = NOT_FOUND, description = "An input path was not found"),
+        (
+            status = UNSUPPORTED_MEDIA_TYPE,
+            body = String,
+            content_type = "text/plain",
+            description = "The request is missing an application/json content type"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
 async fn compression_job(
     State(state): State<AppState>,
-    Json(creation): Json<CompressionJobCreation>,
+    payload: Result<Json<CompressionJobCreation>, JsonRejection>,
 ) -> Result<(StatusCode, Json<CompressionJob>), HandlerError> {
+    let creation = extract_json_payload(payload)?;
     let job = state
         .metadata_client
         .submit_compression_job(creation)
@@ -577,15 +631,33 @@ async fn compression_job(
     request_body(content = StreamFileExtraction),
     responses(
         (status = OK, body = StreamFileMetadata),
-        (status = BAD_REQUEST, description = "Invalid dataset name or extract job type"),
-        (status = GATEWAY_TIMEOUT, description = "Stream extraction timed out"),
+        (
+            status = BAD_REQUEST,
+            body = String,
+            content_type = "text/plain",
+            description = "Invalid stream extraction request"
+        ),
+        (status = NOT_FOUND, description = "The extraction job or stream metadata was not found"),
+        (
+            status = UNSUPPORTED_MEDIA_TYPE,
+            body = String,
+            content_type = "text/plain",
+            description = "The request is missing an application/json content type"
+        ),
+        (
+            status = GATEWAY_TIMEOUT,
+            body = String,
+            content_type = "text/plain",
+            description = "Stream extraction timed out"
+        ),
         (status = INTERNAL_SERVER_ERROR)
     )
 )]
 async fn extract_stream_file(
     State(state): State<AppState>,
-    Json(extraction): Json<StreamFileExtraction>,
+    payload: Result<Json<StreamFileExtraction>, JsonRejection>,
 ) -> Result<Json<StreamFileMetadata>, HandlerError> {
+    let extraction = extract_json_payload(payload)?;
     Ok(Json(
         state
             .metadata_client
@@ -605,6 +677,30 @@ enum HandlerError {
     BadRequest(String),
     #[error("Gateway timeout: {0}")]
     GatewayTimeout(String),
+    #[error("Unsupported media type: {0}")]
+    UnsupportedMediaType(String),
+}
+
+fn extract_json_payload<T>(payload: Result<Json<T>, JsonRejection>) -> Result<T, HandlerError> {
+    match payload {
+        Ok(Json(value)) => Ok(value),
+        Err(rejection) => match &rejection {
+            JsonRejection::JsonDataError(_) | JsonRejection::JsonSyntaxError(_) => {
+                Err(HandlerError::BadRequest(rejection.body_text()))
+            }
+            JsonRejection::MissingJsonContentType(_) => {
+                Err(HandlerError::UnsupportedMediaType(rejection.body_text()))
+            }
+            JsonRejection::BytesRejection(_) => {
+                tracing::error!(error = ?rejection, "API request failed");
+                Err(HandlerError::InternalServer)
+            }
+            _ => {
+                tracing::error!(error = ?rejection, "API request failed");
+                Err(HandlerError::InternalServer)
+            }
+        },
+    }
 }
 
 impl From<axum::Error> for HandlerError {
@@ -640,6 +736,9 @@ impl IntoResponse for HandlerError {
             Self::InternalServer => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
             Self::GatewayTimeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg).into_response(),
+            Self::UnsupportedMediaType(msg) => {
+                (StatusCode::UNSUPPORTED_MEDIA_TYPE, msg).into_response()
+            }
         }
     }
 }
@@ -647,9 +746,11 @@ impl IntoResponse for HandlerError {
 #[cfg(test)]
 mod tests {
     use axum::body::Body;
+    use axum::http::HeaderValue;
     use axum::http::Request;
     use axum::http::StatusCode;
     use axum::routing::get;
+    use axum::routing::post;
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
@@ -667,6 +768,34 @@ mod tests {
                 Ok::<_, HandlerError>(axum::Json(codes))
             }),
         )
+    }
+
+    fn json_contract_test_app() -> axum::Router {
+        axum::Router::new().route(
+            "/compression/jobs",
+            post(
+                |payload: Result<Json<CompressionJobCreation>, JsonRejection>| async move {
+                    extract_json_payload(payload).map(|_| StatusCode::NO_CONTENT)
+                },
+            ),
+        )
+    }
+
+    async fn submit_json_contract_request(
+        body: &'static str,
+        content_type: Option<&'static str>,
+    ) -> axum::response::Response {
+        let mut request = Request::builder().uri("/compression/jobs").method("POST");
+        if let Some(content_type) = content_type {
+            request = request.header(
+                axum::http::header::CONTENT_TYPE,
+                HeaderValue::from_static(content_type),
+            );
+        }
+        json_contract_test_app()
+            .oneshot(request.body(Body::from(body)).unwrap())
+            .await
+            .unwrap()
     }
 
     async fn get_body(response: axum::response::Response) -> String {
@@ -715,6 +844,81 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(get_body(response).await, "");
+    }
+
+    #[tokio::test]
+    async fn json_wrong_field_type_returns_bad_request() {
+        let response =
+            submit_json_contract_request(r#"{"paths":"not-an-array"}"#, Some("application/json"))
+                .await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn json_unknown_field_returns_bad_request() {
+        let response = submit_json_contract_request(
+            r#"{"paths":[],"unexpected":true}"#,
+            Some("application/json"),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn json_malformed_body_returns_bad_request() {
+        let response =
+            submit_json_contract_request(r#"{"paths":[}"#, Some("application/json")).await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn json_missing_content_type_returns_unsupported_media_type() {
+        let response = submit_json_contract_request(r#"{"paths":[]}"#, None).await;
+
+        assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    #[tokio::test]
+    async fn json_valid_body_reaches_handler() {
+        let response =
+            submit_json_contract_request(r#"{"paths":[]}"#, Some("application/json")).await;
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[test]
+    fn openapi_describes_migrated_post_contracts() {
+        let document = serde_json::to_value(ApiDoc::openapi()).expect("failed to encode OpenAPI");
+        let compression_responses = &document["paths"]["/compression/jobs"]["post"]["responses"];
+        let extraction_responses = &document["paths"]["/stream_files/extract"]["post"]["responses"];
+
+        for responses in [compression_responses, extraction_responses] {
+            for status in ["400", "404", "415", "500"] {
+                assert!(
+                    responses.get(status).is_some(),
+                    "missing response status {status}"
+                );
+            }
+            for status in ["400", "415"] {
+                assert_eq!(
+                    responses[status]["content"]["text/plain"]["schema"]["type"],
+                    "string"
+                );
+            }
+        }
+
+        assert!(extraction_responses.get("504").is_some());
+        assert_eq!(
+            extraction_responses["504"]["content"]["text/plain"]["schema"]["type"],
+            "string"
+        );
+        assert_eq!(
+            document["components"]["schemas"]["ExtractJobType"]["enum"],
+            serde_json::json!(["ExtractIr", "ExtractJson"])
+        );
     }
 
     #[test]

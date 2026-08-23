@@ -139,6 +139,13 @@ pub struct StreamFileMetadata {
     pub stream_id: String,
 }
 
+/// Supported stream-extraction job types.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ToSchema)]
+pub enum ExtractJobType {
+    ExtractIr,
+    ExtractJson,
+}
+
 /// Request body for the stream-files extract endpoint.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -146,7 +153,7 @@ pub struct StreamFileExtraction {
     /// Dataset the stream belongs to (CLP-S only; `null` for the CLP storage engine).
     #[serde(default)]
     pub dataset: Option<String>,
-    pub extract_job_type: QueryJobType,
+    pub extract_job_type: ExtractJobType,
     pub log_event_idx: i64,
     pub stream_id: String,
 }
@@ -742,7 +749,6 @@ impl MetadataClient {
     /// # Errors
     ///
     /// Returns [`ClientError::InvalidDatasetName`] if the dataset name is invalid.
-    /// Returns [`ClientError::InvalidInput`] if the extract job type is invalid.
     /// Forwards [`mongodb::error::Error`]'s return values on failure.
     /// Forwards [`sqlx::query::Query::execute`]'s return values on failure.
     pub async fn extract_stream_file(
@@ -750,11 +756,6 @@ impl MetadataClient {
         extraction: StreamFileExtraction,
     ) -> Result<StreamFileMetadata, ClientError> {
         Self::validate_dataset(extraction.dataset.as_deref())?;
-        if QueryJobType::SearchOrAggregation == extraction.extract_job_type {
-            return Err(ClientError::InvalidInput(
-                "SearchOrAggregation is not a stream-extraction job type".to_owned(),
-            ));
-        }
         let stream_files_collection = self
             .mongodb_client
             .database(&self.config.results_cache.db_name)
@@ -838,26 +839,27 @@ impl MetadataClient {
         extraction: &StreamFileExtraction,
     ) -> Result<(), ClientError> {
         let target_uncompressed_size = self.config.stream_output.target_uncompressed_size;
-        let job_config = match extraction.extract_job_type {
-            QueryJobType::ExtractIr => serde_json::json!({
-                "file_split_id": null,
-                "msg_ix": extraction.log_event_idx,
-                "orig_file_id": extraction.stream_id,
-                "target_uncompressed_size": target_uncompressed_size,
-            }),
-            QueryJobType::ExtractJson => serde_json::json!({
-                "dataset": extraction.dataset,
-                "archive_id": extraction.stream_id,
-                "target_chunk_size": target_uncompressed_size,
-            }),
-            QueryJobType::SearchOrAggregation => {
-                return Err(ClientError::InvalidInput(
-                    "SearchOrAggregation is not a stream-extraction job type".to_owned(),
-                ));
-            }
+        let (job_config, job_type) = match extraction.extract_job_type {
+            ExtractJobType::ExtractIr => (
+                serde_json::json!({
+                    "file_split_id": null,
+                    "msg_ix": extraction.log_event_idx,
+                    "orig_file_id": extraction.stream_id,
+                    "target_uncompressed_size": target_uncompressed_size,
+                }),
+                QueryJobType::ExtractIr,
+            ),
+            ExtractJobType::ExtractJson => (
+                serde_json::json!({
+                    "dataset": extraction.dataset,
+                    "archive_id": extraction.stream_id,
+                    "target_chunk_size": target_uncompressed_size,
+                }),
+                QueryJobType::ExtractJson,
+            ),
         };
         let encoded = rmp_serde::to_vec_named(&job_config)?;
-        let job_type_i32: i32 = extraction.extract_job_type.into();
+        let job_type_i32: i32 = job_type.into();
         let result = sqlx::query(&format!(
             "INSERT INTO {QUERY_JOBS_TABLE_NAME} (job_config, type) VALUES (?, ?)"
         ))

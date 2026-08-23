@@ -8,7 +8,7 @@ import {buildApiErrorMessage} from "../utils";
 
 interface SubmitExtractStreamJobProps {
     dataset: Nullable<string>;
-    extractJobType: QUERY_JOB_TYPE;
+    extractJobType: QUERY_JOB_TYPE.EXTRACT_IR | QUERY_JOB_TYPE.EXTRACT_JSON;
     streamId: string;
     logEventIdx: number;
     onRequestStarted: () => void;
@@ -18,17 +18,25 @@ type StreamFileMetadata = components["schemas"]["StreamFileMetadata"];
 
 /**
  * Maps the numeric [`QUERY_JOB_TYPE`] enum to the string enum expected by the api-server's
- * `QueryJobType` schema.
+ * `ExtractJobType` schema.
  *
  * @param jobType
  * @return
+ * @throws {Error} If an unsupported value reaches the runtime boundary.
  */
-const mapExtractJobType = (jobType: QUERY_JOB_TYPE): "ExtractIr" | "ExtractJson" => {
-    if (QUERY_JOB_TYPE.EXTRACT_IR === jobType) {
-        return "ExtractIr";
+const mapExtractJobType = (
+    jobType: QUERY_JOB_TYPE.EXTRACT_IR | QUERY_JOB_TYPE.EXTRACT_JSON
+): "ExtractIr" | "ExtractJson" => {
+    switch (jobType) {
+        case QUERY_JOB_TYPE.EXTRACT_IR:
+            return "ExtractIr";
+        case QUERY_JOB_TYPE.EXTRACT_JSON:
+            return "ExtractJson";
+        default: {
+            const unsupportedJobType: never = jobType;
+            throw new Error(`Unsupported extract job type: ${String(unsupportedJobType)}`);
+        }
     }
-
-    return "ExtractJson";
 };
 
 /**
@@ -71,4 +79,7 @@ const submitExtractStreamJob = async ({
     return {data};
 };
 
-export {submitExtractStreamJob};
+export {
+    mapExtractJobType,
+    submitExtractStreamJob,
+};
