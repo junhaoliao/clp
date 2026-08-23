@@ -4,6 +4,9 @@
 # Build
 /dist
 
+# Testing
+/.tap
+
 # IDEs
 /.idea
 /.vscode

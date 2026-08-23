@@ -2,8 +2,8 @@ import {useQueryResults} from "@webui/api-client/useQueryResults";
 
 import {apiClient} from "../../../../../api/search";
 import {TimelineBucket} from "../../../../../components/ResultsTimeline/typings";
+import {handleNativeQueryStreamError} from "../../../SearchControls/Native/search-requests";
 import useSearchStore from "../../../SearchState/index";
-import {SEARCH_UI_STATE} from "../../../SearchState/typings";
 
 
 /**
@@ -23,11 +23,12 @@ const useAggregationResults = () => {
         },
         onError: (err) => {
             console.error("Failed to stream aggregation results:", err);
-            const {aggregationJobId: currentJobId, searchUiState, updateSearchUiState} =
-                useSearchStore.getState();
-
-            if (aggregationJobId === currentJobId && searchUiState === SEARCH_UI_STATE.QUERYING) {
-                updateSearchUiState(SEARCH_UI_STATE.FAILED);
+            if (null !== aggregationJobId) {
+                // eslint-disable-next-line no-void
+                void handleNativeQueryStreamError({
+                    jobId: aggregationJobId,
+                    stream: "aggregation",
+                });
             }
         },
         parse: (data) => JSON.parse(data) as TimelineBucket,

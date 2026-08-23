@@ -7,7 +7,8 @@
     "build": "tsc -b && vite build",
     "lint:check": "eslint . --max-warnings 0",
     "lint:fix": "pnpm run lint:check --fix",
-    "dev": "vite"
+    "dev": "vite",
+    "test": "tap --allow-incomplete-coverage --tsconfig=tsconfig/tsconfig.app.json --node-arg=--experimental-specifier-resolution=node --include='**/*test.ts'"
   },
   "author": "YScope Inc. <dev@yscope.com>",
   "license": "Apache-2.0",
@@ -51,6 +52,7 @@
     "eslint": "^9.39.4",
     "eslint-config-yscope": "1.1.2",
     "shadcn": "^4.13.1",
+    "tap": "^21.5.0",
     "tailwindcss": "^4.3.3",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.3",

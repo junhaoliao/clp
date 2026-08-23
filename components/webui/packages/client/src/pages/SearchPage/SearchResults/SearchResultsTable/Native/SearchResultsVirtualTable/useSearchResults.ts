@@ -1,8 +1,8 @@
 import {useQueryResults} from "@webui/api-client/useQueryResults";
 
 import {apiClient} from "../../../../../../api/search";
+import {handleNativeQueryStreamError} from "../../../../SearchControls/Native/search-requests";
 import useSearchStore from "../../../../SearchState/index";
-import {SEARCH_UI_STATE} from "../../../../SearchState/typings";
 import {SearchResult} from "./typings";
 
 
@@ -26,11 +26,12 @@ const useSearchResults = () => {
         },
         onError: (err) => {
             console.error("Failed to stream search results:", err);
-            const {searchUiState, updateSearchUiState, searchJobId: currentJobId} =
-                useSearchStore.getState();
-
-            if (searchJobId === currentJobId && searchUiState === SEARCH_UI_STATE.QUERYING) {
-                updateSearchUiState(SEARCH_UI_STATE.FAILED);
+            if (null !== searchJobId) {
+                // eslint-disable-next-line no-void
+                void handleNativeQueryStreamError({
+                    jobId: searchJobId,
+                    stream: "search",
+                });
             }
         },
         parse: (data) => {

@@ -16,6 +16,86 @@ import {SEARCH_UI_STATE} from "../../SearchState/typings";
 import {unquoteString} from "./utils";
 
 
+type NativeQueryStream = "aggregation" | "search";
+
+interface NativeQueryStreamError {
+    jobId: string;
+    stream: NativeQueryStream;
+}
+
+type CancelQuery = (jobId: number) => Promise<void>;
+
+const nativeQueryCleanupByJobPair = new Map<string, Promise<void>>();
+
+
+/**
+ * Cancels both jobs in an active native query after either result stream fails.
+ *
+ * @param error
+ * @param cancel
+ */
+const handleNativeQueryStreamError = async (
+    error: NativeQueryStreamError,
+    cancel: CancelQuery = cancelQuery
+): Promise<void> => {
+    const store = useSearchStore.getState();
+    const currentJobId = "search" === error.stream ?
+        store.searchJobId :
+        store.aggregationJobId;
+
+    if (
+        SEARCH_UI_STATE.QUERYING !== store.searchUiState ||
+        error.jobId !== currentJobId ||
+        null === store.searchJobId ||
+        null === store.aggregationJobId
+    ) {
+        return;
+    }
+
+    const activeSearchJobId = store.searchJobId;
+    const activeAggregationJobId = store.aggregationJobId;
+    const jobPairKey = JSON.stringify([activeSearchJobId,
+        activeAggregationJobId]);
+    const existingCleanup = nativeQueryCleanupByJobPair.get(jobPairKey);
+
+    if (existingCleanup) {
+        await existingCleanup;
+
+        return;
+    }
+
+    const cleanup = (async () => {
+        const jobIds = [activeSearchJobId,
+            activeAggregationJobId];
+        const results = await Promise.allSettled(jobIds.map((jobId) => cancel(Number(jobId))));
+
+        results.forEach((result, index) => {
+            if ("rejected" === result.status) {
+                console.error(`Failed to cancel query job ${jobIds[index]}:`, result.reason);
+            }
+        });
+
+        const currentStore = useSearchStore.getState();
+        if (
+            activeSearchJobId === currentStore.searchJobId &&
+            activeAggregationJobId === currentStore.aggregationJobId &&
+            SEARCH_UI_STATE.QUERYING === currentStore.searchUiState
+        ) {
+            currentStore.updateSearchUiState(SEARCH_UI_STATE.FAILED);
+        }
+    })();
+
+    nativeQueryCleanupByJobPair.set(jobPairKey, cleanup);
+    try {
+        await cleanup;
+    } finally {
+        if (cleanup === nativeQueryCleanupByJobPair.get(jobPairKey)) {
+            nativeQueryCleanupByJobPair.delete(jobPairKey);
+        }
+    }
+};
+
+
 /**
  * Builds an API server query config from a query job creation payload.
  *
@@ -138,6 +218,7 @@ const handleQueryCancel = (payload: QueryJob) => {
 
 
 export {
+    handleNativeQueryStreamError,
     handleQueryCancel,
     handleQuerySubmit,
 };
