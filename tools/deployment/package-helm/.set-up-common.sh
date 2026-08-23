@@ -144,7 +144,6 @@ get_presto_helm_args() {
 }
 SPLIT_FILTER
 )" \
-         "--set" "clpConfig.api_server=null" \
          "--set" "clpConfig.query_scheduler=null" \
          "--set" "clpConfig.query_worker=null" \
          "--set" "clpConfig.reducer=null" \
