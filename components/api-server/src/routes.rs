@@ -208,16 +208,8 @@ async fn query(
     Json(query_config): Json<QueryConfig>,
 ) -> Result<Json<QueryResultsUri>, HandlerError> {
     tracing::info!("Submitting query: {:?}", query_config);
-    let search_job_id = match state.client.submit_query(query_config).await {
-        Ok(id) => {
-            tracing::info!("Submitted query with search job ID: {}", id);
-            id
-        }
-        Err(err) => {
-            tracing::error!("Failed to submit query: {:?}", err);
-            return Err(err.into());
-        }
-    };
+    let search_job_id = state.client.submit_query(query_config).await?;
+    tracing::info!("Submitted query with search job ID: {}", search_job_id);
     let uri = format!("query_results/{search_job_id}");
     Ok(Json(QueryResultsUri {
         query_results_uri: uri,
@@ -273,27 +265,14 @@ async fn query_results(
     Query(params): Query<QueryResultsParams>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, HandlerError>>>, HandlerError> {
     tracing::info!("Fetching results for search job ID: {}", search_job_id);
-    let results_stream = match state
+    let results_stream = state
         .client
         .fetch_results(search_job_id, params.raw_docs, params.sorted)
-        .await
-    {
-        Ok(stream) => {
-            tracing::info!(
-                "Successfully initiated result stream for search job ID {}",
-                search_job_id
-            );
-            stream
-        }
-        Err(err) => {
-            tracing::error!(
-                "Failed to fetch results for search job ID {}: {:?}",
-                search_job_id,
-                err
-            );
-            return Err(err.into());
-        }
-    };
+        .await?;
+    tracing::info!(
+        "Successfully initiated result stream for search job ID {}",
+        search_job_id
+    );
     let event_stream = results_stream.map(|res| {
         let message = res?;
         let trimmed_message = message.trim();
@@ -327,23 +306,12 @@ async fn cancel_query(
     Path(search_job_id): Path<u64>,
 ) -> Result<StatusCode, HandlerError> {
     tracing::info!("Cancelling search job ID: {}", search_job_id);
-    match state.client.cancel_search_job(search_job_id).await {
-        Ok(()) => {
-            tracing::info!(
-                "Successfully submitted cancellation request for search job ID: {}",
-                search_job_id
-            );
-            Ok(StatusCode::OK)
-        }
-        Err(err) => {
-            tracing::error!(
-                "Failed to cancel search job ID {}: {:?}",
-                search_job_id,
-                err
-            );
-            Err(err.into())
-        }
-    }
+    state.client.cancel_search_job(search_job_id).await?;
+    tracing::info!(
+        "Successfully submitted cancellation request for search job ID: {}",
+        search_job_id
+    );
+    Ok(StatusCode::OK)
 }
 
 #[utoipa::path(
@@ -371,15 +339,7 @@ async fn compression_usage(
         validated.time_range_end.timestamp_millis(),
         validated.job_statuses,
     );
-    Ok(Json(
-        state
-            .client
-            .get_compression_usage(&validated)
-            .await
-            .inspect_err(|err| {
-                tracing::error!("Failed to fetch compression usage: {:?}", err);
-            })?,
-    ))
+    Ok(Json(state.client.get_compression_usage(&validated).await?))
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -648,7 +608,8 @@ enum HandlerError {
 }
 
 impl From<axum::Error> for HandlerError {
-    fn from(_: axum::Error) -> Self {
+    fn from(err: axum::Error) -> Self {
+        tracing::error!(error = ?err, "API request failed");
         Self::InternalServer
     }
 }
@@ -663,7 +624,10 @@ impl From<ClientError> for HandlerError {
                 Self::BadRequest(format!("{err}"))
             }
             ClientError::Timeout(_) => Self::GatewayTimeout(format!("{err}")),
-            _ => Self::InternalServer,
+            unexpected => {
+                tracing::error!(error = ?unexpected, "API request failed");
+                Self::InternalServer
+            }
         }
     }
 }
@@ -713,6 +677,44 @@ mod tests {
             .expect("failed to read body")
             .to_bytes();
         String::from_utf8(bytes.to_vec()).expect("body is not utf-8")
+    }
+
+    #[tokio::test]
+    async fn invalid_input_error_remains_a_safe_bad_request() {
+        let response = HandlerError::from(ClientError::InvalidInput("invalid value".to_owned()))
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(get_body(response).await, "Invalid input: invalid value");
+    }
+
+    #[tokio::test]
+    async fn not_found_error_remains_redacted() {
+        let response =
+            HandlerError::from(ClientError::NotFound("private path".to_owned())).into_response();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(get_body(response).await, "");
+    }
+
+    #[tokio::test]
+    async fn timeout_error_remains_a_safe_gateway_timeout() {
+        let response = HandlerError::from(ClientError::Timeout("query exceeded limit".to_owned()))
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::GATEWAY_TIMEOUT);
+        assert_eq!(
+            get_body(response).await,
+            "Operation timed out: query exceeded limit"
+        );
+    }
+
+    #[tokio::test]
+    async fn internal_error_remains_redacted() {
+        let response = HandlerError::from(ClientError::MalformedData).into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(get_body(response).await, "");
     }
 
     #[test]
