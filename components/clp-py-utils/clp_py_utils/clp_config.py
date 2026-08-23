@@ -727,6 +727,8 @@ class GarbageCollector(BaseModel):
 
 
 class QueryJobPollingConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     initial_backoff_ms: int = Field(default=100, alias="initial_backoff")
     max_backoff_ms: int = Field(default=5000, alias="max_backoff")
 

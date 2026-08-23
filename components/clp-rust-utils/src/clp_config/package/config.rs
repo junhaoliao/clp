@@ -257,10 +257,10 @@ impl Default for ApiServer {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(default)]
 pub struct QueryJobPollingConfig {
-    #[serde(rename = "initial_backoff")]
+    #[serde(alias = "initial_backoff")]
     pub initial_backoff_ms: u64,
 
-    #[serde(rename = "max_backoff")]
+    #[serde(alias = "max_backoff")]
     pub max_backoff_ms: u64,
 }
 
@@ -619,6 +619,7 @@ mod tests {
     use super::Database;
     use super::LogsInput;
     use super::MetadataTableScope;
+    use super::QueryJobPollingConfig;
     use super::ResultsCache;
     use super::SpiderTaskExecutorConfig;
     use super::StreamOutput;
@@ -680,6 +681,30 @@ mod tests {
         assert_eq!(results_cache.stream_collection_name, "custom-streams");
         assert_eq!(stream_output.target_uncompressed_size, 4096);
         assert_eq!(api_server.stream_file_extraction_timeout_secs, 15);
+    }
+
+    #[test]
+    fn query_job_polling_config_accepts_canonical_names() {
+        let config: QueryJobPollingConfig = serde_json::from_value(serde_json::json!({
+            "initial_backoff_ms": 17,
+            "max_backoff_ms": 29,
+        }))
+        .expect("failed to deserialize canonical polling config");
+
+        assert_eq!(config.initial_backoff_ms, 17);
+        assert_eq!(config.max_backoff_ms, 29);
+    }
+
+    #[test]
+    fn query_job_polling_config_accepts_legacy_aliases() {
+        let config: QueryJobPollingConfig = serde_json::from_value(serde_json::json!({
+            "initial_backoff": 17,
+            "max_backoff": 29,
+        }))
+        .expect("failed to deserialize legacy polling config");
+
+        assert_eq!(config.initial_backoff_ms, 17);
+        assert_eq!(config.max_backoff_ms, 29);
     }
 
     #[test]

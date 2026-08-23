@@ -868,14 +868,15 @@ impl MetadataClient {
         let job_id = result.last_insert_id();
 
         // Poll for completion.
-        let timeout_secs = self
+        let api_server_config = self
             .config
             .api_server
             .as_ref()
-            .ok_or(ClientError::ConfigIsNone)?
-            .stream_file_extraction_timeout_secs;
+            .ok_or(ClientError::ConfigIsNone)?;
+        let timeout_secs = api_server_config.stream_file_extraction_timeout_secs;
         let deadline = tokio::time::Instant::now() + Duration::from_secs(timeout_secs);
-        let mut delay_ms = 100u64;
+        let mut delay_ms = api_server_config.query_job_polling.initial_backoff_ms;
+        let max_delay_ms = api_server_config.query_job_polling.max_backoff_ms;
         loop {
             if tokio::time::Instant::now() >= deadline {
                 return Err(ClientError::Timeout(format!(
@@ -907,7 +908,7 @@ impl MetadataClient {
                 }
                 QueryJobStatus::Pending | QueryJobStatus::Running | QueryJobStatus::Cancelling => {
                     tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-                    delay_ms = std::cmp::min(delay_ms.saturating_mul(2), 5000);
+                    delay_ms = std::cmp::min(delay_ms.saturating_mul(2), max_delay_ms);
                 }
             }
         }

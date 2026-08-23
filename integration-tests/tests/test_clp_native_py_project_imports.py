@@ -4,7 +4,7 @@ from pathlib import Path
 
 from clp_mcp_server.constants import QueryJobType
 from clp_package_utils.general import JobType
-from clp_py_utils.clp_config import StorageEngine
+from clp_py_utils.clp_config import QueryJobPollingConfig, StorageEngine
 from clp_py_utils.core import FileMetadata
 from job_orchestration.scheduler.constants import CompressionJobStatus
 
@@ -23,6 +23,32 @@ def test_clp_native_py_project_enum_classes() -> None:
     assert JobType.COMPRESSION == JobType("compression")
     assert StorageEngine.CLP == StorageEngine("clp")
     assert CompressionJobStatus.PENDING == CompressionJobStatus(0)
+
+
+def test_query_job_polling_config_accepts_canonical_and_legacy_names() -> None:
+    """Ensures documented polling keys and their legacy aliases resolve identically."""
+    initial_backoff_ms = 17
+    max_backoff_ms = 29
+    canonical = QueryJobPollingConfig.model_validate(
+        {
+            "initial_backoff_ms": initial_backoff_ms,
+            "max_backoff_ms": max_backoff_ms,
+        }
+    )
+    legacy = QueryJobPollingConfig.model_validate(
+        {
+            "initial_backoff": initial_backoff_ms,
+            "max_backoff": max_backoff_ms,
+        }
+    )
+
+    assert canonical.initial_backoff_ms == initial_backoff_ms
+    assert canonical.max_backoff_ms == max_backoff_ms
+    assert legacy == canonical
+    assert canonical.model_dump() == {
+        "initial_backoff_ms": initial_backoff_ms,
+        "max_backoff_ms": max_backoff_ms,
+    }
 
 
 def test_file_metadata_estimates_zstandard_file_sizes() -> None:
