@@ -4,7 +4,6 @@ use async_stream::stream;
 use chrono::DateTime;
 use chrono::TimeZone;
 use chrono::Utc;
-use clp_rust_utils::aws::AWS_DEFAULT_REGION;
 use clp_rust_utils::clp_config::package::config::Config;
 use clp_rust_utils::clp_config::package::config::StorageEngine;
 use clp_rust_utils::clp_config::package::config::StreamOutputStorage;
@@ -235,6 +234,7 @@ pub struct Client {
     mongodb_client: mongodb::Client,
     sql_pool: sqlx::Pool<sqlx::MySql>,
     config: Config,
+    stream_output_s3: Option<aws_sdk_s3::Client>,
 }
 
 impl Client {
@@ -252,7 +252,11 @@ impl Client {
     /// * [`ClientError::ConfigIsNone`] if `config.api_server` is `None`.
     /// * Forwards [`create_clp_db_mysql_pool`]'s errors on failure.
     /// * Forwards [`mongodb::Client::with_uri_str`]'s errors on failure.
-    pub async fn connect(config: &Config, credentials: &Credentials) -> Result<Self, ClientError> {
+    pub async fn connect(
+        config: &Config,
+        credentials: &Credentials,
+        stream_output_s3: Option<aws_sdk_s3::Client>,
+    ) -> Result<Self, ClientError> {
         if config.api_server.is_none() {
             return Err(ClientError::ConfigIsNone);
         }
@@ -270,6 +274,7 @@ impl Client {
             config: config.clone(),
             mongodb_client: mongo_client,
             sql_pool,
+            stream_output_s3,
         })
     }
 
@@ -402,9 +407,7 @@ impl Client {
                     inner: self.fetch_results_from_file(search_job_id, max_num_results)?,
                 },
                 StreamOutputStorage::S3 { .. } => SearchResultStream::S3 {
-                    inner: self
-                        .fetch_results_from_s3(search_job_id, max_num_results)
-                        .await?,
+                    inner: self.fetch_results_from_s3(search_job_id, max_num_results)?,
                 },
             };
             return Ok(stream);
@@ -559,13 +562,12 @@ impl Client {
     ///
     /// Return an error if:
     ///
-    /// * [`ClientError::Aws`] if a region code is not provided when using the default AWS S3
-    ///   endpoint.
+    /// * [`ClientError::Aws`] if the stream-output S3 client was not configured.
     ///
     /// # Panics
     ///
     /// Panics if the stream output storage is not S3.
-    async fn fetch_results_from_s3(
+    fn fetch_results_from_s3(
         &self,
         search_job_id: u64,
         max_num_results: u32,
@@ -576,23 +578,12 @@ impl Client {
         };
 
         let s3_config = s3_config.clone();
-        if s3_config.region_code.is_none() && s3_config.endpoint_url.is_none() {
-            return Err(ClientError::Aws {
-                description: "a region code must be given when using the default AWS S3 endpoint"
-                    .to_owned(),
-            });
-        }
-
-        let region_str = s3_config
-            .region_code
-            .as_ref()
-            .map_or(AWS_DEFAULT_REGION, non_empty_string::NonEmptyString::as_str);
-        let s3_client = clp_rust_utils::s3::create_new_client(
-            region_str,
-            s3_config.endpoint_url.as_ref(),
-            &s3_config.aws_authentication,
-        )
-        .await;
+        let s3_client = self
+            .stream_output_s3
+            .clone()
+            .ok_or_else(|| ClientError::Aws {
+                description: "stream-output S3 client was not configured".to_owned(),
+            })?;
 
         let key_prefix = format!("{}{}/", s3_config.key_prefix, search_job_id);
         tracing::info!("Streaming results from S3 prefix: {}", key_prefix);

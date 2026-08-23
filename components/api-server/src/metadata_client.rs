@@ -12,7 +12,6 @@ use std::time::Duration;
 use aws_sdk_s3::presigning::PresigningConfig;
 use chrono::DateTime;
 use chrono::Utc;
-use clp_rust_utils::aws::AWS_DEFAULT_REGION;
 use clp_rust_utils::clp_config::package::config::ArchiveOutput;
 use clp_rust_utils::clp_config::package::config::CONTAINER_INPUT_LOGS_ROOT_DIR;
 use clp_rust_utils::clp_config::package::config::Config;
@@ -167,6 +166,7 @@ pub struct MetadataClient {
     mongodb_client: mongodb::Client,
     sql_pool: sqlx::Pool<sqlx::MySql>,
     config: Config,
+    stream_output_s3: Option<aws_sdk_s3::Client>,
 }
 
 impl MetadataClient {
@@ -180,7 +180,11 @@ impl MetadataClient {
     /// * [`ClientError::ConfigIsNone`] if `config.api_server` is `None`.
     /// * Forwards [`create_clp_db_mysql_pool`]'s errors on failure.
     /// * Forwards [`mongodb::Client::with_uri_str`]'s errors on failure.
-    pub async fn connect(config: &Config, credentials: &Credentials) -> Result<Self, ClientError> {
+    pub async fn connect(
+        config: &Config,
+        credentials: &Credentials,
+        stream_output_s3: Option<aws_sdk_s3::Client>,
+    ) -> Result<Self, ClientError> {
         if config.api_server.is_none() {
             return Err(ClientError::ConfigIsNone);
         }
@@ -198,6 +202,7 @@ impl MetadataClient {
             config: config.clone(),
             mongodb_client: mongo_client,
             sql_pool,
+            stream_output_s3,
         })
     }
 
@@ -797,23 +802,12 @@ impl MetadataClient {
         let StreamOutputStorage::S3 { s3_config, .. } = &self.config.stream_output.storage else {
             return Ok(format!("/streams/{path}"));
         };
-        if s3_config.region_code.is_none() && s3_config.endpoint_url.is_none() {
-            return Err(ClientError::Aws {
-                description: "a region code must be given when using the default AWS S3 endpoint"
-                    .to_owned(),
-            });
-        }
-
-        let region = s3_config
-            .region_code
+        let client = self
+            .stream_output_s3
             .as_ref()
-            .map_or(AWS_DEFAULT_REGION, non_empty_string::NonEmptyString::as_str);
-        let client = clp_rust_utils::s3::create_new_client(
-            region,
-            s3_config.endpoint_url.as_ref(),
-            &s3_config.aws_authentication,
-        )
-        .await;
+            .ok_or_else(|| ClientError::Aws {
+                description: "stream-output S3 client was not configured".to_owned(),
+            })?;
         let key = format!("{}{path}", s3_config.key_prefix);
         let presigning_config =
             PresigningConfig::expires_in(Duration::from_secs(3600)).map_err(|error| {

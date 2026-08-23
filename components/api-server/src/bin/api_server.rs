@@ -72,13 +72,21 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context(format!("Cannot listen to {addr}"))?;
 
-    let client = api_server::client::Client::connect(&config, &credentials)
+    let stream_output_s3_client = api_server::s3_client::create_stream_output_s3_client(&config)
         .await
-        .context("Cannot connect to CLP")?;
-    let metadata_client =
-        api_server::metadata_client::MetadataClient::connect(&config, &credentials)
+        .context("Cannot configure stream-output S3 client")?;
+
+    let client =
+        api_server::client::Client::connect(&config, &credentials, stream_output_s3_client.clone())
             .await
-            .context("Cannot connect metadata client to CLP")?;
+            .context("Cannot connect to CLP")?;
+    let metadata_client = api_server::metadata_client::MetadataClient::connect(
+        &config,
+        &credentials,
+        stream_output_s3_client,
+    )
+    .await
+    .context("Cannot connect metadata client to CLP")?;
 
     let router = api_server::routes::from_app_state(api_server::routes::AppState {
         client,
