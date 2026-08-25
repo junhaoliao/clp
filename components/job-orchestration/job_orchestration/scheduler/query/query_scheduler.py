@@ -1116,13 +1116,18 @@ async def handle_finished_stream_extraction_job(
                 tasks_completed_counter.add(1)
                 logger.info("Extraction task succeeded in %s second(s).", task_result.duration)
 
+    # We set the status regardless of the job's previous status to handle the case where the
+    # job is cancelled (status = CANCELLING) while we're in this method — e.g. a stream-file
+    # extraction that timed out on the API-server side and was marked CANCELLING. This mirrors
+    # `handle_finished_search_job`; gating on RUNNING would leave such a row stuck in CANCELLING
+    # because the extraction completion path is the only thing that can move it to a terminal
+    # state (the cancellation loop only handles search/aggregation jobs).
     duration = (datetime.datetime.now() - job.start_time).total_seconds()
     if set_job_or_task_status(
         db_conn,
         QUERY_JOBS_TABLE_NAME,
         job_id,
         new_job_status,
-        QueryJobStatus.RUNNING,
         num_tasks_completed=num_tasks,
         duration=duration,
     ):
@@ -1144,12 +1149,13 @@ async def handle_finished_stream_extraction_job(
     for waiting_job in waiting_jobs:
         with bound_contextvars(job_id=waiting_job):
             logger.info("Setting waiting job status to %s.", new_job_status.to_str())
+            # Set unconditionally (see above) so a waiting job marked CANCELLING by an
+            # API-server timeout still reaches a terminal state.
             set_job_or_task_status(
                 db_conn,
                 QUERY_JOBS_TABLE_NAME,
                 waiting_job,
                 new_job_status,
-                QueryJobStatus.RUNNING,
                 num_tasks_completed=0,
                 duration=(datetime.datetime.now() - job.start_time).total_seconds(),
             )
