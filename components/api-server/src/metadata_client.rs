@@ -31,6 +31,7 @@ use clp_rust_utils::job_config::QueryJobStatus;
 use clp_rust_utils::job_config::QueryJobType;
 use clp_rust_utils::serde::ZstdMsgpack;
 use mongodb::bson::doc;
+use non_empty_string::NonEmptyString;
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::Row;
@@ -154,7 +155,8 @@ pub struct StreamFileExtraction {
     pub dataset: Option<String>,
     pub extract_job_type: ExtractJobType,
     pub log_event_idx: i64,
-    pub stream_id: String,
+    #[schema(value_type = String, min_length = 1)]
+    pub stream_id: NonEmptyString,
 }
 
 /// A dedicated client for metadata, compression-job, and stream-file operations.
@@ -769,7 +771,7 @@ impl MetadataClient {
         // Try to find an already-extracted stream file.
         let existing = stream_files_collection
             .find_one(doc! {
-                "stream_id": &extraction.stream_id,
+                "stream_id": extraction.stream_id.as_str(),
                 "begin_msg_ix": {"$lte": extraction.log_event_idx},
                 "end_msg_ix": {"$gt": extraction.log_event_idx},
             })
@@ -780,7 +782,7 @@ impl MetadataClient {
             self.submit_and_wait_extract_job(&extraction).await?;
             let doc = stream_files_collection
                 .find_one(doc! {
-                    "stream_id": &extraction.stream_id,
+                    "stream_id": extraction.stream_id.as_str(),
                     "begin_msg_ix": {"$lte": extraction.log_event_idx},
                     "end_msg_ix": {"$gt": extraction.log_event_idx},
                 })

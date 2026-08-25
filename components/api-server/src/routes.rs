@@ -785,6 +785,17 @@ mod tests {
         )
     }
 
+    fn stream_extraction_json_contract_test_app() -> axum::Router {
+        axum::Router::new().route(
+            "/stream_files/extract",
+            post(
+                |payload: Result<Json<StreamFileExtraction>, JsonRejection>| async move {
+                    extract_json_payload(payload).map(|_| StatusCode::NO_CONTENT)
+                },
+            ),
+        )
+    }
+
     async fn submit_json_contract_request(
         body: &'static str,
         content_type: Option<&'static str>,
@@ -893,6 +904,29 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
     }
 
+    #[tokio::test]
+    async fn stream_extraction_rejects_an_empty_stream_id() {
+        let response = stream_extraction_json_contract_test_app()
+            .oneshot(
+                Request::builder()
+                    .uri("/stream_files/extract")
+                    .method("POST")
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/json"),
+                    )
+                    .body(Body::from(concat!(
+                        r#"{"dataset":null,"extract_job_type":"ExtractIr","log_event_idx":0,"#,
+                        r#""stream_id":""}"#
+                    )))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
     #[test]
     fn openapi_describes_migrated_post_contracts() {
         let document = serde_json::to_value(ApiDoc::openapi()).expect("failed to encode OpenAPI");
@@ -922,6 +956,11 @@ mod tests {
         assert_eq!(
             document["components"]["schemas"]["ExtractJobType"]["enum"],
             serde_json::json!(["ExtractIr", "ExtractJson"])
+        );
+        assert_eq!(
+            document["components"]["schemas"]["StreamFileExtraction"]["properties"]["stream_id"]
+                ["minLength"],
+            1
         );
     }
 
