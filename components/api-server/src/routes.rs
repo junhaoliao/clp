@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use axum::Json;
 use axum::extract::Path;
 use axum::extract::Query;
@@ -364,9 +366,11 @@ struct DatasetsParams {
 fn parse_datasets(dataset: Option<String>) -> Vec<String> {
     dataset
         .map(|s| {
+            let mut seen = HashSet::new();
             s.split(',')
                 .map(str::trim)
                 .filter(|t| !t.is_empty())
+                .filter(|t| seen.insert(*t))
                 .map(str::to_owned)
                 .collect()
         })
@@ -947,10 +951,10 @@ mod tests {
     }
 
     #[test]
-    fn parse_datasets_preserves_the_given_order_and_duplicates() {
+    fn parse_datasets_preserves_first_seen_order_and_drops_duplicates() {
         assert_eq!(
             parse_datasets(Some("b,a,b".to_owned())),
-            vec!["b".to_owned(), "a".to_owned(), "b".to_owned()]
+            vec!["b".to_owned(), "a".to_owned()]
         );
     }
 
