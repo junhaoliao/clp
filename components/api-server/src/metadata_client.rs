@@ -875,6 +875,7 @@ impl MetadataClient {
         let max_delay_ms = api_server_config.query_job_polling.max_backoff_ms;
         loop {
             if tokio::time::Instant::now() >= deadline {
+                self.cancel_extract_job_on_timeout(job_id).await;
                 return Err(ClientError::Timeout(format!(
                     "stream-extraction job {job_id} did not finish within {timeout_secs} seconds"
                 )));
@@ -909,6 +910,24 @@ impl MetadataClient {
             }
         }
         Ok(())
+    }
+
+    async fn cancel_extract_job_on_timeout(&self, job_id: u64) {
+        let result = sqlx::query(&build_cancel_query_job_query())
+            .bind::<i32>(QueryJobStatus::Cancelling.into())
+            .bind(job_id)
+            .bind::<i32>(QueryJobStatus::Pending.into())
+            .bind::<i32>(QueryJobStatus::Running.into())
+            .execute(&self.sql_pool)
+            .await;
+
+        if let Err(error) = result {
+            tracing::error!(
+                error = ?error,
+                job_id,
+                "Failed to cancel timed-out stream-extraction job"
+            );
+        }
     }
 }
 
@@ -1015,6 +1034,10 @@ async fn resolve_compression_paths(
 /// returned twice. `ORDER BY` keeps the Web UI's default timestamp-key selection deterministic.
 fn build_timestamp_column_names_query(table_name: &str) -> String {
     format!("SELECT DISTINCT name FROM `{table_name}` WHERE type IN (?, ?) ORDER BY name")
+}
+
+fn build_cancel_query_job_query() -> String {
+    format!("UPDATE `{QUERY_JOBS_TABLE_NAME}` SET status = ? WHERE id = ? AND status IN (?, ?)")
 }
 
 /// Combines an archives aggregate and a files aggregate into the single row the
@@ -1169,6 +1192,14 @@ mod tests {
     fn query_job_type_values() {
         assert_eq!(i32::from(QueryJobType::ExtractIr), 1);
         assert_eq!(i32::from(QueryJobType::ExtractJson), 2);
+    }
+
+    #[test]
+    fn query_job_cancellation_only_targets_cancellable_states() {
+        assert_eq!(
+            build_cancel_query_job_query(),
+            "UPDATE `query_jobs` SET status = ? WHERE id = ? AND status IN (?, ?)"
+        );
     }
 
     #[test]
